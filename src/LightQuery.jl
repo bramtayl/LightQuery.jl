@@ -48,7 +48,7 @@ export @_
 Another syntax for anonymous functions. The arguments are inside the body; the
 first arguments is `_`, the second argument is `__`, etc.
 ```jldoctest
-julia> using Keys
+julia> using LightQuery
 
 julia> 1 |> (@_ _ + 1)
 2
@@ -105,7 +105,7 @@ with a number (the parity), anonymize and quote arguments past that parity.
 Either way, anonymize the whole tail, then call it on head.
 
 ```jldoctest
-julia> using Keys
+julia> using LightQuery
 
 julia> call(source1, source2, anonymous, quoted) = anonymous(source1, source2);
 
