@@ -9,22 +9,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#LightQuery.jl-1",
-    "page": "Home",
-    "title": "LightQuery.jl",
-    "category": "section",
-    "text": ""
-},
-
-{
-    "location": "index.html#Demo-1",
-    "page": "Home",
-    "title": "Demo",
-    "category": "section",
-    "text": "This package contains a fast iterator for slicing (julienning) arrays."
-},
-
-{
     "location": "index.html#LightQuery.@_-Tuple{Expr}",
     "page": "Home",
     "title": "LightQuery.@_",
@@ -41,9 +25,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Index-1",
+    "location": "index.html#LightQuery.jl-1",
     "page": "Home",
-    "title": "Index",
+    "title": "LightQuery.jl",
     "category": "section",
     "text": "Modules = [LightQuery]"
 },
