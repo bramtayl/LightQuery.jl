@@ -55,9 +55,9 @@ using LightQuery
 
 import DataFrames: DataFrame
 df = DataFrame(
-    name= ["John", "Sally", "Kirk"],
-    age= [23, 42, 59],
-    children= [3, 5, 2]
+    name = ["John", "Sally", "Kirk"],
+    age = [23, 42, 59],
+    children = [3, 5, 2]
 )
 
 import QueryOperators
