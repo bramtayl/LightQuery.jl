@@ -5,13 +5,17 @@ julia&gt; 1 |&gt; (@_ _ + 1)
 2
 
 julia&gt; map((@_ __ - _), (1, 2), (2, 1))
-(1, -1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/311a85ffc9663fb550e70b794c988b10e0310892/src/LightQuery.jl#L46-L61">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@query-Tuple{Any}" href="#LightQuery.@query-Tuple{Any}"><code>LightQuery.@query</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro query(body::Expr)</code></pre><p>Query your code. If body is a chain <code>head_ |&gt; tail_</code>, recur on head. If tail is a function call, and the function ends with a number (the parity), anonymize and quote arguments past that parity. Either way, anonymize the whole tail, then call it on head.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+(1, -1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/49fb44e914aab307656af424500675a9091f021e/src/LightQuery.jl#L46-L61">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@query-Tuple{Any}" href="#LightQuery.@query-Tuple{Any}"><code>LightQuery.@query</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro query(body::Expr)</code></pre><p>Query your code. If body is a chain <code>head_ |&gt; tail_</code>, recur on head. If tail is a function call, and the function ends with a number (the parity), anonymize and quote arguments past that parity. Either way, anonymize the whole tail, then call it on head.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; call(source1, source2, (anonymous, quoted)) =
             anonymous(source1, source2), quoted;
 
 julia&gt; @query 1 |&gt; (_ - 2) |&gt; abs(_) |&gt; call2(_, 2, _ + __)
 (3, :(_ + __))
+
+julia&gt; @query 1 |&gt; call2(_)
+ERROR: LoadError: Expecting at least 2 argument(s)
+[...]
 
 julia&gt; function call_keywords(source1; anonymous_quoted)
             anonymous, quoted = anonymous_quoted
@@ -22,4 +26,4 @@ julia&gt; @query 1 |&gt; call_keywords1(_, anonymous_quoted = _ + 1)
 (2, :(_ + 1))
 
 julia&gt; @query 1 |&gt; call_keywords1(_; anonymous_quoted = _ + 1)
-(2, :(_ + 1))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/311a85ffc9663fb550e70b794c988b10e0310892/src/LightQuery.jl#L131-L159">source</a></section><footer><hr/></footer></article></body></html>
+(2, :(_ + 1))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/49fb44e914aab307656af424500675a9091f021e/src/LightQuery.jl#L131-L163">source</a></section><footer><hr/></footer></article></body></html>
