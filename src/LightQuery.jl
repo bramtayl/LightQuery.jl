@@ -45,8 +45,10 @@ end
 export @_
 """
     macro _(body::Expr)
+
 Another syntax for anonymous functions. The arguments are inside the body; the
 first arguments is `_`, the second argument is `__`, etc.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -138,7 +140,7 @@ Either way, anonymize the whole tail, then call it on head.
 julia> using LightQuery
 
 julia> call(source1, source2, (anonymous, quoted)) =
-            anonymous(source1, source2), quoted
+            anonymous(source1, source2), quoted;
 
 julia> @query 1 |> (_ - 2) |> abs(_) |> call2(_, 2, _ + __)
 (3, :(_ + __))
@@ -146,7 +148,7 @@ julia> @query 1 |> (_ - 2) |> abs(_) |> call2(_, 2, _ + __)
 julia> function call_keywords(source1; anonymous_quoted)
             anonymous, quoted = anonymous_quoted
             anonymous(source1), quoted
-        end
+        end;
 
 julia> @query 1 |> call_keywords1(_, anonymous_quoted = _ + 1)
 (2, :(_ + 1))
