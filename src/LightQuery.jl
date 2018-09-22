@@ -145,6 +145,10 @@ julia> call(source1, source2, (anonymous, quoted)) =
 julia> @query 1 |> (_ - 2) |> abs(_) |> call2(_, 2, _ + __)
 (3, :(_ + __))
 
+julia> @query 1 |> call2(_)
+ERROR: LoadError: Expecting at least 2 argument(s)
+[...]
+
 julia> function call_keywords(source1; anonymous_quoted)
             anonymous, quoted = anonymous_quoted
             anonymous(source1), quoted
