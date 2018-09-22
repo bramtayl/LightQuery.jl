@@ -41,35 +41,3 @@ tails of chains. After the above processing is complete, the remaining code
 in the tail is interpreted as one big anonymouser function. So if you use
 functions without numbers, `@query` can be used as a plain and simple chaining
 syntax as well.
-
-Most query packages have underlying hardware that takes code similar to the form
-that `@query` spits out. For example, `Query` relies on the `QueryOperators`
-backend. Likewise, `JuliaDBMeta` relies on `JuliaDB`. `DataFramesMeta` has
-has a few of its own backend functions and also relies on some of the
-infrastructure from `DataFrames`. With a bit of argument reordering, `@query`
-should be able to serve as a frontend for all of the above. I've cooked up a
-little example using `QueryOperators` below.
-
-```julia
-using LightQuery
-
-import DataFrames: DataFrame
-df = DataFrame(
-    name = ["John", "Sally", "Kirk"],
-    age = [23, 42, 59],
-    children = [3, 5, 2]
-)
-
-import QueryOperators
-import QueryOperators: query
-# can't import because they conflict with Base names
-const qmap = QueryOperators.map
-const qfilter = QueryOperators.filter
-const qcollect = QueryOperators.collect
-
-@query df |>
-    query(_) |>
-    qfilter1(_, _.age > 50) |>
-    qmap1(_, (name = _.name, children_per_year = _.children / _.age)) |>
-    qcollect(_, DataFrame)
-```
