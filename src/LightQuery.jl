@@ -61,15 +61,40 @@ macro _(body::Expr)
     anonymize(body, @__LINE__, @__FILE__) |> esc
 end
 
+plain_argument(argument, line, file) =
+    Expr(:tuple, anonymize(argument, line, file), quot(argument))
+
+handle_keywords(argument::Expr, line, file) =
+    if argument.head == :kw
+        Expr(:kw,
+            argument.args[1],
+            handle_keywords(argument.args[2], line, file)
+        )
+    else
+        plain_argument(argument, line, file)
+    end
+handle_keywords(argument, line, file) = plain_argument(argument, line, file)
+
+is_parameter(argument::Expr) = argument.head == :parameters
+is_parameter(argument) = false
+
 build_call(afunction, arguments, parity, line, file) =
     if length(arguments) >= parity
-        anonymous_arguments = ((anonymize(argument, line, file), quot(argument))
-            for argument in arguments[parity+1:end])
-        Expr(:call,
-            afunction,
-            arguments[1:parity]...,
-            flatten(anonymous_arguments)...
-        )
+        first_argument = arguments[1]
+        if is_parameter(first_argument)
+            Expr(:call,
+                afunction,
+                Expr(:parameters, handle_keywords.(first_argument.args, line, file)...),
+                arguments[2:parity+1]...,
+                handle_keywords.(arguments[parity+2:end], line, file)...
+            )
+        else
+            Expr(:call,
+                afunction,
+                arguments[1:parity]...,
+                handle_keywords.(arguments[parity+1:end], line, file)...
+            )
+        end
     else
         error("Expecting at least $parity argument(s)")
     end
@@ -81,7 +106,10 @@ anonymize_arguments(atail, line, file) =
         if parity == nothing
             atail
         else
-            build_call(Symbol(chop(string_function)), arguments, parity, line, file)
+            build_call(
+                Symbol(chop(string_function)),
+                arguments, parity, line, file
+            )
         end
     else
         atail
@@ -89,7 +117,8 @@ anonymize_arguments(atail, line, file) =
 
 query(body, line, file)  =
     if @capture body head_ |> atail_
-        Expr(:call, anonymize(anonymize_arguments(atail, line, file), line, file),
+        Expr(:call,
+            anonymize(anonymize_arguments(atail, line, file), line, file),
             query(head, line, file)
         )
     else
@@ -99,6 +128,7 @@ query(body, line, file)  =
 export @query
 """
     macro query(body::Expr)
+
 Query your code. If body is a chain `head_ |> tail_`, recur on
 head. If tail is a function call, and the function ends
 with a number (the parity), anonymize and quote arguments past that parity.
@@ -107,14 +137,22 @@ Either way, anonymize the whole tail, then call it on head.
 ```jldoctest
 julia> using LightQuery
 
-julia> call(source1, source2, anonymous, quoted) = anonymous(source1, source2);
+julia> call(source1, source2, (anonymous, quoted)) =
+            anonymous(source1, source2), quoted
 
 julia> @query 1 |> (_ - 2) |> abs(_) |> call2(_, 2, _ + __)
-3
+(3, :(_ + __))
 
-julia> @query 1 |> call2(_)
-ERROR: LoadError: Expecting at least 2 argument(s)
-[...]
+julia> function call_keywords(source1; anonymous_quoted)
+            anonymous, quoted = anonymous_quoted
+            anonymous(source1), quoted
+        end
+
+julia> @query 1 |> call_keywords1(_, anonymous_quoted = _ + 1)
+(2, :(_ + 1))
+
+julia> @query 1 |> call_keywords1(_; anonymous_quoted = _ + 1)
+(2, :(_ + 1))
 ```
 """
 macro query(body)
