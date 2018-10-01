@@ -109,7 +109,7 @@ anonymize_arguments(atail, line, file) =
             atail
         else
             build_call(
-                Symbol(chop(string_function)),
+                Meta.parse(chop(string_function)),
                 arguments, parity, line, file
             )
         end
