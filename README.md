@@ -45,21 +45,21 @@ syntax as well.
 If you're an author of a query-like package, chances are, you only will need a
 few method wrappers to make your package compatible with LightQuery. Then, 
 users can use LightQuery to easily mix and match various backends. Here's an
-example.
+example. First, make the wrappers.
 
 ```julia
-julia> import DataFramesMeta: AbstractDataFrame, where
+using LightQuery: @query
 
-julia> where(d::AbstractDataFrame, f_tuple::Tuple{Function, Expr}) =
-           where(d, f_tuple[1]);
+import DataFramesMeta: AbstractDataFrame, where
+where(d::AbstractDataFrame, f_tuple::Tuple{Function, Expr}) = where(d, f_tuple[1])
 
-julia> import QueryOperators: Enumerable, orderby
+import QueryOperators: Enumerable, orderby, query
+orderby(source::Enumerable, f_tuple::Tuple{Function, Expr}) = orderby(source, f_tuple...)
+```
 
-julia> orderby(source::Enumerable, f_tuple::Tuple{Function, Expr}) =
-           orderby(source, f_tuple...);
+Now mix and match!
 
-julia> using DataFrames: DataFrame; using LightQuery: @query; using QueryOperators: query
-
+```julia-repl
 julia> @query DataFrame(a = [0, 1, 2], b = [2, 1, 0]) |>
            where1(_, _.a .> 0) |>
            query(_) |>
