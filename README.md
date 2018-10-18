@@ -59,7 +59,7 @@ orderby(source::Enumerable, f_tuple::Tuple{Function, Expr}) = orderby(source, f_
 
 Now mix and match!
 
-```julia-repl
+```julia
 julia> @query DataFrame(a = [0, 1, 2], b = [2, 1, 0]) |>
            where1(_, _.a .> 0) |>
            query(_) |>
