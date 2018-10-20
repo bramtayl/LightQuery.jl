@@ -38,6 +38,35 @@ ending without a number, this step will be skipped.
 
 The final key concept is chaining. `@query` only recognizes query verbs in the
 tails of chains. After the above processing is complete, the remaining code
-in the tail is interpreted as one big anonymouser function. So if you use
+in each tail is interpreted as one big anonymouser function. So if you use
 functions without numbers, `@query` can be used as a plain and simple chaining
 syntax as well.
+
+If you're an author of a query-like package, chances are, you only will need a
+few method wrappers to make your package compatible with LightQuery. Then, 
+users can use LightQuery to easily mix and match various backends. Here's an
+example. First, make the wrappers.
+
+```julia
+using LightQuery: @query
+
+import DataFramesMeta: AbstractDataFrame, where
+where(d::AbstractDataFrame, f_tuple::Tuple{Function, Expr}) = where(d, f_tuple[1])
+
+import QueryOperators: Enumerable, orderby, query
+orderby(source::Enumerable, f_tuple::Tuple{Function, Expr}) = orderby(source, f_tuple...)
+```
+
+Now mix and match!
+
+```julia
+julia> @query DataFrame(a = [0, 1, 2], b = [2, 1, 0]) |>
+           where1(_, _.a .> 0) |>
+           query(_) |>
+           orderby1(_, _.b)
+2x2 query result
+a │ b
+──┼──
+2 │ 0
+1 │ 1
+```
