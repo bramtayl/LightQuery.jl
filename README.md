@@ -51,6 +51,8 @@ df |>
 Similar wrappers can be made for Query, though I don't provide a full example.
 
 ```julia
+using LightQuery: Nameless
+
 import QueryOperartors
 import QueryOperators: Enumerable, count, join, groupjoin, mapmany, orderby, orderby_descending, thenby, thenby_descending
 
