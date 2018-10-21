@@ -1,17 +1,19 @@
 module LightQuery
 
 import MacroTools: @capture
-import Base: Generator
-import Base.Iterators: flatten
 import Base.Meta: quot
+import Base: Generator
 
-struct Anonymouser{F}
+export Nameless
+
+"A container for a function and the expression that generated it"
+struct Nameless{F}
     f::F
     expression::Expr
 end
 
-(anonymouser::Anonymouser)(arguments...; keyword_arguments...) =
-    anonymouser.f(arguments...; keyword_arguments...)
+(nameless::Nameless)(arguments...; keyword_arguments...) =
+    nameless.f(arguments...; keyword_arguments...)
 
 substitute_underscores!(dictionary, body) = body
 substitute_underscores!(dictionary, body::Symbol) =
@@ -36,7 +38,7 @@ substitute_underscores!(dictionary, body::Expr) =
 
 string_length(something) = something |> String |> length
 
-function anonymize(body, line, file)
+function unname(body, line, file)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
     sorted_dictionary = sort(
@@ -44,8 +46,8 @@ function anonymize(body, line, file)
             isless(string_length(pair1.first), string_length(pair2.first)),
         collect(dictionary)
     )
-    Expr(:call, Anonymouser, Expr(:->,
-        Expr(:tuple, Generator(pair -> pair.second, sorted_dictionary)...),
+    Expr(:call, Nameless, Expr(:->,
+        Expr(:tuple, (pair.second for pair in sorted_dictionary)...),
         Expr(:block, LineNumberNode(line, file), new_body)
     ), quot(body))
 end
@@ -54,8 +56,8 @@ export @_
 """
     macro _(body::Expr)
 
-Create an `Anonymouser` object. The arguments are inside the body; the
-first arguments is `_`, the second argument is `__`, etc. Handly stores a
+Create an `Nameless` object. The arguments are inside the body; the
+first arguments is `_`, the second argument is `__`, etc. Also stores a
 quoted version of the function.
 
 ```jldoctest
@@ -72,7 +74,7 @@ julia> @_(_ + 1).expression
 ```
 """
 macro _(body::Expr)
-    anonymize(body, @__LINE__, @__FILE__) |> esc
+    unname(body, @__LINE__, @__FILE__) |> esc
 end
 
 end
