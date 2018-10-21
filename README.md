@@ -13,6 +13,7 @@ where(d::AbstractDataFrame, f) = d[f(d), :]
 orderby(d::AbstractDataFrame, f) = d[sortperm(f(d)), :]
 function transform(d::AbstractDataFrame; kwargs...)
     d2 = copy(d)
+    for (k, f) in kwargs
         d2[k] = f(d2)
     end
     d2
