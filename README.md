@@ -43,7 +43,7 @@ df |>
         _
     )) |>
     combine |>
-    (@_ orderby(_, (@_ _.meanX))) |>
+    (@_ orderby(_, @_ _.meanX)) |>
     (@_ rename!(_, :b => :var)) |>
     (@_ _[[:meanX, :meanY, :var]])
 ```
