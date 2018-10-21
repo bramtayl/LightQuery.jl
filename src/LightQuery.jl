@@ -1,80 +1,73 @@
 module LightQuery
 
-import MacroTools: @capture
-import Base.Meta: quot
-import Base: Generator
+include("Nameless.jl")
 
-export Nameless
+import Base: map, join, count
 
-"A container for a function and the expression that generated it"
-struct Nameless{F}
-    f::F
-    expression::Expr
-end
+import DataFrames
+import DataFramesMeta
+import SplitApplyCombine
+import QueryOperators
 
-(nameless::Nameless)(arguments...; keyword_arguments...) =
-    nameless.f(arguments...; keyword_arguments...)
+using QueryOperators: Enumerable
+using DataFrames: AbstractDataFrame, GroupedDataFrame, GroupApplied, groupby
 
-substitute_underscores!(dictionary, body) = body
-substitute_underscores!(dictionary, body::Symbol) =
-    if all(isequal('_'), string(body))
-        if !haskey(dictionary, body)
-            dictionary[body] = gensym("argument")
-        end
-        dictionary[body]
-    else
-        body
-    end
-substitute_underscores!(dictionary, body::Expr) =
-    if body.head == :quote
-        body
-    elseif @capture body @_ args__
-        body
-    else
-        Expr(body.head,
-            map(body -> substitute_underscores!(dictionary, body), body.args)
-        ...)
-    end
+export where
+where(data::Union{AbstractDataFrame, GroupedDataFrame}, n::Nameless) =
+    DataFramesMeta.where(data, n.f)
+where(data::Enumerable, n::Nameless) =
+    QueryOperators.filter(data, n.f, n.expression)
 
-string_length(something) = something |> String |> length
+export Then
+struct Then end
+export Descending
+struct Descending end
+export order
+order(data::Union{AbstractDataFrame, GroupedDataFrame}, n::Nameless) =
+    DataFramesMeta.orderby(data, n.f)
+order(data::Enumerable, n::Nameless) =
+    QueryOperators.orderby(data, n.f, n.expression)
+order(::Then, data::Enumerable, n::Nameless) =
+    QueryOperators.thenby(data, n.f, n.expression)
+order(::Then, ::Descending, data::Enumerable, n::Nameless) =
+    QueryOperators.thenby_descending(data, n.f, n.expression)
+order(::Descending, data::Enumerable, n::Nameless) =
+    QueryOperators.orderby_descending(data, n.f, n.expression)
 
-function unname(body, line, file)
-    dictionary = Dict{Symbol, Symbol}()
-    new_body = substitute_underscores!(dictionary, body)
-    sorted_dictionary = sort(
-        lt = (pair1, pair2) ->
-            isless(string_length(pair1.first), string_length(pair2.first)),
-        collect(dictionary)
-    )
-    Expr(:call, Nameless, Expr(:->,
-        Expr(:tuple, (pair.second for pair in sorted_dictionary)...),
-        Expr(:block, LineNumberNode(line, file), new_body)
-    ), quot(body))
-end
+export group
+group(data::Enumerable, n::Nameless) =
+    QueryOperators.groupby(data::Enumerable, n.f, n.expression)
+group(data::AbstractDataFrame, n) =
+    DataFrames.groupby(data, n)
+group(data, n) =
+    SplitApplyCombine.group(n, data)
 
-export @_
-"""
-    macro _(body::Expr)
+export transform
+transform(data::Union{AbstractDict, AbstractDataFrame, GroupedDataFrame}; kwargs...) =
+    DataFramesMeta.transform(data; pairs(map(n -> n.f, kwargs.data))...)
 
-Create an `Nameless` object. The arguments are inside the body; the
-first arguments is `_`, the second argument is `__`, etc. Also stores a
-quoted version of the function.
+export based_on
+based_on(d::AbstractDataFrame; kwargs...) = DataFrame(; map(f -> f(d), kwargs.data)...)
+based_on(data::Enumerable, n::Nameless) = QueryOperators.map(data, n.f, n.expression)
 
-```jldoctest
-julia> using LightQuery
+map(n::Nameless, data::GroupApplied) = map(n.f, data)
 
-julia> 1 |> @_(_ + 1)
-2
+count(n::Nameless, data::Enumerable) =
+    QueryOperators.count(data, n.f, n.expression)
 
-julia> map(@_(__ - _), (1, 2), (2, 1))
-(1, -1)
+struct Group end
+struct Left end
 
-julia> @_(_ + 1).expression
-:(_ + 1)
-```
-"""
-macro _(body::Expr)
-    unname(body, @__LINE__, @__FILE__) |> esc
-end
+join(data1::Enumerable, data2::Enumerable, n1::Nameless, n2::Nameless, n3::Nameless) =
+    QueryOperators.join(data1, data2, n1.f, n1.expression, n2.f, n2.expression, n3.f, n3.expression)
+join(::Group, data1::Enumerable, data2::Enumerable, n1::Nameless, n2::Nameless, n3::Nameless) =
+    QueryOperators.groupjoin(data1, data2, n1.f, n1.expression, n2.f, n2.expression, n3.f, n3.expression)
+join(::Left, ::Group, data1::Enumerable, data2::Enumerable, args...) =
+    SplitApplyCombine.leftgroupjoin(data1, data2, args...)
+
+mapmany(n1::Nameless, n2::Nameless, data::Enumerable) =
+    QueryOperators.mapmany(data, n1.f, n1.expression, n2.f, n2.expression)
+mapmany(f, args...) =
+    SplitApplyCombine.mapmany(f, args...)
 
 end
