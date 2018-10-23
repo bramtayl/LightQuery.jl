@@ -24,7 +24,7 @@ df |>
         _
     )) |>
     combine |>
-    (@_ order(_, @_ _.meanX
+    (@_ order(_, @_ _.meanX)
 
 
 
