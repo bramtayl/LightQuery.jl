@@ -91,7 +91,7 @@ export @>
 
 If body is in the form `body_ |> tail_`, call `@_` on `tail`, and recur on `body`.
 
-```julia
+```jldoctest
 julia> using LightQuery
 
 julia> @> 0 |> _ + 1 |> _ - 1

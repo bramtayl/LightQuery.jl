@@ -200,7 +200,7 @@ export pretty
 """
     pretty(data)
 
-```julia
+```jldoctest
 julia> using LightQuery
 
 julia> pretty([(a = 1, b = 2), (a = 2, b = 1)])
