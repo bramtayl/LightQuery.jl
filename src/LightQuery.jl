@@ -117,7 +117,7 @@ export transform
 julia> using LightQuery
 
 julia> transform((a = 1, b = 2), c = @_ _.a + _.b)
-transform((a = 1, b = 2), c = @_ _.a + _.b)
+(a = 1, b = 2, c = 3)
 ```
 """
 transform(data::NamedTuple; kwargs...) = merge(data, based_on(data; kwargs...))
@@ -150,9 +150,7 @@ function get_groups(x::Vector)
             item = new_item
         end
     end
-    if haskey(x, old_index)
-        push!(result, old_index:length(x))
-    end
+    push!(result, old_index : length(x))
 end
 
 export group_by
@@ -211,9 +209,10 @@ julia> pretty([(a = 1, b = 2), (a = 2, b = 1)])
 ```
 """
 function pretty(data)
+    first_row = [keys(first(data))...]
     result = collect(Any, Generator(x -> [x...], data))
-    pushfirst!(result, [keys(first(data))...])
-    MD(Table(result, [map(x -> :r, first_row)...]))
+    pushfirst!(result, first_row)
+    MD(Table(result, map(x -> :r, first_row)))
 end
 
 end
