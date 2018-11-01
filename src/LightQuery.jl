@@ -160,7 +160,7 @@ export group_by
 ```jldoctest
 julia> using LightQuery
 
-julia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :b)
+julia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :a)
 2-element Array{NamedTuple{(:a, :b),Tuple{Array{Int64,1},Array{Int64,1}}},1}:
  (a = [1, 1], b = [1, 2])
  (a = [2, 2], b = [3, 4])
@@ -201,11 +201,7 @@ export pretty
 ```jldoctest
 julia> using LightQuery
 
-julia> pretty([(a = 1, b = 2), (a = 2, b = 1)])
-|  :a |  :b |
-| ---:| ---:|
-|   1 |   2 |
-|   2 |   1 |
+julia> pretty([(a = 1, b = 2), (a = 2, b = 1)]);
 ```
 """
 function pretty(data)
