@@ -3,71 +3,217 @@ module LightQuery
 include("Nameless.jl")
 
 import Base: map, join, count
+import Base.Iterators: drop, product, Filter, Generator
+import Markdown: MD, Table
 
-import DataFrames
-import DataFramesMeta
-import SplitApplyCombine
-import QueryOperators
+drop_one(x) = Iterators.Drop(x, 1)
 
-using QueryOperators: Enumerable
-using DataFrames: AbstractDataFrame, GroupedDataFrame, GroupApplied, groupby
+export rows
+"""
+    rows(data)
+
+```jldoctest
+julia> using LightQuery
+
+julia> rows((a = [1, 2], b = [2, 1]))
+2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:
+ (a = 1, b = 2)
+ (a = 2, b = 1)
+```
+"""
+rows(n::NamedTuple) = map(NamedTuple{keys(n)}, zip(n...))
+
+export columns
+"""
+    columns(data)
+
+```jldoctest
+julia> using LightQuery
+
+julia> columns([(a = 1, b = 2), (a = 2, b = 1)])
+(a = [1, 2], b = [2, 1])
+```
+"""
+function columns(iterator, the_keys = keys(first(iterator)))
+    NamedTuple{the_keys}(map(key -> map(item -> item[key], iterator), the_keys))
+end
+
+export flatten_columns
+"""
+    flatten_columns(iterator)
+
+Flatten the columns of an iterator of named tuples.
+
+```jldoctest
+julia> using LightQuery
+
+julia> flatten_columns([(a = [1, 2], b = [4, 3]), (a = [3, 4], b = [2, 1])])
+(a = [1, 2, 3, 4], b = [4, 3, 2, 1])
+```
+"""
+function flatten_columns(x)
+    first_row = map(copy, first(x))
+    foreach(
+        second_row ->
+            map(
+                (a, b) -> append!(a, b),
+                first_row, second_row
+            ),
+        drop_one(x)
+    )
+    first_row
+end
 
 export where
-where(data::Union{AbstractDataFrame, GroupedDataFrame}, n::Nameless) =
-    DataFramesMeta.where(data, n.f)
-where(data::Enumerable, n::Nameless) =
-    QueryOperators.filter(data, n.f, n.expression)
+"""
+    where(data, f)
 
-export Then
-struct Then end
-export Descending
-struct Descending end
-export order
-order(data::Union{AbstractDataFrame, GroupedDataFrame}, n::Nameless) =
-    DataFramesMeta.orderby(data, n.f)
-order(data::Enumerable, n::Nameless) =
-    QueryOperators.orderby(data, n.f, n.expression)
-order(::Then, data::Enumerable, n::Nameless) =
-    QueryOperators.thenby(data, n.f, n.expression)
-order(::Then, ::Descending, data::Enumerable, n::Nameless) =
-    QueryOperators.thenby_descending(data, n.f, n.expression)
-order(::Descending, data::Enumerable, n::Nameless) =
-    QueryOperators.orderby_descending(data, n.f, n.expression)
+```jldoctest
+julia> using LightQuery
 
-export group
-group(data::Enumerable, n::Nameless) =
-    QueryOperators.groupby(data::Enumerable, n.f, n.expression)
-group(data::AbstractDataFrame, n) =
-    DataFrames.groupby(data, n)
-group(data, n) =
-    SplitApplyCombine.group(n, data)
+julia> where((a = [1, 2], b = [2, 1]), @_ _.b .> 1)
+(a = [1], b = [2])
+```
+"""
+function where(n::NamedTuple, f)
+    which = f(n)
+    map(x -> x[which], n)
+end
 
-export transform
-transform(data::Union{AbstractDict, AbstractDataFrame, GroupedDataFrame}; kwargs...) =
-    DataFramesMeta.transform(data; pairs(map(n -> n.f, kwargs.data))...)
+export order_by
+"""
+    order_by(data, s::Symbol)
+
+```jldoctest
+julia> using LightQuery
+
+julia> order_by((a = [1, 2], b = [2, 1]), :b)
+(a = [2, 1], b = [1, 2])
+```
+"""
+function order_by(n::NamedTuple, s::Symbol)
+    order = sortperm(n[s])
+    map(x -> x[order], n)
+end
 
 export based_on
-based_on(d::AbstractDataFrame; kwargs...) = DataFrame(; map(f -> f(d), kwargs.data)...)
-based_on(data::Enumerable, n::Nameless) = QueryOperators.map(data, n.f, n.expression)
+"""
+    based_on(data; kwargs...)
 
-map(n::Nameless, data::GroupApplied) = map(n.f, data)
+```jldoctest
+julia> using LightQuery
 
-count(n::Nameless, data::Enumerable) =
-    QueryOperators.count(data, n.f, n.expression)
+julia> based_on((a = 1, b = 2), c = @_ _.a + _.b)
+(c = 3,)
+```
+"""
+based_on(data::NamedTuple; kwargs...) = map(f -> f(data), kwargs.data)
 
-struct Group end
-struct Left end
+export transform
+"""
+    transform(data; kwargs...)
 
-join(data1::Enumerable, data2::Enumerable, n1::Nameless, n2::Nameless, n3::Nameless) =
-    QueryOperators.join(data1, data2, n1.f, n1.expression, n2.f, n2.expression, n3.f, n3.expression)
-join(::Group, data1::Enumerable, data2::Enumerable, n1::Nameless, n2::Nameless, n3::Nameless) =
-    QueryOperators.groupjoin(data1, data2, n1.f, n1.expression, n2.f, n2.expression, n3.f, n3.expression)
-join(::Left, ::Group, data1::Enumerable, data2::Enumerable, args...) =
-    SplitApplyCombine.leftgroupjoin(data1, data2, args...)
+```jldoctest
+julia> using LightQuery
 
-mapmany(n1::Nameless, n2::Nameless, data::Enumerable) =
-    QueryOperators.mapmany(data, n1.f, n1.expression, n2.f, n2.expression)
-mapmany(f, args...) =
-    SplitApplyCombine.mapmany(f, args...)
+julia> transform((a = 1, b = 2), c = @_ _.a + _.b)
+transform((a = 1, b = 2), c = @_ _.a + _.b)
+```
+"""
+transform(data::NamedTuple; kwargs...) = merge(data, based_on(data; kwargs...))
+
+export select
+"""
+    select(data, args...)
+
+```jldoctest
+julia> using LightQuery
+
+julia> select((a = 1, b = 2, c = 3), :a, :c)
+(a = 1, c = 3)
+```
+"""
+select(data::NamedTuple, args...) =
+    NamedTuple{args}(map(
+        name -> getproperty(data, name),
+        args
+    ))
+
+function get_groups(x::Vector)
+    result = UnitRange{Int}[]
+    old_index = 1
+    item = x[1]
+    for (index, new_item) in drop_one(enumerate(x))
+        if new_item != item
+            push!(result, old_index:index-1)
+            old_index = index
+            item = new_item
+        end
+    end
+    if haskey(x, old_index)
+        push!(result, old_index:length(x))
+    end
+end
+
+export group_by
+"""
+    group_by(data, s::Symbol)
+
+```jldoctest
+julia> using LightQuery
+
+julia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :b)
+2-element Array{NamedTuple{(:a, :b),Tuple{Array{Int64,1},Array{Int64,1}}},1}:
+ (a = [1, 1], b = [1, 2])
+ (a = [2, 2], b = [3, 4])
+```
+"""
+function group_by(data::NamedTuple, s::Symbol)
+    ranges = get_groups(data[s])
+    rows(map(x -> map(range -> x[range], ranges), data))
+end
+
+export inner_join
+"""
+    inner_join(data1, data2)
+
+```jldoctest
+julia> using LightQuery
+
+julia> inner_join(
+            [(a = 1, b = 1), (a = 2, b = 2)],
+            [(a = 2, c = 2), (a = 3, c = 3)],
+            :a
+        )
+1-element Array{NamedTuple{(:a, :b, :c),Tuple{Int64,Int64,Int64}},1}:
+ (a = 2, b = 2, c = 2)
+```
+"""
+function inner_join(data1, data2, s::Symbol)
+    map(pair -> merge(pair[1], pair[2]), Filter(
+        pair -> getproperty(pair[1], s) == getproperty(pair[2], s),
+        product(data1, data2)
+    ))
+end
+
+export pretty
+"""
+    pretty(data)
+
+```julia
+julia> using LightQuery
+
+julia> pretty([(a = 1, b = 2), (a = 2, b = 1)])
+|  :a |  :b |
+| ---:| ---:|
+|   1 |   2 |
+|   2 |   1 |
+```
+"""
+function pretty(data)
+    result = collect(Any, Generator(x -> [x...], data))
+    pushfirst!(result, [keys(first(data))...])
+    MD(Table(result, [map(x -> :r, first_row)...]))
+end
 
 end

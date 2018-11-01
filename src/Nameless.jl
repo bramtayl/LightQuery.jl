@@ -35,7 +35,7 @@ substitute_underscores!(dictionary, body::Expr) =
 
 string_length(something) = something |> String |> length
 
-function unname(body, line, file)
+function unname_simple(body, line, file)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
     sorted_dictionary = sort(
@@ -43,10 +43,14 @@ function unname(body, line, file)
             isless(string_length(pair1.first), string_length(pair2.first)),
         collect(dictionary)
     )
-    Expr(:call, Nameless, Expr(:->,
+    Expr(:->,
         Expr(:tuple, (pair.second for pair in sorted_dictionary)...),
         Expr(:block, LineNumberNode(line, file), new_body)
-    ), quot(body))
+    )
+end
+
+function unname(body, line, file)
+    Expr(:call, Nameless, unname_simple(body, line, file), quot(body))
 end
 
 export @_
@@ -72,4 +76,28 @@ julia> @_(_ + 1).expression
 """
 macro _(body::Expr)
     unname(body, @__LINE__, @__FILE__) |> esc
+end
+
+chain(body, line, file) =
+    if @capture body head_ |> tail_
+        Expr(:call, unname_simple(tail, line, file), chain(head, line, file))
+    else
+        body
+    end
+
+export @>
+"""
+    macro >(body)
+
+If body is in the form `body_ |> tail_`, call `@_` on `tail`, and recur on `body`.
+
+```julia
+julia> using LightQuery
+
+julia> @> 0 |> _ + 1 |> _ - 1
+0
+```
+"""
+macro >(body)
+    chain(body, @__LINE__, @__FILE__) |> esc
 end
