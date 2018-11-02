@@ -8,4 +8,4 @@ notifications:
   email: false
 after_success:
   - julia -e 'import LightQuery, Pkg; Pkg.add("Coverage"); import Coverage.Codecov; LightQuery |> pathof |> dirname |> Codecov.process_folder |> Codecov.submit'
-  - julia -e 'import LightQuery, Pkg; Pkg.add("Documenter"); joinpath(LightQuery |> pathof |> dirname |> dirname, "docs", "make.jl") |> include'
+  - julia -e 'import LightQuery, Pkg; ps=Pkg.PackageSpec(name="Documenter", version="0.19"); Pkg.add(ps); Pkg.pin(ps); joinpath(LightQuery |> pathof |> dirname |> dirname, "docs", "make.jl") |> include'
