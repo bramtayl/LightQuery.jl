@@ -17,51 +17,59 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#LightQuery.as_columns",
+    "page": "Home",
+    "title": "LightQuery.as_columns",
+    "category": "function",
+    "text": "as_columns(data)\n\njulia> using LightQuery\n\njulia> as_columns([(a = 1, b = 2), (a = 2, b = 1)])\n(a = [1, 2], b = [2, 1])\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.as_rows-Tuple{NamedTuple}",
+    "page": "Home",
+    "title": "LightQuery.as_rows",
+    "category": "method",
+    "text": "as_rows(data)\n\njulia> using LightQuery\n\njulia> as_rows((a = [1, 2], b = [2, 1]))\n2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:\n (a = 1, b = 2)\n (a = 2, b = 1)\n\n\n\n\n\n"
+},
+
+{
     "location": "#LightQuery.based_on-Tuple{NamedTuple}",
     "page": "Home",
     "title": "LightQuery.based_on",
     "category": "method",
-    "text": "based_on(data; kwargs...)\n\njulia> using LightQuery\n\njulia> based_on((a = 1, b = 2), c = @_ _.a + _.b)\n(c = 3,)\n\n\n\n\n\n"
+    "text": "based_on(data; assignments...)\n\njulia> using LightQuery\n\njulia> based_on((a = 1, b = 2), c = @_ _.a + _.b)\n(c = 3,)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.columns",
+    "location": "#LightQuery.chunk_by-Tuple{Any,Vararg{Any,N} where N}",
     "page": "Home",
-    "title": "LightQuery.columns",
-    "category": "function",
-    "text": "columns(data)\n\njulia> using LightQuery\n\njulia> columns([(a = 1, b = 2), (a = 2, b = 1)])\n(a = [1, 2], b = [2, 1])\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.flatten_columns-Tuple{Any}",
-    "page": "Home",
-    "title": "LightQuery.flatten_columns",
+    "title": "LightQuery.chunk_by",
     "category": "method",
-    "text": "flatten_columns(iterator)\n\nFlatten the columns of an iterator of named tuples.\n\njulia> using LightQuery\n\njulia> flatten_columns([(a = [1, 2], b = [4, 3]), (a = [3, 4], b = [2, 1])])\n(a = [1, 2, 3, 4], b = [4, 3, 2, 1])\n\n\n\n\n\n"
+    "text": "chunk_by(data, columns...)\n\njulia> using LightQuery\n\njulia> chunk_by([(a = 1, b = 1), (a = 1, b = 2), (a = 2, b = 3), (a = 2, b = 4)], :a)\n2-element Array{Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1},1}:\n [(a = 1, b = 1), (a = 1, b = 2)]\n [(a = 2, b = 3), (a = 2, b = 4)]\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.group_by-Tuple{NamedTuple,Symbol}",
+    "location": "#LightQuery.group_by-Tuple{NamedTuple,Vararg{Any,N} where N}",
     "page": "Home",
     "title": "LightQuery.group_by",
     "category": "method",
-    "text": "group_by(data, s::Symbol)\n\njulia> using LightQuery\n\njulia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :a)\n2-element Array{NamedTuple{(:a, :b),Tuple{Array{Int64,1},Array{Int64,1}}},1}:\n (a = [1, 1], b = [1, 2])\n (a = [2, 2], b = [3, 4])\n\n\n\n\n\n"
+    "text": "group_by(data, columns...)\n\njulia> using LightQuery\n\njulia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :a)\n2-element Array{NamedTuple{(:a, :b),Tuple{Array{Int64,1},Array{Int64,1}}},1}:\n (a = [1, 1], b = [1, 2])\n (a = [2, 2], b = [3, 4])\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.inner_join-Tuple{Any,Any,Symbol}",
+    "location": "#LightQuery.inner_join-Tuple{Any,Any,Vararg{Any,N} where N}",
     "page": "Home",
     "title": "LightQuery.inner_join",
     "category": "method",
-    "text": "inner_join(data1, data2)\n\njulia> using LightQuery\n\njulia> inner_join(\n            [(a = 1, b = 1), (a = 2, b = 2)],\n            [(a = 2, c = 2), (a = 3, c = 3)],\n            :a\n        )\n1-element Array{NamedTuple{(:a, :b, :c),Tuple{Int64,Int64,Int64}},1}:\n (a = 2, b = 2, c = 2)\n\n\n\n\n\n"
+    "text": "inner_join(data1, data2, columns...)\n\njulia> using LightQuery\n\njulia> inner_join(\n            [(a = 1, b = 1), (a = 2, b = 2)],\n            [(a = 2, c = 2), (a = 3, c = 3)],\n            :a\n        )\n1-element Array{NamedTuple{(:a, :b, :c),Tuple{Int64,Int64,Int64}},1}:\n (a = 2, b = 2, c = 2)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.order_by-Tuple{NamedTuple,Symbol}",
+    "location": "#LightQuery.order_by-Tuple{NamedTuple,Vararg{Any,N} where N}",
     "page": "Home",
     "title": "LightQuery.order_by",
     "category": "method",
-    "text": "order_by(data, s::Symbol)\n\njulia> using LightQuery\n\njulia> order_by((a = [1, 2], b = [2, 1]), :b)\n(a = [2, 1], b = [1, 2])\n\n\n\n\n\n"
+    "text": "order_by(data, columns...)\n\njulia> using LightQuery\n\njulia> order_by((a = [1, 2], b = [2, 1]), :b)\n(a = [2, 1], b = [1, 2])\n\n\n\n\n\n"
 },
 
 {
@@ -73,11 +81,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.rows-Tuple{NamedTuple}",
+    "location": "#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}",
     "page": "Home",
-    "title": "LightQuery.rows",
+    "title": "LightQuery.remove",
     "category": "method",
-    "text": "rows(data)\n\njulia> using LightQuery\n\njulia> rows((a = [1, 2], b = [2, 1]))\n2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:\n (a = 1, b = 2)\n (a = 2, b = 1)\n\n\n\n\n\n"
+    "text": "remove(data, columns...)\n\njulia> using LightQuery\n\njulia> remove((a = 1, b = 2), :b)\n(a = 1,)\n\n\n\n\n\n"
 },
 
 {
@@ -85,7 +93,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "LightQuery.select",
     "category": "method",
-    "text": "select(data, args...)\n\njulia> using LightQuery\n\njulia> select((a = 1, b = 2, c = 3), :a, :c)\n(a = 1, c = 3)\n\n\n\n\n\n"
+    "text": "select(data, columns...)\n\njulia> using LightQuery\n\njulia> select((a = 1, b = 2, c = 3), :a, :c)\n(a = 1, c = 3)\n\n\n\n\n\n"
 },
 
 {
@@ -93,7 +101,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "LightQuery.transform",
     "category": "method",
-    "text": "transform(data; kwargs...)\n\njulia> using LightQuery\n\njulia> transform((a = 1, b = 2), c = @_ _.a + _.b)\n(a = 1, b = 2, c = 3)\n\n\n\n\n\n"
+    "text": "transform(data; assignments...)\n\njulia> using LightQuery\n\njulia> transform((a = 1, b = 2), c = @_ _.a + _.b)\n(a = 1, b = 2, c = 3)\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.ungroup-Tuple{Any}",
+    "page": "Home",
+    "title": "LightQuery.ungroup",
+    "category": "method",
+    "text": "ungroup(data)\n\njulia> using LightQuery\n\njulia> ungroup([(a = [1, 2], b = [4, 3]), (a = [3, 4], b = [2, 1])])\n(a = [1, 2, 3, 4], b = [4, 3, 2, 1])\n\n\n\n\n\n"
 },
 
 {
@@ -101,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "LightQuery.where",
     "category": "method",
-    "text": "where(data, f)\n\njulia> using LightQuery\n\njulia> where((a = [1, 2], b = [2, 1]), @_ _.b .> 1)\n(a = [1], b = [2])\n\n\n\n\n\n"
+    "text": "where(data, condition)\n\njulia> using LightQuery\n\njulia> where((a = [1, 2], b = [2, 1]), @_ _.b .> 1)\n(a = [1], b = [2])\n\n\n\n\n\n"
 },
 
 {
