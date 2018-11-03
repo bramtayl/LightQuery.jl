@@ -184,7 +184,7 @@ julia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :a)
 """
 function group_by(data::NamedTuple, columns...)
     ranges = get_groups(collect(zip(select(data, columns...)...)))
-    rows(map(column -> map(range -> column[range], ranges), data))
+    as_rows(map(column -> map(range -> column[range], ranges), data))
 end
 
 subset(nt, columns...) = map(column -> nt[column], columns)
