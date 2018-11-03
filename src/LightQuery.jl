@@ -90,7 +90,7 @@ julia> order_by((a = [1, 2], b = [2, 1]), :b)
 ```
 """
 function order_by(data::NamedTuple, columns...)
-    order = sortperm(zip(select(data, columns...)...))
+    order = sortperm(collect(zip(select(data, columns...)...)))
     map(column -> column[order], data)
 end
 
@@ -183,7 +183,7 @@ julia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :a)
 ```
 """
 function group_by(data::NamedTuple, columns...)
-    ranges = get_groups(zip(select(data, columns...)...))
+    ranges = get_groups(collect(zip(select(data, columns...)...)))
     rows(map(column -> map(range -> column[range], ranges), data))
 end
 
@@ -230,25 +230,6 @@ julia> remove((a = 1, b = 2), :b)
 """
 remove(data, columns...) = Base.structdiff(data, NamedTuple{columns})
 
-export gather
-"""
-    gather(data, columns...)
-
-```jldoctest
-julia> using LightQuery
-
-julia> gather((a = 1, b = 2, c = 3), :b, :c)
-((a = 1, key = :b, value = 2), (a = 1, key = :c, value = 3))
-```
-"""
-function gather(data::NamedTuple, columns...)
-    rest = remove(data, columns...)
-    map(
-        column -> merge(rest, (key = column, value = data[column])),
-        columns
-    )
-end
-
 export pretty
 """
     pretty(data)
@@ -256,11 +237,7 @@ export pretty
 ```jldoctest
 julia> using LightQuery
 
-julia> pretty([(a = 1, b = 2), (a = 2, b = 1)])
-|  :a |  :b |
-| ---:| ---:|
-|   1 |   2 |
-|   2 |   1 |
+julia> pretty([(a = 1, b = 2), (a = 2, b = 1)]);
 ```
 """
 function pretty(data)
@@ -269,7 +246,5 @@ function pretty(data)
     pushfirst!(result, first_row)
     MD(Table(result, map(column -> :r, first_row)))
 end
-
-
 
 end
