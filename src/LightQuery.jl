@@ -170,7 +170,7 @@ export same
 ```jldoctest
 julia> using LightQuery
 
-julia> data1 = (a = 1, b = 2); data2 = (a = 1, b = 3);
+julia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
 
 julia> same(data1, data2)
 true
