@@ -2,9 +2,7 @@ module LightQuery
 
 include("Nameless.jl")
 
-import Base: map, join, count
-import Base.Iterators: drop, product, Filter, Generator
-import Markdown: MD, Table
+import Base: structdiff
 
 export based_on
 """
@@ -100,6 +98,26 @@ function rename(data::NamedTuple, renames...)
     )
 end
 
+data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
+
+export in_common
+"""
+    in_common(data1, data2)
+
+```jldoctest
+julia> using LightQuery
+
+julia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
+
+julia> in_common(data1, data2)
+(:a,)
+```
+"""
+function in_common(data1::NamedTuple, data2::NamedTuple)
+    keys(structdiff(data1, structdiff(data1, data2)))
+end
+
+
 export select
 """
     select([data], columns::Symbol...)
@@ -144,6 +162,27 @@ same_at(data1::NamedTuple, data2::NamedTuple, columns::Symbol...) =
     select(data1, columns...) == select(data2, columns...)
 
 same_at(columns::Symbol...) = (data1, data2) -> same_at(data1, data2, columns...)
+
+export same
+"""
+    same([data1::NamedTuple, data2::NamedTuple])
+
+```jldoctest
+julia> using LightQuery
+
+julia> data1 = (a = 1, b = 2); data2 = (a = 1, b = 3);
+
+julia> same(data1, data2)
+true
+
+julia> same_at()(data1, data2)
+true
+```
+"""
+same(data1::NamedTuple, data2::NamedTuple) =
+    same_at(data1, data2, in_common(data1, data2)...)
+
+same() = (data1, data2) -> same(data1, data2)
 
 export remove
 """
