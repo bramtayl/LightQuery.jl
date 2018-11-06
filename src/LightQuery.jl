@@ -6,94 +6,6 @@ import Base: map, join, count
 import Base.Iterators: drop, product, Filter, Generator
 import Markdown: MD, Table
 
-drop_one(x) = Iterators.Drop(x, 1)
-
-export as_rows
-"""
-    as_rows(data)
-
-```jldoctest
-julia> using LightQuery
-
-julia> as_rows((a = [1, 2], b = [2, 1]))
-2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:
- (a = 1, b = 2)
- (a = 2, b = 1)
-```
-"""
-as_rows(data::NamedTuple) = map(NamedTuple{keys(data)}, zip(data...))
-
-export as_columns
-"""
-    as_columns(data)
-
-```jldoctest
-julia> using LightQuery
-
-julia> as_columns([(a = 1, b = 2), (a = 2, b = 1)])
-(a = [1, 2], b = [2, 1])
-```
-"""
-function as_columns(iterator, columns = keys(first(iterator)))
-    NamedTuple{columns}(map(key -> map(item -> item[key], iterator), columns))
-end
-
-export ungroup
-"""
-    ungroup(data)
-
-```jldoctest
-julia> using LightQuery
-
-julia> ungroup([(a = [1, 2], b = [4, 3]), (a = [3, 4], b = [2, 1])])
-(a = [1, 2, 3, 4], b = [4, 3, 2, 1])
-```
-"""
-function ungroup(data)
-    first_row = map(copy, first(data))
-    foreach(
-        second_row ->
-            map(
-                (a, b) -> append!(a, b),
-                first_row, second_row
-            ),
-        drop_one(data)
-    )
-    first_row
-end
-
-export where
-"""
-    where(data, condition)
-
-```jldoctest
-julia> using LightQuery
-
-julia> where((a = [1, 2], b = [2, 1]), @_ _.b .> 1)
-(a = [1], b = [2])
-```
-"""
-function where(data::NamedTuple, condition)
-    whiches = condition(data)
-    map(column -> column[whiches], data)
-end
-
-export order_by
-"""
-    order_by(data, columns...)
-
-```jldoctest
-julia> using LightQuery
-
-julia> order_by((a = [1, 2], b = [2, 1]), :b)
-(a = [2, 1], b = [1, 2])
-```
-"""
-function order_by(data::NamedTuple, columns...)
-    order = sortperm(collect(zip(select(data, columns...)...)))
-    map(column -> column[order], data)
-end
-
 export based_on
 """
     based_on(data; assignments...)
@@ -120,9 +32,58 @@ julia> transform((a = 1, b = 2), c = @_ _.a + _.b)
 """
 transform(data::NamedTuple; assignments...) = merge(data, based_on(data; assignments...))
 
+export name
+"""
+    name(data, columns...)
+
+```jldoctest
+julia> using LightQuery
+
+julia> name((1, 2), :a, :b)
+(a = 1, b = 2)
+```
+"""
+name(data, columns...) = NamedTuple{columns}(data)
+
+export gather
+"""
+    gather(data, new_column, columns...)
+
+```jldoctest
+julia> using LightQuery
+
+julia> gather((a = 1, b = 2, c = 3), :d, :a, :c)
+(b = 2, d = (a = 1, c = 3))
+```
+"""
+function gather(data::NamedTuple, new_column::Symbol, columns::Symbol...)
+    merge(
+        remove(data, columns...),
+        name((select(data, columns...),), new_column)
+    )
+end
+
+export spread
+"""
+    spread(data, new_column)
+
+```jldoctest
+julia> using LightQuery
+
+julia> spread((b = 2, d = (a = 1, c = 3)), :d)
+(b = 2, a = 1, c = 3)
+```
+"""
+function spread(data, column)
+    merge(
+        remove(data, column),
+        data[column]
+    )
+end
+
 export rename
 """
-    rename(data; renames)
+    rename(data; renames...)
 
 ```jldoctest
 julia> using LightQuery
@@ -141,100 +102,46 @@ end
 
 export select
 """
-    select(data, columns...)
+    select([data], columns::Symbol...)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> select((a = 1, b = 2, c = 3), :a, :c)
 (a = 1, c = 3)
+
+julia> select(:a, :c)(row)
+(a = 1, c = 3)
 ```
 """
-select(data::NamedTuple, columns...) =
+select(data::NamedTuple, columns::Symbol...) =
     NamedTuple{columns}(map(
         name -> data[name],
         columns
     ))
 
-function get_groups(data::Vector)
-    result = UnitRange{Int}[]
-    old_index = 1
-    item = data[1]
-    for (index, new_item) in drop_one(enumerate(data))
-        if new_item != item
-            push!(result, old_index:index-1)
-            old_index = index
-            item = new_item
-        end
-    end
-    push!(result, old_index : length(data))
-end
+select(columns::Symbol...) = row -> select(row, columns...)
 
-export chunk_by
+export same_at
 """
-    chunk_by(data, columns...)
+    same_at([data1::NamedTuple, data2::NamedTuple], columns::Symbol...)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> chunk_by([(a = 1, b = 1), (a = 1, b = 2), (a = 2, b = 3), (a = 2, b = 4)], :a)
-2-element Array{Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1},1}:
- [(a = 1, b = 1), (a = 1, b = 2)]
- [(a = 2, b = 3), (a = 2, b = 4)]
+julia> data1 = (a = 1, b = 2); data2 = (a = 1, b = 3);
+
+julia> same_at(data1, data2, :a)
+true
+
+julia> same_at(:a)(data1, data2)
+true
 ```
 """
-function chunk_by(data, cols...)
-    ranges = get_groups(map(row -> select(row, cols...), data))
-    map(range -> data[range], ranges)
-end
+same_at(data1::NamedTuple, data2::NamedTuple, columns::Symbol...) =
+    select(data1, columns...) == select(data2, columns...)
 
-export group_by
-"""
-    group_by(data, columns...)
-
-```jldoctest
-julia> using LightQuery
-
-julia> group_by((a = [1, 1, 2, 2], b = [1, 2, 3, 4]), :a)
-2-element Array{NamedTuple{(:a, :b),Tuple{Array{Int64,1},Array{Int64,1}}},1}:
- (a = [1, 1], b = [1, 2])
- (a = [2, 2], b = [3, 4])
-```
-"""
-function group_by(data::NamedTuple, columns...)
-    ranges = get_groups(collect(zip(select(data, columns...)...)))
-    as_rows(map(column -> map(range -> column[range], ranges), data))
-end
-
-subset(nt, columns...) = map(column -> nt[column], columns)
-
-export inner_join
-"""
-    inner_join(data1, data2, columns...)
-
-```jldoctest
-julia> using LightQuery
-
-julia> inner_join(
-            [(a = 1, b = 1), (a = 2, b = 2)],
-            [(a = 2, c = 2), (a = 3, c = 3)],
-            :a
-        )
-1-element Array{NamedTuple{(:a, :b, :c),Tuple{Int64,Int64,Int64}},1}:
- (a = 2, b = 2, c = 2)
-```
-"""
-function inner_join(data1, data2, columns...)
-    map(
-        pair -> merge(pair[1], pair[2]),
-        Filter(
-            pair ->
-                select(pair[1], columns...) ==
-                select(pair[2], columns...),
-            product(data1, data2)
-        )
-    )
-end
+same_at(columns::Symbol...) = (data1, data2) -> same_at(data1, data2, columns...)
 
 export remove
 """
@@ -248,22 +155,5 @@ julia> remove((a = 1, b = 2), :b)
 ```
 """
 remove(data, columns...) = Base.structdiff(data, NamedTuple{columns})
-
-export pretty
-"""
-    pretty(data)
-
-```jldoctest
-julia> using LightQuery
-
-julia> pretty([(a = 1, b = 2), (a = 2, b = 1)]);
-```
-"""
-function pretty(data)
-    first_row = [keys(first(data))...]
-    result = collect(Any, Generator(row -> [row...], data))
-    pushfirst!(result, first_row)
-    MD(Table(result, map(column -> :r, first_row)))
-end
 
 end
