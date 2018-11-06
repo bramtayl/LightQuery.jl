@@ -120,6 +120,25 @@ julia> transform((a = 1, b = 2), c = @_ _.a + _.b)
 """
 transform(data::NamedTuple; assignments...) = merge(data, based_on(data; assignments...))
 
+export rename
+"""
+    rename(data; renames)
+
+```jldoctest
+julia> using LightQuery
+
+julia> rename((a = 1, b = 2), :a => :c)
+(b = 2, c = 1)
+```
+"""
+function rename(data::NamedTuple, renames...)
+    olds = map(pair -> pair.first, renames)
+    merge(
+        remove(data, olds...),
+        NamedTuple{map(pair -> pair.second, renames)}(select(data, olds...)...)
+    )
+end
+
 export select
 """
     select(data, columns...)
