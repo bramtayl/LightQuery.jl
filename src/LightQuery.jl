@@ -107,10 +107,12 @@ export select
 ```jldoctest
 julia> using LightQuery
 
-julia> select((a = 1, b = 2, c = 3), :a, :c)
+julia> data = (a = 1, b = 2, c = 3);
+
+julia> select(data, :a, :c)
 (a = 1, c = 3)
 
-julia> select(:a, :c)(row)
+julia> select(:a, :c)(data)
 (a = 1, c = 3)
 ```
 """
