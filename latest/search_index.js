@@ -33,6 +33,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#LightQuery.in_common-Tuple{NamedTuple,NamedTuple}",
+    "page": "Home",
+    "title": "LightQuery.in_common",
+    "category": "method",
+    "text": "in_common(data1, data2)\n\njulia> using LightQuery\n\njulia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);\n\njulia> in_common(data1, data2)\n(:a,)\n\n\n\n\n\n"
+},
+
+{
     "location": "#LightQuery.name-Tuple{Any,Vararg{Any,N} where N}",
     "page": "Home",
     "title": "LightQuery.name",
@@ -54,6 +62,14 @@ var documenterSearchIndex = {"docs": [
     "title": "LightQuery.rename",
     "category": "method",
     "text": "rename(data; renames...)\n\njulia> using LightQuery\n\njulia> rename((a = 1, b = 2), :a => :c)\n(b = 2, c = 1)\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.same-Tuple{NamedTuple,NamedTuple}",
+    "page": "Home",
+    "title": "LightQuery.same",
+    "category": "method",
+    "text": "same([data1::NamedTuple, data2::NamedTuple])\n\njulia> using LightQuery\n\njulia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);\n\njulia> same(data1, data2)\ntrue\n\njulia> same_at()(data1, data2)\ntrue\n\n\n\n\n\n"
 },
 
 {
