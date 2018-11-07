@@ -175,7 +175,7 @@ julia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
 julia> same(data1, data2)
 true
 
-julia> same_at()(data1, data2)
+julia> same()(data1, data2)
 true
 ```
 """
