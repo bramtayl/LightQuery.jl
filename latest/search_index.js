@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "LightQuery.same",
     "category": "method",
-    "text": "same([data1::NamedTuple, data2::NamedTuple])\n\njulia> using LightQuery\n\njulia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);\n\njulia> same(data1, data2)\ntrue\n\njulia> same_at()(data1, data2)\ntrue\n\n\n\n\n\n"
+    "text": "same([data1::NamedTuple, data2::NamedTuple])\n\njulia> using LightQuery\n\njulia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);\n\njulia> same(data1, data2)\ntrue\n\njulia> same()(data1, data2)\ntrue\n\n\n\n\n\n"
 },
 
 {
