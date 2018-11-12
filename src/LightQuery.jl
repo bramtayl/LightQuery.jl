@@ -11,8 +11,14 @@ export based_on
 ```jldoctest
 julia> using LightQuery
 
-julia> based_on((a = 1, b = 2), c = @_ _.a + _.b)
-(c = 3,)
+julia> using Test: @inferred
+
+julia> data = (a = 1, b = 2.0);
+
+julia> test(x) = based_on(x, c = @_ _.a + _.b);
+
+julia> @inferred test(data)
+(c = 3.0,)
 ```
 """
 based_on(data::NamedTuple; assignments...) = map(f -> f(data), assignments.data)
@@ -24,8 +30,14 @@ export transform
 ```jldoctest
 julia> using LightQuery
 
-julia> transform((a = 1, b = 2), c = @_ _.a + _.b)
-(a = 1, b = 2, c = 3)
+julia> using Test: @inferred
+
+julia> data = (a = 1, b = 2.0);
+
+julia> test(x) = transform(x, c = @_ _.a + _.b);
+
+julia> @inferred test(data)
+(a = 1, b = 2.0, c = 3.0)
 ```
 """
 transform(data::NamedTuple; assignments...) = merge(data, based_on(data; assignments...))
@@ -37,11 +49,17 @@ export name
 ```jldoctest
 julia> using LightQuery
 
-julia> name((1, 2), :a, :b)
-(a = 1, b = 2)
+julia> using Test: @inferred
+
+julia> data = (a = 1, b = 2.0);
+
+julia> test(x) = name(x, :c, :d);
+
+julia> @inferred test(data)
+(c = 1, d = 2.0)
 ```
 """
-name(data, columns...) = NamedTuple{columns}(data)
+@inline name(data, columns...) = NamedTuple{columns}(Tuple(data))
 
 export gather
 """
@@ -50,11 +68,17 @@ export gather
 ```jldoctest
 julia> using LightQuery
 
-julia> gather((a = 1, b = 2, c = 3), :d, :a, :c)
-(b = 2, d = (a = 1, c = 3))
+julia> using Test: @inferred
+
+julia> data = (a = 1, b = 2.0, c = "c");
+
+julia> test(x) = gather(x, :d, :a, :c);
+
+julia> @inferred test(data)
+(b = 2.0, d = (a = 1, c = "c"))
 ```
 """
-function gather(data::NamedTuple, new_column::Symbol, columns::Symbol...)
+@inline function gather(data::NamedTuple, new_column::Symbol, columns::Symbol...)
     merge(
         remove(data, columns...),
         name((select(data, columns...),), new_column)
@@ -68,11 +92,17 @@ export spread
 ```jldoctest
 julia> using LightQuery
 
-julia> spread((b = 2, d = (a = 1, c = 3)), :d)
-(b = 2, a = 1, c = 3)
+julia> using Test: @inferred
+
+julia> data = (b = 2.0, d = (a = 1, c = "c"));
+
+julia> test(x) = spread(x, :d);
+
+julia> @inferred test(data)
+(b = 2.0, a = 1, c = "c")
 ```
 """
-function spread(data, column)
+@inline function spread(data, column)
     merge(
         remove(data, column),
         data[column]
@@ -83,22 +113,26 @@ export rename
 """
     rename(data; renames...)
 
+Warning: doesn't propagate constants.
+
 ```jldoctest
 julia> using LightQuery
 
-julia> rename((a = 1, b = 2), :a => :c)
-(b = 2, c = 1)
+julia> data = (a = 1, b = 2.0);
+
+julia> test(x) = rename(x,  c = :a);
+
+julia> test(data)
+(b = 2.0, c = 1)
 ```
 """
-function rename(data::NamedTuple, renames...)
-    olds = map(pair -> pair.first, renames)
+@inline function rename(data::NamedTuple; renames...)
+    olds = renames.data
     merge(
         remove(data, olds...),
-        NamedTuple{map(pair -> pair.second, renames)}(select(data, olds...)...)
+        name(select(data, olds...), keys(renames)...)
     )
 end
-
-data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
 
 export in_common
 """
@@ -107,13 +141,15 @@ export in_common
 ```jldoctest
 julia> using LightQuery
 
+julia> using Test: @inferred
+
 julia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
 
-julia> in_common(data1, data2)
+julia> @inferred in_common(data1, data2)
 (:a,)
 ```
 """
-function in_common(data1::NamedTuple, data2::NamedTuple)
+@inline function in_common(data1::NamedTuple, data2::NamedTuple)
     keys(structdiff(data1, structdiff(data1, data2)))
 end
 
@@ -125,22 +161,32 @@ export select
 ```jldoctest
 julia> using LightQuery
 
-julia> data = (a = 1, b = 2, c = 3);
+julia> using Test: @inferred
 
-julia> select(data, :a, :c)
-(a = 1, c = 3)
+julia> data = (a = 1, b = 2.0, c = "c");
 
-julia> select(:a, :c)(data)
-(a = 1, c = 3)
+julia> test(x) = select(x, :a, :c);
+
+julia> @inferred test(data)
+(a = 1, c = "c")
+
+julia> test2(x) = select(:a, :c)(x);
+
+julia> @inferred test2(data)
+(a = 1, c = "c")
 ```
 """
-select(data::NamedTuple, columns::Symbol...) =
-    NamedTuple{columns}(map(
+@inline select(data::NamedTuple, columns::Symbol...) =
+    name(map(
         name -> data[name],
         columns
-    ))
+    ), columns...)
 
-select(columns::Symbol...) = row -> select(row, columns...)
+@inline function select(columns::Symbol...)
+    @inline function anonymous(row)
+        select(row, columns...)
+    end
+end
 
 export same_at
 """
@@ -149,19 +195,29 @@ export same_at
 ```jldoctest
 julia> using LightQuery
 
-julia> data1 = (a = 1, b = 2); data2 = (a = 1, b = 3);
+julia> using Test: @inferred
 
-julia> same_at(data1, data2, :a)
+julia> data1 = (a = 1, b = 2.0); data2 = (a = 1, b = 3.0);
+
+julia> test(data1, data2) = same_at(data1, data2, :a);
+
+julia> @inferred test(data1, data2)
 true
 
-julia> same_at(:a)(data1, data2)
+julia> test2(data1, data2) = same_at(:a)(data1, data2);
+
+julia> @inferred test2(data1, data2)
 true
 ```
 """
-same_at(data1::NamedTuple, data2::NamedTuple, columns::Symbol...) =
+@inline same_at(data1::NamedTuple, data2::NamedTuple, columns::Symbol...) =
     select(data1, columns...) == select(data2, columns...)
 
-same_at(columns::Symbol...) = (data1, data2) -> same_at(data1, data2, columns...)
+@inline function same_at(columns::Symbol...)
+    @inline function anonymous(data1, data2)
+        same_at(data1, data2, columns...)
+    end
+end
 
 export same
 """
@@ -170,12 +226,14 @@ export same
 ```jldoctest
 julia> using LightQuery
 
-julia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
+julia> using Test: @inferred
 
-julia> same(data1, data2)
+julia> data1 = (a = 1, b = 2.0); data2 = (a = 1, c = 3.0);
+
+julia> @inferred same(data1, data2)
 true
 
-julia> same()(data1, data2)
+julia> @inferred same()(data1, data2)
 true
 ```
 """
@@ -191,10 +249,16 @@ export remove
 ```jldoctest
 julia> using LightQuery
 
-julia> remove((a = 1, b = 2), :b)
+julia> using Test: @inferred
+
+julia> data = (a = 1, b = 2.0);
+
+julia> test(x) = remove(x, :b);
+
+julia> @inferred test(data)
 (a = 1,)
 ```
 """
-remove(data, columns...) = Base.structdiff(data, NamedTuple{columns})
+@inline remove(data, columns...) = structdiff(data, NamedTuple{columns})
 
 end
