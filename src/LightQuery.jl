@@ -2,45 +2,55 @@ module LightQuery
 
 include("Nameless.jl")
 
-import Base: structdiff
+import Base: diff_names
 
-export based_on
+export unname
 """
-    based_on(data; assignments...)
+    unname
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0);
+julia> unname(:a => 1)
+(:a, 1)
 
-julia> test(x) = based_on(x, c = @_ _.a + _.b);
+julia> @inferred unname((a = 1, b = 2.0))
+(1, 2.0)
 
-julia> @inferred test(data)
-(c = 3.0,)
+julia> @inferred unname((1, 2.0))
+(1, 2.0)
 ```
 """
-based_on(data::NamedTuple; assignments...) = map(f -> f(data), assignments.data)
+function unname(data)
+    names = propertynames(data)
+    map(
+        name -> getproperty(data, name),
+        names
+    )
+end
+unname(data::Tuple) = data
+unname(data::NamedTuple) = Tuple(data)
 
-export transform
+export named
 """
-    transform(data; assignments...)
+    named(data)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0);
+julia> named(:a => 1)
+(first = :a, second = 1)
 
-julia> test(x) = transform(x, c = @_ _.a + _.b);
-
-julia> @inferred test(data)
-(a = 1, b = 2.0, c = 3.0)
+julia> @inferred named((a = 1, b = 2.0))
+(a = 1, b = 2.0)
 ```
 """
-transform(data::NamedTuple; assignments...) = merge(data, based_on(data; assignments...))
+named(data) = NamedTuple{propertynames(data)}(unname(data))
+named(data::NamedTuple) = data
 
 export name
 """
@@ -59,7 +69,45 @@ julia> @inferred test(data)
 (c = 1, d = 2.0)
 ```
 """
-@inline name(data, columns...) = NamedTuple{columns}(Tuple(data))
+@inline name(data, columns...) = NamedTuple{columns}(unname(data))
+
+export based_on
+"""
+    based_on(data; assignments...)
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> data = (a = 1, b = 2.0);
+
+julia> test(x) = based_on(x, c = @_ _.a + _.b);
+
+julia> @inferred test(data)
+(c = 3.0,)
+```
+"""
+based_on(data; assignments...) = map(f -> f(data), assignments.data)
+
+export transform
+"""
+    transform(data; assignments...)
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> data = (a = 1, b = 2.0);
+
+julia> test(x) = transform(x, c = @_ _.a + _.b);
+
+julia> @inferred test(data)
+(a = 1, b = 2.0, c = 3.0)
+```
+"""
+transform(data; assignments...) = merge(named(data), based_on(data; assignments...))
 
 export gather
 """
@@ -78,10 +126,10 @@ julia> @inferred test(data)
 (b = 2.0, d = (a = 1, c = "c"))
 ```
 """
-@inline function gather(data::NamedTuple, new_column::Symbol, columns::Symbol...)
+@inline function gather(data, new_column::Symbol, columns::Symbol...)
     merge(
         remove(data, columns...),
-        name((select(data, columns...),), new_column)
+        name(tuple(select(data, columns...)), new_column)
     )
 end
 
@@ -105,7 +153,7 @@ julia> @inferred test(data)
 @inline function spread(data, column)
     merge(
         remove(data, column),
-        data[column]
+        getproperty(data, column)
     )
 end
 
@@ -113,24 +161,18 @@ export rename
 """
     rename(data; renames...)
 
-Warning: doesn't propagate constants.
-
 ```jldoctest
 julia> using LightQuery
 
-julia> data = (a = 1, b = 2.0);
-
-julia> test(x) = rename(x,  c = :a);
-
-julia> test(data)
+julia> rename((a = 1, b = 2.0),  c = :a)
 (b = 2.0, c = 1)
 ```
 """
 @inline function rename(data::NamedTuple; renames...)
-    olds = renames.data
+    olds = Tuple(renames.data)
     merge(
         remove(data, olds...),
-        name(select(data, olds...), keys(renames)...)
+        name(unname(select(data, olds...)), keys(renames)...)
     )
 end
 
@@ -149,8 +191,10 @@ julia> @inferred in_common(data1, data2)
 (:a,)
 ```
 """
-@inline function in_common(data1::NamedTuple, data2::NamedTuple)
-    keys(structdiff(data1, structdiff(data1, data2)))
+@inline function in_common(data1, data2)
+    first_names = propertynames(data1)
+    second_names = propertynames(data2)
+    diff_names(first_names, diff_names(first_names, second_names))
 end
 
 
@@ -163,22 +207,22 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0, c = "c");
+julia> data = (a = 1, b = 2.0);
 
-julia> test(x) = select(x, :a, :c);
+julia> test(x) = select(x, :a);
 
 julia> @inferred test(data)
-(a = 1, c = "c")
+(a = 1,)
 
-julia> test2(x) = select(:a, :c)(x);
+julia> test2(x) = select(:a)(x);
 
 julia> @inferred test2(data)
-(a = 1, c = "c")
+(a = 1,)
 ```
 """
-@inline select(data::NamedTuple, columns::Symbol...) =
+@inline select(data, columns::Symbol...) =
     name(map(
-        name -> data[name],
+        name -> getproperty(data, name),
         columns
     ), columns...)
 
@@ -210,7 +254,7 @@ julia> @inferred test2(data1, data2)
 true
 ```
 """
-@inline same_at(data1::NamedTuple, data2::NamedTuple, columns::Symbol...) =
+@inline same_at(data1, data2, columns::Symbol...) =
     select(data1, columns...) == select(data2, columns...)
 
 @inline function same_at(columns::Symbol...)
@@ -259,6 +303,7 @@ julia> @inferred test(data)
 (a = 1,)
 ```
 """
-@inline remove(data, columns...) = structdiff(data, NamedTuple{columns})
+@inline remove(data, columns...) =
+    select(data, diff_names(propertynames(data), columns)...)
 
 end
