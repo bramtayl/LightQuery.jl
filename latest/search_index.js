@@ -9,6 +9,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#LightQuery.Name",
+    "page": "Home",
+    "title": "LightQuery.Name",
+    "category": "type",
+    "text": "struct Name{T} end\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred Name(:a)((a = 1, b = 2.0,))\n1\n\njulia> @inferred merge(Name(:a), Name(:b))\nNames{(:a, :b)}()\n\n\n\n\n\n"
+},
+
+{
     "location": "#LightQuery.Nameless",
     "page": "Home",
     "title": "LightQuery.Nameless",
@@ -17,91 +25,91 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.based_on-Tuple{NamedTuple}",
+    "location": "#LightQuery.Names",
+    "page": "Home",
+    "title": "LightQuery.Names",
+    "category": "type",
+    "text": "struct Names{T} end\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred Names(:a)((a = 1, b = 2.0,))\n(a = 1,)\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.based_on-Tuple{Any}",
     "page": "Home",
     "title": "LightQuery.based_on",
     "category": "method",
-    "text": "based_on(data; assignments...)\n\njulia> using LightQuery\n\njulia> based_on((a = 1, b = 2), c = @_ _.a + _.b)\n(c = 3,)\n\n\n\n\n\n"
+    "text": "based_on(data; assignments...)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred based_on((a = 1, b = 2.0), c = @_ _.a + _.b)\n(c = 3.0,)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.gather-Tuple{NamedTuple,Symbol,Vararg{Symbol,N} where N}",
+    "location": "#LightQuery.gather-Tuple{Any,Name,Names}",
     "page": "Home",
     "title": "LightQuery.gather",
     "category": "method",
-    "text": "gather(data, new_column, columns...)\n\njulia> using LightQuery\n\njulia> gather((a = 1, b = 2, c = 3), :d, :a, :c)\n(b = 2, d = (a = 1, c = 3))\n\n\n\n\n\n"
+    "text": "gather(data, new_column::Name, columns::Names)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred gather((a = 1, b = 2.0, c = \"c\"), Name(:d), Names(:a, :c))\n(b = 2.0, d = (a = 1, c = \"c\"))\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.in_common-Tuple{NamedTuple,NamedTuple}",
-    "page": "Home",
-    "title": "LightQuery.in_common",
-    "category": "method",
-    "text": "in_common(data1, data2)\n\njulia> using LightQuery\n\njulia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);\n\njulia> in_common(data1, data2)\n(:a,)\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.name-Tuple{Any,Vararg{Any,N} where N}",
+    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "Home",
     "title": "LightQuery.name",
     "category": "method",
-    "text": "name(data, columns...)\n\njulia> using LightQuery\n\njulia> name((1, 2), :a, :b)\n(a = 1, b = 2)\n\n\n\n\n\n"
+    "text": "name(data, names::Names)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred name((a = 1, b = 2.0), Names(:c, :d))\n(c = 1, d = 2.0)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}",
+    "location": "#LightQuery.named-Tuple{Any}",
+    "page": "Home",
+    "title": "LightQuery.named",
+    "category": "method",
+    "text": "named(data)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> named(:a => 1)\n(first = :a, second = 1)\n\njulia> @inferred named((a = 1, b = 2.0))\n(a = 1, b = 2.0)\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "Home",
     "title": "LightQuery.remove",
     "category": "method",
-    "text": "remove(data, columns...)\n\njulia> using LightQuery\n\njulia> remove((a = 1, b = 2), :b)\n(a = 1,)\n\n\n\n\n\n"
+    "text": "remove(data, columns::Names)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred remove((a = 1, b = 2.0), Names(:b))\n(a = 1,)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.rename-Tuple{NamedTuple,Vararg{Any,N} where N}",
+    "location": "#LightQuery.rename-Tuple{Any}",
     "page": "Home",
     "title": "LightQuery.rename",
     "category": "method",
-    "text": "rename(data; renames...)\n\njulia> using LightQuery\n\njulia> rename((a = 1, b = 2), :a => :c)\n(b = 2, c = 1)\n\n\n\n\n\n"
+    "text": "rename(data; renames...)\n\njulia> using LightQuery\n\njulia> rename((a = 1, b = 2.0), c = Name(:a))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.same-Tuple{NamedTuple,NamedTuple}",
-    "page": "Home",
-    "title": "LightQuery.same",
-    "category": "method",
-    "text": "same([data1::NamedTuple, data2::NamedTuple])\n\njulia> using LightQuery\n\njulia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);\n\njulia> same(data1, data2)\ntrue\n\njulia> same()(data1, data2)\ntrue\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.same_at-Tuple{NamedTuple,NamedTuple,Vararg{Symbol,N} where N}",
-    "page": "Home",
-    "title": "LightQuery.same_at",
-    "category": "method",
-    "text": "same_at([data1::NamedTuple, data2::NamedTuple], columns::Symbol...)\n\njulia> using LightQuery\n\njulia> data1 = (a = 1, b = 2); data2 = (a = 1, b = 3);\n\njulia> same_at(data1, data2, :a)\ntrue\n\njulia> same_at(:a)(data1, data2)\ntrue\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.select-Tuple{NamedTuple,Vararg{Symbol,N} where N}",
+    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "Home",
     "title": "LightQuery.select",
     "category": "method",
-    "text": "select([data], columns::Symbol...)\n\njulia> using LightQuery\n\njulia> data = (a = 1, b = 2, c = 3);\n\njulia> select(data, :a, :c)\n(a = 1, c = 3)\n\njulia> select(:a, :c)(data)\n(a = 1, c = 3)\n\n\n\n\n\n"
+    "text": "select(data, columns::Names)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred select((a = 1, b = 2.0), Names(:a))\n(a = 1,)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.spread-Tuple{Any,Any}",
+    "location": "#LightQuery.spread-Tuple{Any,Name}",
     "page": "Home",
     "title": "LightQuery.spread",
     "category": "method",
-    "text": "spread(data, new_column)\n\njulia> using LightQuery\n\njulia> spread((b = 2, d = (a = 1, c = 3)), :d)\n(b = 2, a = 1, c = 3)\n\n\n\n\n\n"
+    "text": "spread(data, column::Name)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred spread((b = 2.0, d = (a = 1, c = \"c\")), Name(:d))\n(b = 2.0, a = 1, c = \"c\")\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.transform-Tuple{NamedTuple}",
+    "location": "#LightQuery.transform-Tuple{Any}",
     "page": "Home",
     "title": "LightQuery.transform",
     "category": "method",
-    "text": "transform(data; assignments...)\n\njulia> using LightQuery\n\njulia> transform((a = 1, b = 2), c = @_ _.a + _.b)\n(a = 1, b = 2, c = 3)\n\n\n\n\n\n"
+    "text": "transform(data; assignments...)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred transform((a = 1, b = 2.0), c = @_ _.a + _.b)\n(a = 1, b = 2.0, c = 3.0)\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.unname-Tuple{Any}",
+    "page": "Home",
+    "title": "LightQuery.unname",
+    "category": "method",
+    "text": "unname\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> unname(:a => 1)\n(:a, 1)\n\njulia> @inferred unname((a = 1, b = 2.0))\n(1, 2.0)\n\njulia> @inferred unname((1, 2.0))\n(1, 2.0)\n\n\n\n\n\n"
 },
 
 {
@@ -113,7 +121,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.@_-Tuple{Expr}",
+    "location": "#LightQuery.@_-Tuple{Any}",
     "page": "Home",
     "title": "LightQuery.@_",
     "category": "macro",
