@@ -25,8 +25,6 @@ substitute_underscores!(dictionary, body::Symbol) =
 substitute_underscores!(dictionary, body::Expr) =
     if body.head == :quote
         body
-    elseif @capture body @_ args__
-        body
     else
         Expr(body.head,
             map(body -> substitute_underscores!(dictionary, body), body.args)
@@ -35,7 +33,7 @@ substitute_underscores!(dictionary, body::Expr) =
 
 string_length(something) = something |> String |> length
 
-function unname_simple(body, line, file)
+function unname_simple(body::Expr, line, file)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
     sorted_dictionary = sort(
@@ -49,8 +47,13 @@ function unname_simple(body, line, file)
     )
 end
 
-function unname(body, line, file)
+
+function unname(body::Expr, line, file)
     Expr(:call, Nameless, unname_simple(body, line, file), quot(body))
+end
+
+function unname(body, line, file)
+    unname(Expr(:block, LineNumberNode(line, file), body), line, file)
 end
 
 export @_
@@ -74,8 +77,8 @@ julia> @_(_ + 1).expression
 :(_ + 1)
 ```
 """
-macro _(body::Expr)
-    unname(body, @__LINE__, @__FILE__) |> esc
+macro _(body)
+    unname(macroexpand(@__MODULE__, body), @__LINE__, @__FILE__) |> esc
 end
 
 chain(body, line, file) =
@@ -99,5 +102,5 @@ julia> @> 0 |> _ + 1 |> _ - 1
 ```
 """
 macro >(body)
-    chain(body, @__LINE__, @__FILE__) |> esc
+    chain(macroexpand(@__MODULE__, body), @__LINE__, @__FILE__) |> esc
 end
