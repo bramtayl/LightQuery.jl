@@ -2,7 +2,47 @@ module LightQuery
 
 include("Nameless.jl")
 
-import Base: diff_names
+import Base: diff_names, merge
+
+export Name
+"""
+    struct Name{T} end
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> Name(:a)((a = 1, b = 2.0,))
+1
+
+julia> merge(Name(:a), Name(:b))
+Names{(:a, :b)}()
+```
+"""
+struct Name{T} end
+@inline Name(x) = Name{x}()
+@inline (::Name{T})(x) where T = getproperty(x, T)
+
+export Names
+"""
+    struct Names{T} end
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> Names(:a)((a = 1, b = 2.0,))
+(a = 1,)
+```
+"""
+struct Names{T} end
+@inline Names(args...) = Names{args}()
+(::Names{T})(x) where T = select(x, Names(T...))
+
+@inline inner(n::Name{T}) where T = T
+merge(ns::Name...) = Names(inner.(ns)...)
 
 export unname
 """
@@ -54,22 +94,18 @@ named(data::NamedTuple) = data
 
 export name
 """
-    name(data, columns...)
+    name(data, names::Names)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0);
-
-julia> test(x) = name(x, :c, :d);
-
-julia> @inferred test(data)
+julia> @inferred name((a = 1, b = 2.0), Names(:c, :d))
 (c = 1, d = 2.0)
 ```
 """
-@inline name(data, columns...) = NamedTuple{columns}(unname(data))
+name(data, names::Names{T}) where T = NamedTuple{T}(unname(data))
 
 export based_on
 """
@@ -80,11 +116,7 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0);
-
-julia> test(x) = based_on(x, c = @_ _.a + _.b);
-
-julia> @inferred test(data)
+julia> @inferred based_on((a = 1, b = 2.0), c = @_ _.a + _.b)
 (c = 3.0,)
 ```
 """
@@ -99,11 +131,7 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0);
-
-julia> test(x) = transform(x, c = @_ _.a + _.b);
-
-julia> @inferred test(data)
+julia> @inferred transform((a = 1, b = 2.0), c = @_ _.a + _.b)
 (a = 1, b = 2.0, c = 3.0)
 ```
 """
@@ -111,49 +139,41 @@ transform(data; assignments...) = merge(named(data), based_on(data; assignments.
 
 export gather
 """
-    gather(data, new_column, columns...)
+    gather(data, new_column::Name, columns::Names)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0, c = "c");
-
-julia> test(x) = gather(x, :d, :a, :c);
-
-julia> @inferred test(data)
+julia> @inferred gather((a = 1, b = 2.0, c = "c"), Name(:d), Names(:a, :c))
 (b = 2.0, d = (a = 1, c = "c"))
 ```
 """
-@inline function gather(data, new_column::Symbol, columns::Symbol...)
+function gather(data, new_column::Name, columns::Names)
     merge(
-        remove(data, columns...),
-        name(tuple(select(data, columns...)), new_column)
+        remove(data, columns),
+        name(tuple(select(data, columns)), merge(new_column))
     )
 end
 
 export spread
 """
-    spread(data, new_column)
+    spread(data, column::Name)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (b = 2.0, d = (a = 1, c = "c"));
-
-julia> test(x) = spread(x, :d);
-
-julia> @inferred test(data)
+julia> @inferred spread((b = 2.0, d = (a = 1, c = "c")), Name(:d))
 (b = 2.0, a = 1, c = "c")
 ```
 """
-@inline function spread(data, column)
+function spread(data, column::Name)
     merge(
-        remove(data, column),
-        getproperty(data, column)
+        remove(data, merge(column)),
+        column(data)
     )
 end
 
@@ -164,146 +184,51 @@ export rename
 ```jldoctest
 julia> using LightQuery
 
-julia> rename((a = 1, b = 2.0),  c = :a)
+julia> rename((a = 1, b = 2.0), c = Name(:a))
 (b = 2.0, c = 1)
 ```
 """
-@inline function rename(data::NamedTuple; renames...)
-    olds = Tuple(renames.data)
+function rename(data; renames...)
+    olds = merge(Tuple(renames.data)...)
     merge(
-        remove(data, olds...),
-        name(unname(select(data, olds...)), keys(renames)...)
+        remove(data, olds),
+        name(unname(select(data, olds)), Names(keys(renames)...))
     )
 end
 
-export in_common
-"""
-    in_common(data1, data2)
-
-```jldoctest
-julia> using LightQuery
-
-julia> using Test: @inferred
-
-julia> data1 = (a = 1, b = 2); data2 = (a = 1, c = 3);
-
-julia> @inferred in_common(data1, data2)
-(:a,)
-```
-"""
-@inline function in_common(data1, data2)
-    first_names = propertynames(data1)
-    second_names = propertynames(data2)
-    diff_names(first_names, diff_names(first_names, second_names))
-end
-
-
 export select
 """
-    select([data], columns::Symbol...)
+    select(data, columns::Names)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0);
-
-julia> test(x) = select(x, :a);
-
-julia> @inferred test(data)
-(a = 1,)
-
-julia> test2(x) = select(:a)(x);
-
-julia> @inferred test2(data)
+julia> @inferred select((a = 1, b = 2.0), Names(:a))
 (a = 1,)
 ```
 """
-@inline select(data, columns::Symbol...) =
+select(data, columns::Names{T}) where T =
     name(map(
         name -> getproperty(data, name),
-        columns
-    ), columns...)
-
-@inline function select(columns::Symbol...)
-    @inline function anonymous(row)
-        select(row, columns...)
-    end
-end
-
-export same_at
-"""
-    same_at([data1::NamedTuple, data2::NamedTuple], columns::Symbol...)
-
-```jldoctest
-julia> using LightQuery
-
-julia> using Test: @inferred
-
-julia> data1 = (a = 1, b = 2.0); data2 = (a = 1, b = 3.0);
-
-julia> test(data1, data2) = same_at(data1, data2, :a);
-
-julia> @inferred test(data1, data2)
-true
-
-julia> test2(data1, data2) = same_at(:a)(data1, data2);
-
-julia> @inferred test2(data1, data2)
-true
-```
-"""
-@inline same_at(data1, data2, columns::Symbol...) =
-    select(data1, columns...) == select(data2, columns...)
-
-@inline function same_at(columns::Symbol...)
-    @inline function anonymous(data1, data2)
-        same_at(data1, data2, columns...)
-    end
-end
-
-export same
-"""
-    same([data1::NamedTuple, data2::NamedTuple])
-
-```jldoctest
-julia> using LightQuery
-
-julia> using Test: @inferred
-
-julia> data1 = (a = 1, b = 2.0); data2 = (a = 1, c = 3.0);
-
-julia> @inferred same(data1, data2)
-true
-
-julia> @inferred same()(data1, data2)
-true
-```
-"""
-same(data1::NamedTuple, data2::NamedTuple) =
-    same_at(data1, data2, in_common(data1, data2)...)
-
-same() = (data1, data2) -> same(data1, data2)
+        T
+    ), columns)
 
 export remove
 """
-    remove(data, columns...)
+    remove(data, columns::Names)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = (a = 1, b = 2.0);
-
-julia> test(x) = remove(x, :b);
-
-julia> @inferred test(data)
+julia> @inferred remove((a = 1, b = 2.0), Names(:b))
 (a = 1,)
 ```
 """
-@inline remove(data, columns...) =
-    select(data, diff_names(propertynames(data), columns)...)
+remove(data, columns::Names{T}) where T =
+    select(data, Names(diff_names(propertynames(data), T)...))
 
 end
