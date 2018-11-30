@@ -4,6 +4,8 @@ include("Nameless.jl")
 
 import Base: diff_names, merge
 
+using InteractiveUtils: @code_warntype
+
 export Name
 """
     struct Name{T} end
@@ -13,10 +15,10 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> Name(:a)((a = 1, b = 2.0,))
+julia> @inferred Name(:a)((a = 1, b = 2.0,))
 1
 
-julia> merge(Name(:a), Name(:b))
+julia> @inferred merge(Name(:a), Name(:b))
 Names{(:a, :b)}()
 ```
 """
@@ -33,16 +35,16 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> Names(:a)((a = 1, b = 2.0,))
+julia> @inferred Names(:a)((a = 1, b = 2.0,))
 (a = 1,)
 ```
 """
 struct Names{T} end
 @inline Names(args...) = Names{args}()
-(::Names{T})(x) where T = select(x, Names(T...))
+(::Names{T})(x) where T = select(x, Names{T}())
 
 @inline inner(n::Name{T}) where T = T
-merge(ns::Name...) = Names(inner.(ns)...)
+merge(ns::Name...) = Names{inner.(ns)}()
 
 export unname
 """
@@ -229,6 +231,6 @@ julia> @inferred remove((a = 1, b = 2.0), Names(:b))
 ```
 """
 remove(data, columns::Names{T}) where T =
-    select(data, Names(diff_names(propertynames(data), T)...))
+    select(data, Names{diff_names(propertynames(data), T)}())
 
 end
