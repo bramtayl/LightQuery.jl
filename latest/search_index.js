@@ -49,6 +49,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#LightQuery.in_common-Tuple{Any,Any}",
+    "page": "Home",
+    "title": "LightQuery.in_common",
+    "category": "method",
+    "text": "in_common(data1, data2)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred in_common((a = 1, b = 2.0), (a = 1, c = \"3\"))\nNames{(:a,)}()\n\n\n\n\n\n"
+},
+
+{
     "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "Home",
     "title": "LightQuery.name",
