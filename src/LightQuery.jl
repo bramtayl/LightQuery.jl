@@ -2,7 +2,11 @@ module LightQuery
 
 include("Nameless.jl")
 
+x = x -> x + 1
+typeof(x)
+
 import Base: diff_names, merge
+
 
 using InteractiveUtils: @code_warntype
 
@@ -232,5 +236,24 @@ julia> @inferred remove((a = 1, b = 2.0), Names(:b))
 """
 remove(data, columns::Names{T}) where T =
     select(data, Names{diff_names(propertynames(data), T)}())
+
+export in_common
+"""
+    in_common(data1, data2)
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> @inferred in_common((a = 1, b = 2.0), (a = 1, c = "3"))
+Names{(:a,)}()
+```
+"""
+function in_common(data1, data2)
+    data1_names = propertynames(data1)
+    data2_names = propertynames(data2)
+    Names{diff_names(data1_names, diff_names(data1_names, data2_names))}()
+end
 
 end
