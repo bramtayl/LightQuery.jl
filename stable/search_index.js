@@ -41,11 +41,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.gather-Tuple{Any,Name,Names}",
+    "location": "#LightQuery.gather-Tuple{Any,Names,Name}",
     "page": "Home",
     "title": "LightQuery.gather",
     "category": "method",
-    "text": "gather(data, new_column::Name, columns::Names)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred gather((a = 1, b = 2.0, c = \"c\"), Name(:d), Names(:a, :c))\n(b = 2.0, d = (a = 1, c = \"c\"))\n\n\n\n\n\n"
+    "text": "gather(data, columns::Names, new_column::Name)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred gather((a = 1, b = 2.0, c = \"c\"), Names(:a, :c), Name(:d))\n(b = 2.0, d = (a = 1, c = \"c\"))\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.in_common-Tuple{Any,Any}",
+    "page": "Home",
+    "title": "LightQuery.in_common",
+    "category": "method",
+    "text": "in_common(data1, data2)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred in_common((a = 1, b = 2.0), (a = 1, c = \"3\"))\nNames{(:a,)}()\n\n\n\n\n\n"
 },
 
 {
@@ -61,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "LightQuery.named",
     "category": "method",
-    "text": "named(data)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> named(:a => 1)\n(first = :a, second = 1)\n\njulia> @inferred named((a = 1, b = 2.0))\n(a = 1, b = 2.0)\n\n\n\n\n\n"
+    "text": "named(data)\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred named((a = 1, b = 2.0))\n(a = 1, b = 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> @inferred named(Triple(1, 1.0, \"a\"))\n(first = 1, second = 1.0, third = \"a\")\n\n\n\n\n\n"
 },
 
 {
@@ -109,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "LightQuery.unname",
     "category": "method",
-    "text": "unname\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> unname(:a => 1)\n(:a, 1)\n\njulia> @inferred unname((a = 1, b = 2.0))\n(1, 2.0)\n\njulia> @inferred unname((1, 2.0))\n(1, 2.0)\n\n\n\n\n\n"
+    "text": "unname\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred unname((a = 1, b = 2.0))\n(1, 2.0)\n\njulia> @inferred unname((1, 2.0))\n(1, 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> @inferred unname(Triple(1, 1.0, \"a\"))\n(1, 1.0, \"a\")\n\n\n\n\n\n\n"
 },
 
 {
