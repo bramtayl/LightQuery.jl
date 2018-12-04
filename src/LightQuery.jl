@@ -2,9 +2,6 @@ module LightQuery
 
 include("Nameless.jl")
 
-x = x -> x + 1
-typeof(x)
-
 import Base: diff_names, merge
 
 
@@ -59,14 +56,23 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> unname(:a => 1)
-(:a, 1)
-
 julia> @inferred unname((a = 1, b = 2.0))
 (1, 2.0)
 
 julia> @inferred unname((1, 2.0))
 (1, 2.0)
+
+julia> struct Triple{T1, T2, T3}
+            first::T1
+            second::T2
+            third::T3
+        end;
+
+julia> Base.propertynames(t::Triple) = (:first, :second, :third);
+
+julia> @inferred unname(Triple(1, 1.0, "a"))
+(1, 1.0, "a")
+
 ```
 """
 function unname(data)
@@ -88,11 +94,19 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> named(:a => 1)
-(first = :a, second = 1)
-
 julia> @inferred named((a = 1, b = 2.0))
 (a = 1, b = 2.0)
+
+julia> struct Triple{T1, T2, T3}
+            first::T1
+            second::T2
+            third::T3
+        end;
+
+julia> Base.propertynames(t::Triple) = (:first, :second, :third);
+
+julia> @inferred named(Triple(1, 1.0, "a"))
+(first = 1, second = 1.0, third = "a")
 ```
 """
 named(data) = NamedTuple{propertynames(data)}(unname(data))
@@ -145,18 +159,18 @@ transform(data; assignments...) = merge(named(data), based_on(data; assignments.
 
 export gather
 """
-    gather(data, new_column::Name, columns::Names)
+    gather(data, columns::Names, new_column::Name)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @inferred gather((a = 1, b = 2.0, c = "c"), Name(:d), Names(:a, :c))
+julia> @inferred gather((a = 1, b = 2.0, c = "c"), Names(:a, :c), Name(:d))
 (b = 2.0, d = (a = 1, c = "c"))
 ```
 """
-function gather(data, new_column::Name, columns::Names)
+function gather(data, columns::Names, new_column::Name)
     merge(
         remove(data, columns),
         name(tuple(select(data, columns)), merge(new_column))
