@@ -1,11 +1,14 @@
 module LightQuery
 
+using Base: diff_names, SizeUnknown, HasEltype, HasLength, HasShape, Generator, promote_op, EltypeUnknown
+import Base: iterate, IteratorEltype, eltype, IteratorSize, length, merge, size
+using IterTools: @ifsomething
+import MacroTools: @capture
+import Base.Meta: quot
+import Base.Iterators: product, flatten
+
 include("Nameless.jl")
-
-import Base: diff_names, merge
-
-
-using InteractiveUtils: @code_warntype
+include("iterators.jl")
 
 export Name
 """
@@ -268,6 +271,11 @@ function in_common(data1, data2)
     data1_names = propertynames(data1)
     data2_names = propertynames(data2)
     Names{diff_names(data1_names, diff_names(data1_names, data2_names))}()
+end
+
+function invert(n::NamedTuple)
+	construct = NamedTuple{propertynames(n)}
+	Generator(construct, zip(Tuple(n)...))
 end
 
 end

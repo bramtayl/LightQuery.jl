@@ -1,6 +1,3 @@
-import MacroTools: @capture
-import Base.Meta: quot
-
 export Nameless
 
 "A container for a function and the expression that generated it"

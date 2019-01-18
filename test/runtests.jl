@@ -1,14 +1,12 @@
-using LightQuery
+import LightQuery
+import Documenter: makedocs, deploydocs
 
-import Documenter
-Documenter.makedocs(
+makedocs(
     modules = [LightQuery],
-    format = :html,
     sitename = "LightQuery.jl",
-    root = joinpath(dirname(dirname(@__FILE__)), "docs"),
-    pages = Any["Home" => "index.md"],
     strict = true,
-    linkcheck = true,
-    checkdocs = :exports,
-    authors = "Brandon Taylor"
+)
+
+deploydocs(
+    repo = "github.com/bramtayl/LightQuery.jl.git"
 )
