@@ -73,6 +73,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#LightQuery.invert-Tuple{NamedTuple}",
+    "page": "LightQuery.jl",
+    "title": "LightQuery.invert",
+    "category": "method",
+    "text": "invert(n::NamedTuple)\n\njulia> using LightQuery\n\njulia> invert((a = [1, 2], b = [2, 1])) |> collect\n2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:\n (a = 1, b = 2)\n (a = 2, b = 1)\n\n\n\n\n\n"
+},
+
+{
     "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.name",
