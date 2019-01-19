@@ -54,6 +54,7 @@ previous_index(s::SkipRepeats, t::Tuple{T1, T2}) where {T1, T2} =
 previous_index(s::SkipRepeats) = previous_index(s.it)
 previous_index(g::Generator, state) = previous_index(g.iter, state)
 previous_index(g::Generator) = previous_index(g.iter)
+previous_index(z::Zip2, t::Tuple) = previous_index(z.a, t[1])
 
 struct Enumerate{It} it::It end
 IteratorSize(e::Enumerate) = IteratorSize(e.it)
