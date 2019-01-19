@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Matches",
     "category": "type",
-    "text": "Matches(f, left, right)\n\nFind where f(left) ==f(right)`, assuming both are strictly sorted by f.\n\njulia> using LightQuery\n\njulia> Matches(identity, [1, 2, 5], [1, 4, 5]) |> collect\n2-element Array{Tuple{Int64,Int64},1}:\n (1, 1)\n (5, 5)\n\n\n\n\n\n"
+    "text": "Matches(f, left, right)\n\nFind where f(left) == f(right), assuming both are strictly sorted by f.\n\njulia> using LightQuery\n\njulia> Matches(identity, [1, 2, 5], [1, 4, 5]) |> collect\n2-element Array{Tuple{Int64,Int64},1}:\n (1, 1)\n (5, 5)\n\n\n\n\n\n"
 },
 
 {
