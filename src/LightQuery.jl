@@ -273,6 +273,19 @@ function in_common(data1, data2)
     Names{diff_names(data1_names, diff_names(data1_names, data2_names))}()
 end
 
+export invert
+"""
+    invert(n::NamedTuple)
+
+```jldoctest
+julia> using LightQuery
+
+julia> invert((a = [1, 2], b = [2, 1])) |> collect
+2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:
+ (a = 1, b = 2)
+ (a = 2, b = 1)
+```
+"""
 function invert(n::NamedTuple)
 	construct = NamedTuple{propertynames(n)}
 	Generator(construct, zip(Tuple(n)...))

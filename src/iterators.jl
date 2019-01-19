@@ -2,13 +2,10 @@ downsize(::HasShape) = HasLength()
 downsize(it) = it
 
 struct Couples{It} it::It end
-
 IteratorSize(c::Couples) = downsize(IteratorSize(c.it))
 length(c::Couples) = length(c.it) - 1
-
 IteratorEltype(c::Couples) = IteratorEltype(c.it)
 eltype(c::Couples) = Tuple{eltype(c.it), eltype(c.it)}
-
 iterate(c::Couples) = iterate(c, @ifsomething iterate(c.it))
 function iterate(c::Couples, (last_item, state))
 	item, state = @ifsomething iterate(c.it, state)
@@ -19,41 +16,28 @@ struct Cap{It, C}
 	it::It
 	cap::C
 end
-function iterate(it::Cap)
-	result = iterate(it.it)
+substitute_cap(c::Cap, result) =
 	if result == nothing
-		it.cap, nothing
+		c.cap, nothing
 	else
 		result
 	end
-end
-function iterate(it::Cap, state)
-	result = iterate(it.it, state)
-	if result == nothing
-		it.cap, nothing
-	else
-		result
-	end
-end
+iterate(c::Cap) = substitute_cap(c, iterate(c.it))
+iterate(c::Cap, state) = substitute_cap(c, iterate(c.it, state))
 iterate(::Cap, ::Nothing) = nothing
 IteratorSize(c::Cap) = downsize(IteratorSize(c.it))
 IteratorEltype(c::Cap) = IteratorEltype(c.it)
 length(c::Cap) = length(c.it) + 1
 eltype(c::Cap{It, C}) where {It, C} = Union{eltype(c.it), C}
 
-struct SkipRepeats{It}
-	it::It
-end
-
+struct SkipRepeats{It} it::It end
 IteratorSize(s::SkipRepeats) = SizeUnknown()
 IteratorEltype(s::SkipRepeats) = HasEltype()
 eltype(s::SkipRepeats) = eltype(s.it)
-
 function iterate(s::SkipRepeats)
 	(item, state) = @ifsomething iterate(s.it)
 	item, (item, state)
 end
-
 function iterate(s::SkipRepeats, (last_item, state))
 	item, next_state = @ifsomething iterate(s.it, state)
 	if last_item == item
@@ -72,19 +56,15 @@ previous_index(g::Generator, state) = previous_index(g.iter, state)
 previous_index(g::Generator) = previous_index(g.iter)
 
 struct Enumerate{It} it::It end
-
 IteratorSize(e::Enumerate) = IteratorSize(e.it)
 length(e::Enumerate) = length(e.it)
 size(e::Enumerate) = size(e.it)
-
 IteratorEltype(e::Enumerate) = IteratorEltype(e.it)
 eltype(e::Enumerate) = Tuple{eltype(e.it), Int}
-
 function iterate(e::Enumerate, state)
 	item, state = @ifsomething iterate(e.it, state)
 	(item, previous_index(e.it, state)), state
 end
-
 function iterate(e::Enumerate)
 	item, state = @ifsomething iterate(e.it)
 	(item, 1), state
@@ -139,7 +119,6 @@ struct Matches{F, Left, Right}
 	left::Left
 	right::Right
 end
-
 IteratorEltype(m::Matches) = combine_iterator_eltype(
 	IteratorEltype(m.left),
 	IteratorEltype(m.left)
@@ -150,17 +129,14 @@ combine_iterator_eltype(::HasEltype, ::HasEltype) = HasEltype()
 combine_iterator_eltype(x, y) = EltypeUnknown()
 
 IteratorSize(m::Matches) = SizeUnknown()
-
 iterate(m::Matches) = next_match(m,
 	@ifsomething(iterate(m.left)),
 	@ifsomething(iterate(m.right))
 )
-
 iterate(m::Matches, (left_state, right_state)) = next_match(m,
 	@ifsomething(iterate(m.left, left_state)),
 	@ifsomething(iterate(m.right, right_state))
 )
-
 function next_match(m, (left_item, left_state), (right_item, right_state))
 	left_result = m.f(left_item)
 	right_result = m.f(right_item)
