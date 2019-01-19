@@ -103,7 +103,7 @@ export Matches
 """
 	Matches(f, left, right)
 
-Find where `f(left) == `f(right)`, assuming both are strictly sorted by f.
+Find where `f(left) == f(right)`, assuming both are strictly sorted by f.
 
 ```jldoctest
 julia> using LightQuery
