@@ -51,6 +51,8 @@ export unname
 """
     unname
 
+Remove names.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -85,6 +87,8 @@ export named
 """
     named(data)
 
+Convert to a named tuple.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -108,6 +112,8 @@ export name
 """
     name(data, names...)
 
+Rename `data`
+
 ```jldoctest
 julia> using LightQuery
 
@@ -122,6 +128,9 @@ export based_on
 """
     based_on(data; assignments...)
 
+Apply the functions in assignments to `data`, assign to the corresponding keys, and
+merge into the original.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -135,6 +144,9 @@ export transform
 """
     transform(data; assignments...)
 
+Apply the functions in assignments to `data`, assign to the corresponding keys in a
+new set of data.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -147,6 +159,8 @@ transform(data; assignments...) = merge(named(data), based_on(data; assignments.
 export gather
 """
     gather(data, new_column, columns...)
+
+Gather all the data in `columns` into a single `new_column`.
 
 ```jldoctest
 julia> using LightQuery
@@ -167,6 +181,8 @@ end
 export spread
 """
     spread(data, column::Name)
+
+Unnest nested data in `column`
 
 ```jldoctest
 julia> using LightQuery
@@ -208,6 +224,8 @@ export select
 """
     select(data, columns...)
 
+Select `columns`.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -227,6 +245,8 @@ export remove
 """
     remove(data, columns...)
 
+Remove `columns`.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -242,6 +262,8 @@ remove(data, columns::Names{T}) where T =
 export in_common
 """
     in_common(data1, data2)
+
+Find [`Names`](@ref) in common.
 
 ```jldoctest
 julia> using LightQuery
@@ -260,6 +282,8 @@ export rows
 """
     rows(n::NamedTuple)
 
+Iterator over rows of a `NamedTuple` of columns.
+
 ```jldoctest
 julia> using LightQuery
 
@@ -277,7 +301,7 @@ export separate
 """
     separate(it, into_names...)
 
-Optimize with column-wise storage.
+Column-wise storage.
 
 ```jldoctest
 julia> using LightQuery
@@ -299,6 +323,8 @@ separate(it, into_names::Names{T}) where T =
 export column
 """
     column(it, names::Names)
+
+Lazy find `name` for each item in `it`.
 
 ```jldoctest
 julia> using LightQuery

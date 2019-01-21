@@ -89,7 +89,7 @@ export By
 """
 	By(it, f)
 
-Marks that `it` has been pre-sorted by `f`.
+Marks that `it` has been pre-sorted by the key `f`.
 """
 struct By{It, F}
     it::It
@@ -99,6 +99,8 @@ end
 export group
 """
     group(b::By)
+
+Group consecutive keys in `b`.
 
 ```jldoctest
 julia> using LightQuery
@@ -143,6 +145,8 @@ isless(h1::History, h2::History) = isless(h1.result, h2.result)
 export LeftJoin
 """
 	LeftJoin(left::By, right::By)
+
+For each value in left, look for a value with the same key in right.
 
 ```jldoctest
 julia> using LightQuery
