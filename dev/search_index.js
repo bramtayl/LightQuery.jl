@@ -9,11 +9,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.Matches",
+    "location": "#LightQuery.LeftJoin",
     "page": "LightQuery.jl",
-    "title": "LightQuery.Matches",
+    "title": "LightQuery.LeftJoin",
     "category": "type",
-    "text": "Matches(f, left, right)\n\nFind where f(left) == f(right), assuming both are strictly sorted by f.\n\njulia> using LightQuery\n\njulia> Matches(identity, [1, 2, 5], [1, 4, 5]) |> collect\n2-element Array{Tuple{Int64,Int64},1}:\n (1, 1)\n (5, 5)\n\n\n\n\n\n"
+    "text": "LeftJoin(left_key, right_key, left, right)\nLeftJoin(left_key, [right_key = left_key], left, right)\n\nReturn each value in left, and, if it exists, the item in right where isequal(left_key(left), right_key(right)), assuming both are strictly sorted by the respective keys.\n\njulia> using LightQuery\n\njulia> LeftJoin(identity, [1, 2, 5, 6], [1, 3, 4, 6]) |> collect\n4-element Array{Tuple{Int64,Union{Missing, Int64}},1}:\n (1, 1)\n (2, missing)\n (5, missing)\n (6, 6)\n\n\n\n\n\n"
 },
 
 {
