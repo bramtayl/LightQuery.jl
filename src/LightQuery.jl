@@ -308,8 +308,7 @@ julia> using LightQuery
 
 julia> it = [(a = 1, b = 1.0), (a = 2, b = 2.0)];
 
-julia> result = separate(it, :a, :b)
-Base.Generator{Base.Iterators.Zip{Tuple{Array{Int64,1},Array{Float64,1}}},Type{NamedTuple{(:a, :b),T} where T<:Tuple}}(NamedTuple{(:a, :b),T} where T<:Tuple, Base.Iterators.Zip{Tuple{Array{Int64,1},Array{Float64,1}}}(([1, 2], [1.0, 2.0])))
+julia> result = separate(it, :a, :b);
 
 julia> first(result)
 (a = 1, b = 1.0)
