@@ -1,13 +1,14 @@
 module LightQuery
 
-using Base: diff_names, SizeUnknown, HasEltype, HasLength, HasShape, Generator, promote_op, EltypeUnknown
-import Base: iterate, IteratorEltype, eltype, IteratorSize, length, merge, size, view, isless
+using Base: diff_names, SizeUnknown, HasEltype, HasLength, HasShape, Generator, promote_op, EltypeUnknown, StepRange, @propagate_inbounds, _collect, @default_eltype
+import Base: iterate, IteratorEltype, eltype, IteratorSize, axes, size, length, IndexStyle, getindex, setindex!, push!, similar, merge, view, isless, setindex_widen_up_to, collect, empty
 import IterTools: @ifsomething
 using MacroTools: @capture
 using Base.Meta: quot
-using Base.Iterators: product, flatten, Zip
+using Base.Iterators: product, flatten, Zip, Filter
 
 include("Nameless.jl")
+include("Unzip.jl")
 include("iterators.jl")
 
 export Name
@@ -17,12 +18,10 @@ export Name
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred Name(:a)((a = 1, b = 2.0,))
+julia> Name(:a)((a = 1, b = 2.0,))
 1
 
-julia> @inferred merge(Name(:a), Name(:b))
+julia> merge(Name(:a), Name(:b))
 Names{(:a, :b)}()
 ```
 """
@@ -37,9 +36,7 @@ export Names
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred Names(:a)((a = 1, b = 2.0,))
+julia> Names(:a)((a = 1, b = 2.0,))
 (a = 1,)
 ```
 """
@@ -57,12 +54,10 @@ export unname
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred unname((a = 1, b = 2.0))
+julia> unname((a = 1, b = 2.0))
 (1, 2.0)
 
-julia> @inferred unname((1, 2.0))
+julia> unname((1, 2.0))
 (1, 2.0)
 
 julia> struct Triple{T1, T2, T3}
@@ -71,9 +66,7 @@ julia> struct Triple{T1, T2, T3}
             third::T3
         end;
 
-julia> Base.propertynames(t::Triple) = (:first, :second, :third);
-
-julia> @inferred unname(Triple(1, 1.0, "a"))
+julia> unname(Triple(1, 1.0, "a"))
 (1, 1.0, "a")
 
 ```
@@ -95,9 +88,7 @@ export named
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred named((a = 1, b = 2.0))
+julia> named((a = 1, b = 2.0))
 (a = 1, b = 2.0)
 
 julia> struct Triple{T1, T2, T3}
@@ -106,9 +97,7 @@ julia> struct Triple{T1, T2, T3}
             third::T3
         end;
 
-julia> Base.propertynames(t::Triple) = (:first, :second, :third);
-
-julia> @inferred named(Triple(1, 1.0, "a"))
+julia> named(Triple(1, 1.0, "a"))
 (first = 1, second = 1.0, third = "a")
 ```
 """
@@ -117,18 +106,17 @@ named(data::NamedTuple) = data
 
 export name
 """
-    name(data, names::Names)
+    name(data, names...)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred name((a = 1, b = 2.0), Names(:c, :d))
+julia> name((a = 1, b = 2.0), :c, :d)
 (c = 1, d = 2.0)
 ```
 """
 name(data, names::Names{T}) where T = NamedTuple{T}(unname(data))
+@inline name(data, names...) = name(data, Names{names}())
 
 export based_on
 """
@@ -137,9 +125,7 @@ export based_on
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred based_on((a = 1, b = 2.0), c = @_ _.a + _.b)
+julia> based_on((a = 1, b = 2.0), c = @_ _.a + _.b)
 (c = 3.0,)
 ```
 """
@@ -152,9 +138,7 @@ export transform
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred transform((a = 1, b = 2.0), c = @_ _.a + _.b)
+julia> transform((a = 1, b = 2.0), c = @_ _.a + _.b)
 (a = 1, b = 2.0, c = 3.0)
 ```
 """
@@ -162,23 +146,23 @@ transform(data; assignments...) = merge(named(data), based_on(data; assignments.
 
 export gather
 """
-    gather(data, columns::Names, new_column::Name)
+    gather(data, new_column, columns...)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred gather((a = 1, b = 2.0, c = "c"), Names(:a, :c), Name(:d))
+julia> gather((a = 1, b = 2.0, c = "c"), :d, :a, :c)
 (b = 2.0, d = (a = 1, c = "c"))
 ```
 """
-function gather(data, columns::Names, new_column::Name)
+function gather(data, new_column::Name, columns::Names)
     merge(
         remove(data, columns),
         name(tuple(select(data, columns)), merge(new_column))
     )
 end
+
+@inline gather(data, new_column, columns...) = gather(data, Name{new_column}(), Names{columns}())
 
 export spread
 """
@@ -187,9 +171,7 @@ export spread
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred spread((b = 2.0, d = (a = 1, c = "c")), Name(:d))
+julia> spread((b = 2.0, d = (a = 1, c = "c")), :d)
 (b = 2.0, a = 1, c = "c")
 ```
 """
@@ -199,10 +181,13 @@ function spread(data, column::Name)
         column(data)
     )
 end
+@inline spread(data, column) = spread(data, Name{column}())
 
 export rename
 """
     rename(data; renames...)
+
+For type stability, use [`Name`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -221,14 +206,12 @@ end
 
 export select
 """
-    select(data, columns::Names)
+    select(data, columns...)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred select((a = 1, b = 2.0), Names(:a))
+julia> select((a = 1, b = 2.0), :a)
 (a = 1,)
 ```
 """
@@ -238,21 +221,23 @@ select(data, columns::Names{T}) where T =
         T
     ), columns)
 
+@inline select(data, columns...) = select(data, Names{columns}())
+
 export remove
 """
-    remove(data, columns::Names)
+    remove(data, columns...)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred remove((a = 1, b = 2.0), Names(:b))
+julia> remove((a = 1, b = 2.0), :b)
 (a = 1,)
 ```
 """
 remove(data, columns::Names{T}) where T =
     select(data, Names{diff_names(propertynames(data), T)}())
+
+@inline remove(data, columns...) = remove(data, Names{columns}())
 
 export in_common
 """
@@ -261,9 +246,7 @@ export in_common
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred in_common((a = 1, b = 2.0), (a = 1, c = "3"))
+julia> in_common((a = 1, b = 2.0), (a = 1, c = "3"))
 Names{(:a,)}()
 ```
 """
@@ -273,22 +256,62 @@ function in_common(data1, data2)
     Names{diff_names(data1_names, diff_names(data1_names, data2_names))}()
 end
 
-export invert
+export rows
 """
-    invert(n::NamedTuple)
+    rows(n::NamedTuple)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> invert((a = [1, 2], b = [2, 1])) |> collect
-2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:
- (a = 1, b = 2)
- (a = 2, b = 1)
+julia> rows((a = [1, 2], b = [2, 1])) |> first
+(a = 1, b = 2)
 ```
 """
-function invert(n::NamedTuple)
+function rows(n::NamedTuple)
 	construct = NamedTuple{propertynames(n)}
 	Generator(construct, zip(Tuple(n)...))
 end
+
+# I'm actually super proud of this one.
+export separate
+"""
+    separate(it, into_names...)
+
+Optimize with column-wise storage.
+
+```jldoctest
+julia> using LightQuery
+
+julia> it = [(a = 1, b = 1.0), (a = 2, b = 2.0)];
+
+julia> result = separate(it, :a, :b)
+Base.Generator{Base.Iterators.Zip{Tuple{Array{Int64,1},Array{Float64,1}}},Type{NamedTuple{(:a, :b),T} where T<:Tuple}}(NamedTuple{(:a, :b),T} where T<:Tuple, Base.Iterators.Zip{Tuple{Array{Int64,1},Array{Float64,1}}}(([1, 2], [1.0, 2.0])))
+
+julia> first(result)
+(a = 1, b = 1.0)
+```
+"""
+separate(it, into_names::Names{T}) where T =
+    rows(name(unzip(Generator(unname, it), length(T)), into_names))
+
+@inline separate(it, into_names...) = separate(it, Names{into_names}())
+
+export column
+"""
+    column(it, names::Names)
+
+```jldoctest
+julia> using LightQuery
+
+julia> it = [(a = 1, b = 1.0), (a = 2, b = 2.0)];
+
+julia> collect(column(it, :a))
+2-element Array{Int64,1}:
+ 1
+ 2
+```
+"""
+column(it, name::Name) = Generator(name, it)
+@inline column(it, name) = column(it, Name{name}())
 
 end

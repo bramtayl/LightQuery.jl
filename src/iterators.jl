@@ -1,11 +1,3 @@
-macro ifsomething(ex, alt)
-    quote
-        result = $(esc(ex))
-        result === nothing && return $(esc(alt))
-        result
-    end
-end
-
 downsize(::HasShape) = HasLength()
 downsize(it) = it
 
@@ -55,14 +47,12 @@ function iterate(s::SkipRepeats, (last_item, state))
 	end
 end
 
-previous_index(it) = first(LinearEnumerate(it))
 previous_index(it::Array, state::Int) = state - 1
 previous_index(s::SkipRepeats, t::Tuple{T1, T2}) where {T1, T2} =
 	previous_index(s.it, t[2])
-previous_index(s::SkipRepeats) = previous_index(s.it)
 previous_index(g::Generator, state) = previous_index(g.iter, state)
-previous_index(g::Generator) = previous_index(g.iter)
 previous_index(z::Zip, t::Tuple) = previous_index(z.is[1], t[1])
+previous_index(s::StepRange, t::Tuple) = t[2]
 
 struct Enumerate{It} it::It end
 IteratorSize(e::Enumerate) = IteratorSize(e.it)
@@ -79,24 +69,50 @@ function iterate(e::Enumerate)
 	(item, 1), state
 end
 
-export chunk_by
+export key
 """
-	chunk_by(f, x)
+    key(pair)
 
-Group `x` by consecutive results of `f`.
+The first item
+"""
+key(p::Pair) = p.first
+
+export value
+"""
+    value(pair)
+
+The second item
+"""
+value(p::Pair) = p.second
+
+export By
+"""
+	By(it, f)
+
+Marks that `it` has been pre-sorted by `f`.
+"""
+struct By{It, F}
+    it::It
+	f::F
+end
+
+export group
+"""
+    group(b::By)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> chunk_by(iseven, [1, 3, 2, 4]) |> collect
+julia> group(By([1, 3, 2, 4], iseven)) |> collect
 2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
  false => [1, 3]
   true => [2, 4]
 ```
 """
-chunk_by(f, x) = chunk_by(f, x, IteratorSize(x))
-chunk_by(f, x, ::SizeUnknown) = chunk_by(f, collect(x), HasLength())
-function chunk_by(f, x, ::Union{HasLength, HasShape})
+group(b::By) = group_inner(b.f, b.it, IteratorSize(b.it))
+
+group_inner(f, x, ::SizeUnknown) = group(f, collect(x), HasLength())
+function group_inner(f, x, ::Union{HasLength, HasShape})
 	Generator(
 		let x = x
 			item_index__next_item_next_index -> begin
@@ -108,10 +124,6 @@ function chunk_by(f, x, ::Union{HasLength, HasShape})
 	)
 end
 
-struct By{F, It}
-	f::F
-	it::It
-end
 struct History{S, I, R}
 	state::S
 	item::I
@@ -130,80 +142,83 @@ isless(h1::History, h2::History) = isless(h1.result, h2.result)
 
 export LeftJoin
 """
-	LeftJoin(left_key, right_key, left, right)
-	LeftJoin(left_key, [right_key = left_key], left, right)
-
-Return each value in `left`, and, if it exists, the item in `right` where
-`isequal(left_key(left), right_key(right))`, assuming both are strictly sorted
-by the respective keys.
+	LeftJoin(left::By, right::By)
 
 ```jldoctest
 julia> using LightQuery
 
-julia> LeftJoin(identity, [1, 2, 5, 6], [1, 3, 4, 6]) |> collect
-4-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
- (1, 1)
- (2, missing)
- (5, missing)
- (6, 6)
+julia> LeftJoin(
+            By([1, 2, 5, 6], identity),
+            By([1, 3, 4, 6], identity)
+       ) |> collect
+4-element Array{Pair{Int64,Union{Missing, Int64}},1}:
+ 1 => 1
+ 2 => missing
+ 5 => missing
+ 6 => 6
 ```
 """
 struct LeftJoin{Left <: By, Right <: By}
 	left::Left
 	right::Right
 end
-LeftJoin(left_key, right_key, left, right) = LeftJoin(By(left_key, left), By(right_key, right))
-LeftJoin(left_key, left, right) = LeftJoin(left_key, left_key, left, right)
+
 combine_iterator_eltype(::HasEltype, ::HasEltype) = HasEltype()
 combine_iterator_eltype(x, y) = EltypeUnknown()
-IteratorEltype(m::LeftJoin) = combine_iterator_eltype(
-	IteratorEltype(m.left.it),
-	IteratorEltype(m.right.it)
+IteratorEltype(l::LeftJoin) = combine_iterator_eltype(
+	IteratorEltype(l.left.it),
+	IteratorEltype(l.right.it)
 )
-eltype(m::LeftJoin) = Tuple{
-    eltype(m.left.it),
-    Union{Missing, eltype(m.right.it)}
+eltype(l::LeftJoin) = Pair{
+    eltype(l.left.it),
+    Union{Missing, eltype(l.right.it)}
 }
-IteratorSize(m::LeftJoin) = IteratorSize(m.left.it)
-length(m::LeftJoin) = length(m.left.it)
-size(m::LeftJoin) = size(m.left.it)
-function iterate(m::LeftJoin)
-	left_history = iterate(m.left)
+IteratorSize(l::LeftJoin) = IteratorSize(l.left.it)
+length(l::LeftJoin) = length(l.left.it)
+size(l::LeftJoin) = size(l.left.it)
+function iterate(l::LeftJoin)
+	left_history = iterate(l.left)
     if left_history === nothing
         nothing
     else
-	    right_history = iterate(m.right)
+	    right_history = iterate(l.right)
         if right_history === nothing
-            (left_history.item, missing), nothing
+            (left_history.item => missing), nothing
         else
-            seek_right_match(m, left_history, right_history)
+            seek_right_match(l, left_history, right_history)
         end
     end
 end
-iterate(m::LeftJoin, ::Nothing) = nothing
-function iterate(m::LeftJoin, (left_history, right_history))
-	left_history = iterate(m.left, left_history)
+iterate(l::LeftJoin, ::Nothing) = nothing
+function iterate(l::LeftJoin, (left_history, right_history))
+	left_history = iterate(l.left, left_history)
     if left_history === nothing
         nothing
     else
-        seek_right_match(m, left_history, right_history)
+        seek_right_match(l, left_history, right_history)
     end
 end
-function seek_right_match(m, left_history, right_history)
+function seek_right_match(l, left_history, right_history)
 	while isless(right_history, left_history)
-		right_history = iterate(m.right, right_history)
+		right_history = iterate(l.right, right_history)
         if right_history === nothing
-            return (left_history.item, missing), nothing
+            return (left_history.item => missing), nothing
         end
 	end
 	if isless(left_history, right_history)
 		# no way we can find any more matches to left item
-		(left_history.item, missing), (left_history, right_history)
+		(left_history.item => missing), (left_history, right_history)
 	else
         # they are equal
-		(left_history.item, right_history.item), (left_history, right_history)
+		(left_history.item => right_history.item), (left_history, right_history)
 	end
 end
+
+export over
+over(x, f) = Generator(f, x)
+
+export when
+when(x, f) = Filter(f, x)
 
 # piracy
 view(g::Generator, args...) = Generator(g.f, view(g.iter, args...))
