@@ -1,11 +1,11 @@
 module LightQuery
 
 using Base: diff_names, SizeUnknown, HasEltype, HasLength, HasShape, Generator, promote_op, EltypeUnknown
-import Base: iterate, IteratorEltype, eltype, IteratorSize, length, merge, size
-using IterTools: @ifsomething
-import MacroTools: @capture
-import Base.Meta: quot
-import Base.Iterators: product, flatten
+import Base: iterate, IteratorEltype, eltype, IteratorSize, length, merge, size, view, isless
+import IterTools: @ifsomething
+using MacroTools: @capture
+using Base.Meta: quot
+using Base.Iterators: product, flatten, Zip
 
 include("Nameless.jl")
 include("iterators.jl")

@@ -1,3 +1,11 @@
+macro ifsomething(ex, alt)
+    quote
+        result = $(esc(ex))
+        result === nothing && return $(esc(alt))
+        result
+    end
+end
+
 downsize(::HasShape) = HasLength()
 downsize(it) = it
 
@@ -54,7 +62,7 @@ previous_index(s::SkipRepeats, t::Tuple{T1, T2}) where {T1, T2} =
 previous_index(s::SkipRepeats) = previous_index(s.it)
 previous_index(g::Generator, state) = previous_index(g.iter, state)
 previous_index(g::Generator) = previous_index(g.iter)
-previous_index(z::Zip2, t::Tuple) = previous_index(z.a, t[1])
+previous_index(z::Zip, t::Tuple) = previous_index(z.is[1], t[1])
 
 struct Enumerate{It} it::It end
 IteratorSize(e::Enumerate) = IteratorSize(e.it)
@@ -100,55 +108,107 @@ function chunk_by(f, x, ::Union{HasLength, HasShape})
 	)
 end
 
-export Matches
-"""
-	Matches(f, left, right)
+struct By{F, It}
+	f::F
+	it::It
+end
+struct History{S, I, R}
+	state::S
+	item::I
+	result::R
+end
 
-Find where `f(left) == f(right)`, assuming both are strictly sorted by f.
+History(b::By, ::Nothing) = nothing
+function History(b::By, item_state)
+	item, state = item_state
+	History(state, item, b.f(item))
+end
+
+iterate(b::By) = History(b, iterate(b.it))
+iterate(b::By, h::History) = History(b, iterate(b.it, h.state))
+isless(h1::History, h2::History) = isless(h1.result, h2.result)
+
+export LeftJoin
+"""
+	LeftJoin(left_key, right_key, left, right)
+	LeftJoin(left_key, [right_key = left_key], left, right)
+
+Return each value in `left`, and, if it exists, the item in `right` where
+`isequal(left_key(left), right_key(right))`, assuming both are strictly sorted
+by the respective keys.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> Matches(identity, [1, 2, 5], [1, 4, 5]) |> collect
-2-element Array{Tuple{Int64,Int64},1}:
+julia> LeftJoin(identity, [1, 2, 5, 6], [1, 3, 4, 6]) |> collect
+4-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, 1)
- (5, 5)
+ (2, missing)
+ (5, missing)
+ (6, 6)
 ```
 """
-struct Matches{F, Left, Right}
-	f::F
+struct LeftJoin{Left <: By, Right <: By}
 	left::Left
 	right::Right
 end
-IteratorEltype(m::Matches) = combine_iterator_eltype(
-	IteratorEltype(m.left),
-	IteratorEltype(m.left)
-)
-eltype(m::Matches) = Tuple{eltype(m.left), eltype(m.right)}
-
+LeftJoin(left_key, right_key, left, right) = LeftJoin(By(left_key, left), By(right_key, right))
+LeftJoin(left_key, left, right) = LeftJoin(left_key, left_key, left, right)
 combine_iterator_eltype(::HasEltype, ::HasEltype) = HasEltype()
 combine_iterator_eltype(x, y) = EltypeUnknown()
-
-IteratorSize(m::Matches) = SizeUnknown()
-iterate(m::Matches) = next_match(m,
-	@ifsomething(iterate(m.left)),
-	@ifsomething(iterate(m.right))
+IteratorEltype(m::LeftJoin) = combine_iterator_eltype(
+	IteratorEltype(m.left.it),
+	IteratorEltype(m.right.it)
 )
-iterate(m::Matches, (left_state, right_state)) = next_match(m,
-	@ifsomething(iterate(m.left, left_state)),
-	@ifsomething(iterate(m.right, right_state))
-)
-function next_match(m, (left_item, left_state), (right_item, right_state))
-	left_result = m.f(left_item)
-	right_result = m.f(right_item)
-	while left_result != right_result
-		if isless(left_result, right_result)
-			left_item, left_state = @ifsomething iterate(m.left, left_state)
-			left_result = m.f(left_item)
-		else
-			right_item, right_state = @ifsomething iterate(m.right, right_state)
-			right_result = m.f(right_item)
-		end
-	end
-	(left_item, right_item), (left_state, right_state)
+eltype(m::LeftJoin) = Tuple{
+    eltype(m.left.it),
+    Union{Missing, eltype(m.right.it)}
+}
+IteratorSize(m::LeftJoin) = IteratorSize(m.left.it)
+length(m::LeftJoin) = length(m.left.it)
+size(m::LeftJoin) = size(m.left.it)
+function iterate(m::LeftJoin)
+	left_history = iterate(m.left)
+    if left_history === nothing
+        nothing
+    else
+	    right_history = iterate(m.right)
+        if right_history === nothing
+            (left_history.item, missing), nothing
+        else
+            seek_right_match(m, left_history, right_history)
+        end
+    end
 end
+iterate(m::LeftJoin, ::Nothing) = nothing
+function iterate(m::LeftJoin, (left_history, right_history))
+	left_history = iterate(m.left, left_history)
+    if left_history === nothing
+        nothing
+    else
+        seek_right_match(m, left_history, right_history)
+    end
+end
+function seek_right_match(m, left_history, right_history)
+	while isless(right_history, left_history)
+		right_history = iterate(m.right, right_history)
+        if right_history === nothing
+            return (left_history.item, missing), nothing
+        end
+	end
+	if isless(left_history, right_history)
+		# no way we can find any more matches to left item
+		(left_history.item, missing), (left_history, right_history)
+	else
+        # they are equal
+		(left_history.item, right_history.item), (left_history, right_history)
+	end
+end
+
+# piracy
+view(g::Generator, args...) = Generator(g.f, view(g.iter, args...))
+view(z::Zip, args...) = zip(map(
+	i -> view(i, args...),
+	z.is
+)...)
+IteratorSize(g::Generator) = IteratorSize(g.iter)
