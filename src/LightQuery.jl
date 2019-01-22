@@ -13,16 +13,13 @@ include("iterators.jl")
 
 export Name
 """
-    struct Name{T} end
+    Name(name)
 
 ```jldoctest
 julia> using LightQuery
 
 julia> Name(:a)((a = 1, b = 2.0,))
 1
-
-julia> merge(Name(:a), Name(:b))
-Names{(:a, :b)}()
 ```
 """
 struct Name{T} end
@@ -36,8 +33,8 @@ export Names
 ```jldoctest
 julia> using LightQuery
 
-julia> Names(:a)((a = 1, b = 2.0,))
-(a = 1,)
+julia> Names(:a, :b)((a = 1, b = 2.0, c = 3//1))
+(a = 1, b = 2.0)
 ```
 """
 struct Names{T} end
@@ -51,7 +48,7 @@ export unname
 """
     unname
 
-Remove names.
+Remove names. Explicitly define public `propertynames` for arbitrary structs.
 
 ```jldoctest
 julia> using LightQuery
@@ -67,6 +64,8 @@ julia> struct Triple{T1, T2, T3}
             second::T2
             third::T3
         end;
+
+julia> Base.propertynames(t::Triple) = (:first, :second, :third);
 
 julia> unname(Triple(1, 1.0, "a"))
 (1, 1.0, "a")
@@ -87,7 +86,7 @@ export named
 """
     named(data)
 
-Convert to a named tuple.
+Convert to a named tuple
 
 ```jldoctest
 julia> using LightQuery
@@ -100,6 +99,8 @@ julia> struct Triple{T1, T2, T3}
             second::T2
             third::T3
         end;
+
+julia> Base.propertynames(t::Triple) = (:first, :second, :third);
 
 julia> named(Triple(1, 1.0, "a"))
 (first = 1, second = 1.0, third = "a")
@@ -128,8 +129,8 @@ export based_on
 """
     based_on(data; assignments...)
 
-Apply the functions in assignments to `data`, assign to the corresponding keys, and
-merge into the original.
+Apply the functions in assignments to `data`, and assign to the corresponding
+keys.
 
 ```jldoctest
 julia> using LightQuery
@@ -144,8 +145,7 @@ export transform
 """
     transform(data; assignments...)
 
-Apply the functions in assignments to `data`, assign to the corresponding keys in a
-new set of data.
+Same as [`based_on`](@ref), but merge back in the original.
 
 ```jldoctest
 julia> using LightQuery
@@ -224,7 +224,7 @@ export select
 """
     select(data, columns...)
 
-Select `columns`.
+Select `columns`
 
 ```jldoctest
 julia> using LightQuery
