@@ -30,6 +30,8 @@ substitute_underscores!(dictionary, body::Expr) =
 
 string_length(something) = something |> String |> length
 
+unname_simple(body, line, file) = unname_simple(:($body(_)), line, file)
+
 function unname_simple(body::Expr, line, file)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
@@ -55,11 +57,12 @@ end
 
 export @_
 """
-    macro _(body::Expr)
+    macro _(body)
 
 Create an `Nameless` object. The arguments are inside the body; the
 first arguments is `_`, the second argument is `__`, etc. Also stores a
-quoted version of the function.
+quoted version of the function. If body isn't an expression, use
+`:(\$body(_))` instead.
 
 ```jldoctest
 julia> using LightQuery

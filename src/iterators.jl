@@ -38,15 +38,17 @@ function iterate(s::SkipRepeats)
 	(item, state) = @ifsomething iterate(s.it)
 	item, (item, state)
 end
+
 function iterate(s::SkipRepeats, (last_item, state))
 	item, next_state = @ifsomething iterate(s.it, state)
-	if last_item == item
+	if isequal(last_item, item)
 		iterate(s, (last_item, next_state))
 	else
 		item, (item, next_state)
 	end
 end
 
+previous_index(s::AbstractArray, state) = state[2] - 1
 previous_index(it::Array, state::Int) = state - 1
 previous_index(s::SkipRepeats, t::Tuple{T1, T2}) where {T1, T2} =
 	previous_index(s.it, t[2])
@@ -61,8 +63,13 @@ size(e::Enumerate) = size(e.it)
 IteratorEltype(e::Enumerate) = IteratorEltype(e.it)
 eltype(e::Enumerate) = Tuple{eltype(e.it), Int}
 function iterate(e::Enumerate, state)
-	item, state = @ifsomething iterate(e.it, state)
-	(item, previous_index(e.it, state)), state
+	result = iterate(e.it, state)
+	if result === nothing
+		nothing
+	else
+		item, state = result
+		(item, previous_index(e.it, state)), state
+	end
 end
 function iterate(e::Enumerate)
 	item, state = @ifsomething iterate(e.it)
@@ -89,12 +96,36 @@ export By
 """
 	By(it, f)
 
-Marks that `it` has been pre-sorted by the key `f`.
+Marks that `it` has been pre-sorted by the key `f`. If `f` is a symbol,
+interpret is as a [`Name`](@ref).
 """
 struct By{It, F}
     it::It
 	f::F
 end
+
+@inline By(it, f::Symbol) = By(it, Name{f}())
+
+export order_by
+"""
+	order_by(it, f)
+
+Generalized sort. If `f` is a symbol, interpret is as a [`Name`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> order_by(["b", "a"], identity).it
+2-element view(::Array{String,1}, [2, 1]) with eltype String:
+ "a"
+ "b"
+```
+"""
+order_by(it, f) =
+	By(view(it, mappedarray(first,
+		sort!(collect(enumerate(Generator(f, it))), by = last))), f)
+
+@inline order_by(it, f::Symbol) = order_by(it, Name{f}())
 
 export group
 """
@@ -138,8 +169,8 @@ function History(b::By, item_state)
 	History(state, item, b.f(item))
 end
 
-iterate(b::By) = History(b, iterate(b.it))
-iterate(b::By, h::History) = History(b, iterate(b.it, h.state))
+next_history(b::By) = History(b, iterate(b.it))
+next_history(b::By, h::History) = History(b, iterate(b.it, h.state))
 isless(h1::History, h2::History) = isless(h1.result, h2.result)
 
 export LeftJoin
@@ -181,11 +212,11 @@ IteratorSize(l::LeftJoin) = IteratorSize(l.left.it)
 length(l::LeftJoin) = length(l.left.it)
 size(l::LeftJoin) = size(l.left.it)
 function iterate(l::LeftJoin)
-	left_history = iterate(l.left)
+	left_history = next_history(l.left)
     if left_history === nothing
         nothing
     else
-	    right_history = iterate(l.right)
+	    right_history = next_history(l.right)
         if right_history === nothing
             (left_history.item => missing), nothing
         else
@@ -195,7 +226,7 @@ function iterate(l::LeftJoin)
 end
 iterate(l::LeftJoin, ::Nothing) = nothing
 function iterate(l::LeftJoin, (left_history, right_history))
-	left_history = iterate(l.left, left_history)
+	left_history = next_history(l.left, left_history)
     if left_history === nothing
         nothing
     else
@@ -204,7 +235,7 @@ function iterate(l::LeftJoin, (left_history, right_history))
 end
 function seek_right_match(l, left_history, right_history)
 	while isless(right_history, left_history)
-		right_history = iterate(l.right, right_history)
+		right_history = next_history(l.right, right_history)
         if right_history === nothing
             return (left_history.item => missing), nothing
         end
@@ -219,9 +250,23 @@ function seek_right_match(l, left_history, right_history)
 end
 
 export over
-over(x, f) = Generator(f, x)
+"""
+	over(it, f)
+
+Hackable version of `Generator`. If `f` is a symbol, interpret is as a
+[`Name`](@ref).
+"""
+over(it, f) = Generator(f, it)
+
+@inline over(it, f::Symbol) = over(it, Name{f}())
 
 export when
+"""
+	when(it, f)
+
+Hackable version of `Base.Iterators.Filter`. If `f` is a symbol, interpret is as 4
+a [`Name`](@ref).
+"""
 when(x, f) = Filter(f, x)
 
 # piracy
@@ -231,3 +276,10 @@ view(z::Zip, args...) = zip(map(
 	z.is
 )...)
 IteratorSize(g::Generator) = IteratorSize(g.iter)
+getindex(z::Zip, args...) = zip(map(
+	i -> getindex(i, args...),
+	z.is
+)...)
+getindex(g::Generator, args...) = Generator(g.f, getindex(g.iter, args...))
+axes(g::Generator, args...) = axes(g.iter, args...)
+axes(z::Zip, args...) = axes(z.is[1], args...)
