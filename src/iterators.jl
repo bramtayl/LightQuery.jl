@@ -138,8 +138,8 @@ julia> using LightQuery
 
 julia> group(By([1, 3, 2, 4], iseven)) |> collect
 2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
- false => [1, 3]
-  true => [2, 4]
+ 0 => [1, 3]
+ 1 => [2, 4]
 ```
 """
 group(b::By) = group_inner(b.f, b.it, IteratorSize(b.it))
