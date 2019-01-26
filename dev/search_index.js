@@ -49,7 +49,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.group",
     "category": "method",
-    "text": "group(b::By)\n\nGroup consecutive keys in b.\n\njulia> using LightQuery\n\njulia> group(By([1, 3, 2, 4], iseven)) |> collect\n2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:\n false => [1, 3]\n  true => [2, 4]\n\n\n\n\n\n"
+    "text": "group(b::By)\n\nGroup consecutive keys in b.\n\njulia> using LightQuery\n\njulia> group(By([1, 3, 2, 4], iseven)) |> collect\n2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:\n 0 => [1, 3]\n 1 => [2, 4]\n\n\n\n\n\n"
 },
 
 {
@@ -89,7 +89,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.name",
     "category": "method",
@@ -121,7 +121,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.remove",
     "category": "method",
@@ -145,7 +145,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.select",
     "category": "method",
