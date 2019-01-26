@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.By",
     "category": "type",
-    "text": "By(it, f)\n\nMarks that it has been pre-sorted by the key f.\n\n\n\n\n\n"
+    "text": "By(it, f)\n\nMarks that it has been pre-sorted by the key f. If f is a symbol, interpret is as a Name.\n\n\n\n\n\n"
 },
 
 {
@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Name",
     "category": "type",
-    "text": "Name(name)\n\njulia> using LightQuery\n\njulia> Name(:a)((a = 1, b = 2.0,))\n1\n\n\n\n\n\n"
+    "text": "Name(name)\n\nContainer for a name. Can use to select.\n\njulia> using LightQuery\n\njulia> Name(:a)((a = 1, b = 2.0,))\n1\n\n\n\n\n\n"
 },
 
 {
@@ -45,23 +45,15 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Names",
     "category": "type",
-    "text": "struct Names{T} end\n\njulia> using LightQuery\n\njulia> Names(:a, :b)((a = 1, b = 2.0, c = 3//1))\n(a = 1, b = 2.0)\n\n\n\n\n\n"
+    "text": "struct Names{T} end\n\nContainer for names. Can use to select.\n\njulia> using LightQuery\n\njulia> Names(:a, :b)((a = 1, b = 2.0, c = 3//1))\n(a = 1, b = 2.0)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.based_on-Tuple{Any}",
+    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "LightQuery.jl",
-    "title": "LightQuery.based_on",
+    "title": "LightQuery.columns",
     "category": "method",
-    "text": "based_on(data; assignments...)\n\nApply the functions in assignments to data, and assign to the corresponding keys.\n\njulia> using LightQuery\n\njulia> based_on((a = 1, b = 2.0), c = @_ _.a + _.b)\n(c = 3.0,)\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.column-Tuple{Any,LightQuery.Name}",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.column",
-    "category": "method",
-    "text": "column(it, names::Names)\n\nLazy find name for each item in it.\n\njulia> using LightQuery\n\njulia> it = [(a = 1, b = 1.0), (a = 2, b = 2.0)];\n\njulia> collect(column(it, :a))\n2-element Array{Int64,1}:\n 1\n 2\n\n\n\n\n\n"
+    "text": "columns(it, into_names...)\n\nCollect into columns. Inverse of rows.\n\njulia> using LightQuery\n\njulia> it = [(a = 1, b = 1.0), (a = 2, b = 2.0)];\n\njulia> columns(it, :a, :b)\n(a = [1, 2], b = [1.0, 2.0])\n\n\n\n\n\n"
 },
 
 {
@@ -69,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.gather",
     "category": "method",
-    "text": "gather(data, new_column, columns...)\n\nGather all the data in columns into a single new_column.\n\njulia> using LightQuery\n\njulia> gather((a = 1, b = 2.0, c = \"c\"), :d, :a, :c)\n(b = 2.0, d = (a = 1, c = \"c\"))\n\n\n\n\n\n"
+    "text": "gather(data, new_column, columns...)\n\nGather all the data in columns into a single new_column. Inverse of spread.\n\njulia> using LightQuery\n\njulia> gather((a = 1, b = 2.0, c = \"c\"), :d, :a, :c)\n(b = 2.0, d = (a = 1, c = \"c\"))\n\n\n\n\n\n"
 },
 
 {
@@ -101,7 +93,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.name",
     "category": "method",
-    "text": "name(data, names...)\n\nRename data\n\njulia> using LightQuery\n\njulia> name((a = 1, b = 2.0), :c, :d)\n(c = 1, d = 2.0)\n\n\n\n\n\n"
+    "text": "name(data, names...)\n\nWholesale rename data. Inverse of unname.\n\njulia> using LightQuery\n\njulia> name((a = 1, b = 2.0), :c, :d)\n(c = 1, d = 2.0)\n\n\n\n\n\n"
 },
 
 {
@@ -109,7 +101,23 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.named",
     "category": "method",
-    "text": "named(data)\n\nConvert to a named tuple\n\njulia> using LightQuery\n\njulia> named((a = 1, b = 2.0))\n(a = 1, b = 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> named(Triple(1, 1.0, \"a\"))\n(first = 1, second = 1.0, third = \"a\")\n\n\n\n\n\n"
+    "text": "named(data)\n\nConvert to a named tuple.\n\njulia> using LightQuery\n\njulia> named((a = 1, b = 2.0))\n(a = 1, b = 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> named(Triple(1, 1.0, \"a\"))\n(first = 1, second = 1.0, third = \"a\")\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.order_by-Tuple{Any,Any}",
+    "page": "LightQuery.jl",
+    "title": "LightQuery.order_by",
+    "category": "method",
+    "text": "order_by(it, f)\n\nGeneralized sort. If f is a symbol, interpret is as a Name.\n\njulia> using LightQuery\n\njulia> order_by([\"b\", \"a\"], identity).it\n2-element view(::Array{String,1}, [2, 1]) with eltype String:\n \"a\"\n \"b\"\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.over-Tuple{Any,Any}",
+    "page": "LightQuery.jl",
+    "title": "LightQuery.over",
+    "category": "method",
+    "text": "over(it, f)\n\nHackable version of Generator. If f is a symbol, interpret is as a Name.\n\n\n\n\n\n"
 },
 
 {
@@ -117,7 +125,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.remove",
     "category": "method",
-    "text": "remove(data, columns...)\n\nRemove columns.\n\njulia> using LightQuery\n\njulia> remove((a = 1, b = 2.0), :b)\n(a = 1,)\n\n\n\n\n\n"
+    "text": "remove(data, columns...)\n\nRemove columns. Inverse of transform.\n\njulia> using LightQuery\n\njulia> remove((a = 1, b = 2.0), :b)\n(a = 1,)\n\n\n\n\n\n"
 },
 
 {
@@ -125,7 +133,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.rename",
     "category": "method",
-    "text": "rename(data; renames...)\n\nFor type stability, use Name.\n\njulia> using LightQuery\n\njulia> rename((a = 1, b = 2.0), c = Name(:a))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
+    "text": "rename(data; renames...)\n\nRename data. Until we get constant propagation through keyword arguments, use Name for stability.\n\njulia> using LightQuery\n\njulia> rename((a = 1, b = 2.0), c = Name(:a))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
 },
 
 {
@@ -133,7 +141,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.rows",
     "category": "method",
-    "text": "rows(n::NamedTuple)\n\nIterator over rows of a NamedTuple of columns.\n\njulia> using LightQuery\n\njulia> rows((a = [1, 2], b = [2, 1])) |> first\n(a = 1, b = 2)\n\n\n\n\n\n"
+    "text": "rows(n::NamedTuple)\n\nIterator over rows of a NamedTuple of columns. Inverse of columns.\n\njulia> using LightQuery\n\njulia> rows((a = [1, 2], b = [2, 1])) |> first\n(a = 1, b = 2)\n\n\n\n\n\n"
 },
 
 {
@@ -145,19 +153,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.separate-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.separate",
-    "category": "method",
-    "text": "separate(it, into_names...)\n\nColumn-wise storage.\n\njulia> using LightQuery\n\njulia> it = [(a = 1, b = 1.0), (a = 2, b = 2.0)];\n\njulia> result = separate(it, :a, :b);\n\njulia> first(result)\n(a = 1, b = 1.0)\n\n\n\n\n\n"
-},
-
-{
     "location": "#LightQuery.spread-Tuple{Any,LightQuery.Name}",
     "page": "LightQuery.jl",
     "title": "LightQuery.spread",
     "category": "method",
-    "text": "spread(data, column::Name)\n\nUnnest nested data in column\n\njulia> using LightQuery\n\njulia> spread((b = 2.0, d = (a = 1, c = \"c\")), :d)\n(b = 2.0, a = 1, c = \"c\")\n\n\n\n\n\n"
+    "text": "spread(data, column::Name)\n\nUnnest nested data in column. Inverse of gather.\n\njulia> using LightQuery\n\njulia> spread((b = 2.0, d = (a = 1, c = \"c\")), :d)\n(b = 2.0, a = 1, c = \"c\")\n\n\n\n\n\n"
 },
 
 {
@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.transform",
     "category": "method",
-    "text": "transform(data; assignments...)\n\nSame as based_on, but merge back in the original.\n\njulia> using LightQuery\n\njulia> transform((a = 1, b = 2.0), c = @_ _.a + _.b)\n(a = 1, b = 2.0, c = 3.0)\n\n\n\n\n\n"
+    "text": "transform(data; assignments...)\n\nApply the functions in assignments to data, assign to the corresponding keys, and merge back in the original.\n\njulia> using LightQuery\n\njulia> transform((a = 1, b = 2.0), c = @_ _.a + _.b)\n(a = 1, b = 2.0, c = 3.0)\n\n\n\n\n\n"
 },
 
 {
@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.unname",
     "category": "method",
-    "text": "unname\n\nRemove names. Explicitly define public propertynames for arbitrary structs.\n\njulia> using LightQuery\n\njulia> unname((a = 1, b = 2.0))\n(1, 2.0)\n\njulia> unname((1, 2.0))\n(1, 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> unname(Triple(1, 1.0, \"a\"))\n(1, 1.0, \"a\")\n\n\n\n\n\n\n"
+    "text": "unname\n\nRemove names. Inverse of name.\n\njulia> using LightQuery\n\njulia> unname((a = 1, b = 2.0))\n(1, 2.0)\n\njulia> unname((1, 2.0))\n(1, 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> unname(Triple(1, 1.0, \"a\"))\n(1, 1.0, \"a\")\n\n\n\n\n\n\n"
 },
 
 {
@@ -193,6 +193,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#LightQuery.when-Tuple{Any,Any}",
+    "page": "LightQuery.jl",
+    "title": "LightQuery.when",
+    "category": "method",
+    "text": "when(it, f)\n\nHackable version of Base.Iterators.Filter. If f is a symbol, interpret is as 4 a Name.\n\n\n\n\n\n"
+},
+
+{
     "location": "#LightQuery.@>-Tuple{Any}",
     "page": "LightQuery.jl",
     "title": "LightQuery.@>",
@@ -205,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.@_",
     "category": "macro",
-    "text": "macro _(body::Expr)\n\nCreate an Nameless object. The arguments are inside the body; the first arguments is _, the second argument is __, etc. Also stores a quoted version of the function.\n\njulia> using LightQuery\n\njulia> 1 |> @_(_ + 1)\n2\n\njulia> map(@_(__ - _), (1, 2), (2, 1))\n(1, -1)\n\njulia> @_(_ + 1).expression\n:(_ + 1)\n\n\n\n\n\n"
+    "text": "macro _(body)\n\nCreate an Nameless object. The arguments are inside the body; the first arguments is _, the second argument is __, etc. Also stores a quoted version of the function. If body isn\'t an expression, use :($body(_)) instead.\n\njulia> using LightQuery\n\njulia> 1 |> @_(_ + 1)\n2\n\njulia> map(@_(__ - _), (1, 2), (2, 1))\n(1, -1)\n\njulia> @_(_ + 1).expression\n:(_ + 1)\n\n\n\n\n\n"
 },
 
 {
