@@ -14,6 +14,10 @@ axes(array::ModelArray) = axes(array.model)
 size(array::ModelArray) = size(array.model)
 IndexStyle(array::ModelArray) = IndexStyle(array.model)
 arrays(m::ModelArray) = (m.model, m.rest...)
+function sizehint!(array::ModelArray, n)
+	foreach(x -> sizehint!(x, n), arrays(array))
+	array
+end
 @propagate_inbounds function getindex(array::ModelArray, index...)
     @propagate_inbounds inner(x) = x[index...]
     inner.(arrays(array))
@@ -24,6 +28,9 @@ end
 end
 push!(array::ModelArray, value::Tuple) = push!.(arrays(array), value)
 
+function similar(array::ModelArray, ::Type{ElementType}, dims::Dims) where {ElementType <: Union{}}
+	error("Attempt to create a model array without an element type, likely due to inner function error. Try `first` to see what's up.")
+end
 function similar(array::ModelArray, ::Type, dims::Dims)
 	@inline inner(i) = Array{Any}(undef, dims...)
 	ModelArray(ntuple(inner, length(arrays(array)))...)
@@ -49,13 +56,17 @@ julia> f(x) = (x, x + 1.0);
 julia> unzip(over([1], f), 2)
 ([1], [2.0])
 
-julia> unzip(over([1, missing], f), 2);
+julia> unzip(over([1, missing], f), 2)
+(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[2.0, missing])
 
 julia> unzip(zip([1], [1.0]), 2)
 ([1], [1.0])
 
 julia> unzip([(1, 1.0)], 2)
 ([1], [1.0])
+
+julia> unzip(over(when([1, missing, 2], x -> ismissing(x) || x > 1), f), 2)
+(Union{Missing, Int64}[missing, 2], Union{Missing, Float64}[missing, 3.0])
 ```
 """
 @inline unzip(it, n) = arrays(_collect(
@@ -75,3 +86,15 @@ maybe_setindex_widen_up_to(dest::AbstractArray{T}, el, i) where T =
 
 setindex_widen_up_to(dest::ModelArray, el, i) =
     ModelArray(maybe_setindex_widen_up_to.(arrays(dest), el, i)...)
+
+
+function maybe_push_widen(dest::AbstractArray{T}, el) where T
+	if isa(el, T)
+        push!(dest, el)
+        dest
+    else
+        push_widen(dest, el)
+    end
+end
+
+push_widen(dest::ModelArray, el) = ModelArray(maybe_push_widen.(arrays(dest), el)...)

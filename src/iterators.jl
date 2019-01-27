@@ -29,11 +29,12 @@ order_by(it, f) =
 	By(view(it, mappedarray(first,
 		sort!(collect(enumerate(Generator(f, it))), by = last))), f)
 
-state_to_index(s::AbstractArray, state) = state[2]
+state_to_index(s::AbstractArray, state) = state[2] + 1
 state_to_index(it::Array, state::Int) = state
 state_to_index(g::Generator, state) = state_to_index(g.iter, state)
 state_to_index(z::Zip, t::Tuple) = state_to_index(z.is[1], t[1])
 state_to_index(s::StepRange, t::Tuple) = t[2] + 1
+state_to_index(x, state) = error("Attempted to group a type not known to be indexible. Either add a method of `state_to_index` or collect x or call columns then rows")
 
 export Group
 struct Group{F, It}
