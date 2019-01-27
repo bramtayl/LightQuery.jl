@@ -13,7 +13,15 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.By",
     "category": "type",
-    "text": "By(it, f)\n\nMarks that it has been pre-sorted by the key f. If f is a symbol, interpret is as a Name. Returned by order_by. For use with group or LeftJoin.\n\njulia> using LightQuery\n\njulia> By([(a = 1,), (a = 2,)], :a).f\nName{:a}()\n\n\n\n\n\n"
+    "text": "By(it, f)\n\nMarks that it has been pre-sorted by the key f. For use with Group or LeftJoin.\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.Group-Tuple{LightQuery.By}",
+    "page": "LightQuery.jl",
+    "title": "LightQuery.Group",
+    "category": "method",
+    "text": "group(b::By)\n\nGroup consecutive keys in b. Requires a presorted object (see By).\n\njulia> using LightQuery\n\njulia> Group(By([1, 3, 2, 4], iseven)) |> collect\n2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:\n 0 => [1, 3]\n 1 => [2, 4]\n\n\n\n\n\n"
 },
 
 {
@@ -29,71 +37,31 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Name",
     "category": "type",
-    "text": "Name(name)\n\nContainer for a name. Can use to select.\n\njulia> using LightQuery\n\njulia> Name(:a)((a = 1, b = 2.0,))\n1\n\n\n\n\n\n"
+    "text": "Name(x)\n\nForce into the type domain.\n\njulia> using LightQuery\n\njulia> Name(:a)\nName{:a}()\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.Names",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.Names",
-    "category": "type",
-    "text": "struct Names{T} end\n\nContainer for names. Can use to select.\n\njulia> using LightQuery\n\njulia> Names(:a, :b)((a = 1, b = 2.0, c = 3//1))\n(a = 1, b = 2.0)\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
+    "location": "#LightQuery.columns-Tuple{Any,Vararg{Any,N} where N}",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
-    "text": "columns(it, into_names...)\n\nCollect into columns. Inverse of rows.\n\njulia> using LightQuery\n\njulia> it = [(a = 1, b = 1.0), (a = 2, b = 2.0)];\n\njulia> columns(it, :a, :b)\n(a = [1, 2], b = [1.0, 2.0])\n\n\n\n\n\n"
+    "text": "columns(it, names...)\n\nCollect into columns. Inverse of rows.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = columns(x, :a, :b);\n\njulia> @inferred test([(a = 1, b = 1.0)])\n(a = [1], b = [1.0])\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.gather-Tuple{Any,LightQuery.Name,LightQuery.Names}",
+    "location": "#LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}",
     "page": "LightQuery.jl",
     "title": "LightQuery.gather",
     "category": "method",
-    "text": "gather(data, new_column, columns...)\n\nGather all the data in columns into a single new_column. Inverse of spread.\n\njulia> using LightQuery\n\njulia> gather((a = 1, b = 2.0, c = \"c\"), :d, :a, :c)\n(b = 2.0, d = (a = 1, c = \"c\"))\n\n\n\n\n\n"
+    "text": "gather(data, name, names...)\n\nGather all the data in names into a single name. Inverse of spread.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = gather(x, :d, :a, :c);\n\njulia> @inferred test((a = 1, b = 2.0, c = \"c\"))\n(b = 2.0, d = (a = 1, c = \"c\"))\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.group-Tuple{LightQuery.By}",
+    "location": "#LightQuery.named_tuple-Tuple{Any}",
     "page": "LightQuery.jl",
-    "title": "LightQuery.group",
+    "title": "LightQuery.named_tuple",
     "category": "method",
-    "text": "group(b::By)\n\nGroup consecutive keys in b. Requires a presorted and indexible object (see By).\n\njulia> using LightQuery\n\njulia> group(By([1, 3, 2, 4], iseven)) |> first\nfalse => [1, 3]\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.in_common-Tuple{Any,Any}",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.in_common",
-    "category": "method",
-    "text": "in_common(data1, data2)\n\nFind Names in common.\n\njulia> using LightQuery\n\njulia> in_common((a = 1, b = 2.0), (a = 1, c = \"3\"))\nNames{(:a,)}()\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.key-Tuple{Pair}",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.key",
-    "category": "method",
-    "text": "key(pair)\n\nThe first item\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.name",
-    "category": "method",
-    "text": "name(data, names...)\n\nWholesale rename data. Inverse of unname.\n\njulia> using LightQuery\n\njulia> name((a = 1, b = 2.0), :c, :d)\n(c = 1, d = 2.0)\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.named-Tuple{Any}",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.named",
-    "category": "method",
-    "text": "named(data)\n\nConvert to a named tuple.\n\njulia> using LightQuery\n\njulia> named((a = 1, b = 2.0))\n(a = 1, b = 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> named(Triple(1, 1.0, \"a\"))\n(first = 1, second = 1.0, third = \"a\")\n\n\n\n\n\n"
+    "text": "named_tuple(x)\n\nCoerce to a named_tuple.\n\njulia> using LightQuery\n\njulia> named_tuple(:a => 1)\n(first = :a, second = 1)\n\n\n\n\n\n"
 },
 
 {
@@ -101,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.order_by",
     "category": "method",
-    "text": "order_by(it, f)\n\nGeneralized sort. If f is a symbol, interpret is as a Name. Will return a By object.\n\njulia> using LightQuery\n\njulia> order_by([\"b\", \"a\"], identity).it\n2-element view(::Array{String,1}, [2, 1]) with eltype String:\n \"a\"\n \"b\"\n\njulia> order_by([(a = 2,), (a = 1,)], :a).it\n2-element view(::Array{NamedTuple{(:a,),Tuple{Int64}},1}, [2, 1]) with eltype NamedTuple{(:a,),Tuple{Int64}}:\n (a = 1,)\n (a = 2,)\n\n\n\n\n\n"
+    "text": "order_by(it, f)\n\nGeneralized sort. Will return a By object.\n\njulia> using LightQuery\n\njulia> order_by([\"b\", \"a\"], identity).it\n2-element view(::Array{String,1}, [2, 1]) with eltype String:\n \"a\"\n \"b\"\n\n\n\n\n\n"
 },
 
 {
@@ -109,15 +77,15 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.over",
     "category": "method",
-    "text": "over(it, f)\n\nHackable version of Generator. If f is a symbol, interpret is as a Name.\n\njulia> using LightQuery\n\njulia> over([1, 2], x -> x + 1) |> collect\n2-element Array{Int64,1}:\n 2\n 3\n\njulia> over([(a = 1,), (a = 2,)], :a) |> collect\n2-element Array{Int64,1}:\n 1\n 2\n\n\n\n\n\n"
+    "text": "over(it, f)\n\nHackable reversed version of Base.Generator.\n\njulia> using LightQuery\n\njulia> over([1, 2], x -> x + 1) |> collect\n2-element Array{Int64,1}:\n 2\n 3\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
+    "location": "#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}",
     "page": "LightQuery.jl",
     "title": "LightQuery.remove",
     "category": "method",
-    "text": "remove(data, columns...)\n\nRemove columns. Inverse of transform.\n\njulia> using LightQuery\n\njulia> remove((a = 1, b = 2.0), :b)\n(a = 1,)\n\n\n\n\n\n"
+    "text": "remove(data, names...)\n\nRemove names. Inverse of transform.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = remove(x, :b);\n\njulia> @inferred test((a = 1, b = 2.0))\n(a = 1,)\n\n\n\n\n\n"
 },
 
 {
@@ -125,47 +93,39 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.rename",
     "category": "method",
-    "text": "rename(data; renames...)\n\nRename data. Until we get constant propagation through keyword arguments, use Name for stability.\n\njulia> using LightQuery\n\njulia> rename((a = 1, b = 2.0), c = Name(:a))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
+    "text": "rename(data; renames...)\n\nRename data. Currently unstable.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = rename(x, c = :a);\n\njulia> test((a = 1, b = 2.0))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.rows-Tuple{NamedTuple}",
+    "location": "#LightQuery.rows-Tuple{Any}",
     "page": "LightQuery.jl",
     "title": "LightQuery.rows",
     "category": "method",
-    "text": "rows(n::NamedTuple)\n\nIterator over rows of a NamedTuple of columns. Inverse of columns.\n\njulia> using LightQuery\n\njulia> rows((a = [1, 2], b = [2, 1])) |> first\n(a = 1, b = 2)\n\n\n\n\n\n"
+    "text": "rows(n::NamedTuple)\n\nIterator over rows of a NamedTuple of names. Inverse of columns.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred first(rows((a = [1, 2], b = [2, 1])))\n(a = 1, b = 2)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
+    "location": "#LightQuery.select-Tuple{Any,Vararg{Any,N} where N}",
     "page": "LightQuery.jl",
     "title": "LightQuery.select",
     "category": "method",
-    "text": "select(data, columns...)\n\nSelect columns\n\njulia> using LightQuery\n\njulia> select((a = 1, b = 2.0), :a)\n(a = 1,)\n\n\n\n\n\n"
+    "text": "select(data::NamedTuple, names...)\n\nSelect names.\n\nselect(ss::Symbol...)\n\nCurried form.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = select(x, :a);\n\njulia> @inferred test((a = 1, b = 2.0))\n(a = 1,)\n\njulia> test(x) = select(:a)(x);\n\njulia> @inferred test((a = 1, b = 2.0))\n(a = 1,)\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.spread-Tuple{Any,LightQuery.Name}",
+    "location": "#LightQuery.spread-Tuple{Any,Any}",
     "page": "LightQuery.jl",
     "title": "LightQuery.spread",
     "category": "method",
-    "text": "spread(data, column::Name)\n\nUnnest nested data in column. Inverse of gather.\n\njulia> using LightQuery\n\njulia> spread((b = 2.0, d = (a = 1, c = \"c\")), :d)\n(b = 2.0, a = 1, c = \"c\")\n\n\n\n\n\n"
+    "text": "spread(data::NamedTuple, name)\n\nUnnest nested data in name. Inverse of gather.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = spread(x, :d);\n\njulia> @inferred test((b = 2.0, d = (a = 1, c = \"c\")))\n(b = 2.0, a = 1, c = \"c\")\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.transform-Tuple{Any}",
+    "location": "#LightQuery.transform-Tuple{NamedTuple}",
     "page": "LightQuery.jl",
     "title": "LightQuery.transform",
     "category": "method",
-    "text": "transform(data; assignments...)\n\nApply the functions in assignments to data, assign to the corresponding keys, and merge back in the original.\n\njulia> using LightQuery\n\njulia> transform((a = 1, b = 2.0), c = @_ _.a + _.b)\n(a = 1, b = 2.0, c = 3.0)\n\n\n\n\n\n"
-},
-
-{
-    "location": "#LightQuery.unname-Tuple{Any}",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.unname",
-    "category": "method",
-    "text": "unname\n\nRemove names. Inverse of name.\n\njulia> using LightQuery\n\njulia> unname((a = 1, b = 2.0))\n(1, 2.0)\n\njulia> unname((1, 2.0))\n(1, 2.0)\n\njulia> struct Triple{T1, T2, T3}\n            first::T1\n            second::T2\n            third::T3\n        end;\n\njulia> Base.propertynames(t::Triple) = (:first, :second, :third);\n\njulia> unname(Triple(1, 1.0, \"a\"))\n(1, 1.0, \"a\")\n\n\n\n\n\n\n"
+    "text": "transform(data; assignments...)\n\nApply the functions in assignments to data, assign to the corresponding keys, and merge back in the original.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred transform((a = 1, b = 2.0), c = @_ _.a + _.b)\n(a = 1, b = 2.0, c = 3.0)\n\n\n\n\n\n"
 },
 
 {
@@ -177,19 +137,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.value-Tuple{Pair}",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.value",
-    "category": "method",
-    "text": "value(pair)\n\nThe second item\n\n\n\n\n\n"
-},
-
-{
     "location": "#LightQuery.when-Tuple{Any,Any}",
     "page": "LightQuery.jl",
     "title": "LightQuery.when",
     "category": "method",
-    "text": "when(it, f)\n\nHackable version of Base.Iterators.Filter. If f is a symbol, interpret is as 4 a Name.\n\njulia> using LightQuery\n\njulia> when([1, 2], x -> x > 1) |> collect\n1-element Array{Int64,1}:\n 2\n\n\n\n\n\n"
+    "text": "when(it, f)\n\nHackable reversed version of Base.Iterators.Filter.\n\njulia> using LightQuery\n\njulia> when([1, 2], x -> x > 1) |> collect\n1-element Array{Int64,1}:\n 2\n\n\n\n\n\n"
 },
 
 {
