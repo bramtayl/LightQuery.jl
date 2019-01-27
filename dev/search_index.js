@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Group",
     "category": "method",
-    "text": "group(b::By)\n\nGroup consecutive keys in b. Requires a presorted object (see By).\n\njulia> using LightQuery\n\njulia> Group(By([1, 3, 2, 4], iseven)) |> collect\n2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:\n 0 => [1, 3]\n 1 => [2, 4]\n\n\n\n\n\n"
+    "text": "group(b::By)\n\nGroup consecutive keys in b. Requires a presorted object (see By).\n\njulia> using LightQuery\n\njulia> Group(By([1, 3, 2, 4], iseven)) |> first\nfalse => [1, 3]\n\n\n\n\n\n"
 },
 
 {
