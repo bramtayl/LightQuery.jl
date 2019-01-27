@@ -37,7 +37,15 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Name",
     "category": "type",
-    "text": "Name(x)\n\nForce into the type domain.\n\njulia> using LightQuery\n\njulia> Name(:a)\nName{:a}()\n\n\n\n\n\n"
+    "text": "Name(x)\n\nForce into the type domain. Can also be used as a function.\n\njulia> using LightQuery\n\njulia> Name(:a)((a = 1,))\n1\n\n\n\n\n\n"
+},
+
+{
+    "location": "#LightQuery.column-Tuple{Base.Generator{It,F} where F<:(Type{T} where T<:NamedTuple) where It<:Base.Iterators.Zip,Any}",
+    "page": "LightQuery.jl",
+    "title": "LightQuery.column",
+    "category": "method",
+    "text": "column(it, name)\n\nAccess just one column.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = column(x, :a);\n\njulia> @inferred test([(a = 1, b = 1.0)]) |> collect\n1-element Array{Int64,1}:\n 1\n\njulia> @inferred test(rows((a = [1, 2], b = [2, 1])))\n2-element Array{Int64,1}:\n 1\n 2\n\n\n\n\n\n"
 },
 
 {
@@ -45,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
-    "text": "columns(it, names...)\n\nCollect into columns. Inverse of rows.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = columns(x, :a, :b);\n\njulia> @inferred test([(a = 1, b = 1.0)])\n(a = [1], b = [1.0])\n\n\n\n\n\n"
+    "text": "columns(it, names...)\n\nCollect into columns. Inverse of rows.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = columns(x, :b, :a);\n\njulia> @inferred test([(a = 1, b = 1.0)])\n(b = [1.0], a = [1])\n\njulia> @inferred test(rows((a = [1, 2], b = [2, 1])))\n(b = [2, 1], a = [1, 2])\n\n\n\n\n\n"
 },
 
 {
@@ -81,6 +89,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#LightQuery.pretty-Tuple{Any}",
+    "page": "LightQuery.jl",
+    "title": "LightQuery.pretty",
+    "category": "method",
+    "text": "pretty(x)\n\nPretty display.\n\njulia> using LightQuery\n\njulia> pretty((a = [1, 2], b = [1.0, 2.0]))\n2×2 DataFrames.DataFrame\n│ Row │ a     │ b       │\n│     │ Int64 │ Float64 │\n├─────┼───────┼─────────┤\n│ 1   │ 1     │ 1.0     │\n│ 2   │ 2     │ 2.0     │\n\n\n\n\n\n"
+},
+
+{
     "location": "#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}",
     "page": "LightQuery.jl",
     "title": "LightQuery.remove",
@@ -93,7 +109,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.rename",
     "category": "method",
-    "text": "rename(data; renames...)\n\nRename data. Currently unstable.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = rename(x, c = :a);\n\njulia> test((a = 1, b = 2.0))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
+    "text": "rename(data; renames...)\n\nRename data. Currently unstable without Name\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = rename(x, c = Name(:a));\n\njulia> @inferred test((a = 1, b = 2.0))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
 },
 
 {
@@ -125,7 +141,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.transform",
     "category": "method",
-    "text": "transform(data; assignments...)\n\nApply the functions in assignments to data, assign to the corresponding keys, and merge back in the original.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred transform((a = 1, b = 2.0), c = @_ _.a + _.b)\n(a = 1, b = 2.0, c = 3.0)\n\n\n\n\n\n"
+    "text": "transform(data; assignments...)\n\nApply the functions in assignments to data, assign to the corresponding keys, and merge back in the original.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred transform((a = 1, b = 2.0), c = \"3\")\n(a = 1, b = 2.0, c = \"3\")\n\n\n\n\n\n"
 },
 
 {
@@ -133,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.unzip",
     "category": "method",
-    "text": "unzip(it, n)\n\nUnzip an iterator it which returns tuples of length n.\n\njulia> using LightQuery\n\njulia> f(x) = (x, x + 1.0);\n\njulia> unzip(over([1], f), 2)\n([1], [2.0])\n\njulia> unzip(over([1, missing], f), 2);\n\njulia> unzip(zip([1], [1.0]), 2)\n([1], [1.0])\n\njulia> unzip([(1, 1.0)], 2)\n([1], [1.0])\n\n\n\n\n\n"
+    "text": "unzip(it, n)\n\nUnzip an iterator it which returns tuples of length n.\n\njulia> using LightQuery\n\njulia> f(x) = (x, x + 1.0);\n\njulia> unzip(over([1], f), 2)\n([1], [2.0])\n\njulia> unzip(over([1, missing], f), 2)\n(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[2.0, missing])\n\njulia> unzip(zip([1], [1.0]), 2)\n([1], [1.0])\n\njulia> unzip([(1, 1.0)], 2)\n([1], [1.0])\n\njulia> unzip(over(when([1, missing, 2], x -> ismissing(x) || x > 1), f), 2)\n(Union{Missing, Int64}[missing, 2], Union{Missing, Float64}[missing, 3.0])\n\n\n\n\n\n"
 },
 
 {
@@ -165,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.jl",
     "category": "section",
-    "text": "For performance with working with arbitrary structs, explicitly define public propertynames.Modules = [LightQuery]"
+    "text": "For performance with working with arbitrary structs, explicitly define public propertynames.For an example of how to use this package, see the demo below, which follows the tutorial here.julia> using LightQuery\n\njulia> import CSV\n\njulia> flights =\n          @> CSV.read(\"flights.csv\", missingstring = \"NA\") |>\n          named_tuple |>\n          remove(_, Symbol(\"\"));\n\njulia> @> flights |>\n          rows |>\n          when(_, @_ _.month == 1 && _.day == 1);\n\njulia> @> flights |>\n          rows |>\n          when(_, @_ _.month == 1 || _.month == 2);\n\njulia> @> flights |>\n          rows |>\n          _[1:10];\n\njulia> @> flights |>\n          rows |>\n          order_by(_, select(:arr_delay));\n\njulia> @> flights |>\n          select(_, :year, :month, :day);\n\njulia> @> flights |>\n          remove(_, :year, :month, :day);\n\njulia> @> flights |>\n          rename(_, tail_num = :tailnum);\n\njulia> @> flights |>\n          transform(_,\n            gain = _.arr_delay .- _.dep_delay,\n            speed = _.distance ./ _.air_time .* 60\n          ) |>\n          transform(_,\n            gain_per_hour = _.gain ./ (_.air_time / 60)\n          );\n\njulia> using Statistics: mean;\n\njulia> mean(skipmissing(flights.dep_delay));\n\njulia> @> flights |>\n          rows |>\n          order_by(_, select(:tailnum)) |>\n          Group |>\n          over(_,  @_ transform(_.first,\n                    count = length(_.second),\n                    distance = column(_.second, :distance) |> skipmissing |> mean,\n                    delay = column(_.second, :arr_delay) |> skipmissing |> mean\n          )) |>\n          columns(_, :tailnum, :count, :distance, :delay);\n\njulia> per_day =\n          @> flights |>\n          rows |>\n          order_by(_, select(:year, :month, :day)) |>\n          Group |>\n          over(_, @_ transform(_.first, flights = length(_.second))) |>\n          columns(_, :year, :month, :day, :flights);\n\njulia> per_month =\n          @> per_day|>\n          rows |>\n          By(_, select(:year, :month)) |>\n          Group |>\n          over(_, @_ transform(_.first, flights = sum(column(_.second, :flights)))) |>\n          columns(_, :year, :month, :flights);\n\njulia> per_year =\n          @> per_month |>\n          rows |>\n          By(_, select(:year)) |>\n          Group |>\n          over(_, @_ transform(_.first, flights = sum(column(_.second, :flights)))) |>\n          columns(_, :year, :flights);\n\njulia> @> flights |>\n          select(_, :year, :month, :day, :arr_delay, :dep_delay) |>\n          rows |>\n          order_by(_, select(:year, :month, :day)) |>\n          Group |>\n          over(_, @_ transform(_.first,\n                    arr = column(_.second, :arr_delay) |> skipmissing |> mean,\n                    dep = column(_.second, :dep_delay) |> skipmissing |> mean,\n          )) |>\n          when(_, @_ _.arr > 30 || _.dep > 30) |>\n          columns(_, :year, :month, :day, :arr, :dep);Modules = [LightQuery]"
 },
 
 ]}
