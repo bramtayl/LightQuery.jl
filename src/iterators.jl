@@ -41,11 +41,6 @@ struct Group{F, It}
 	it::It
 end
 
-Group(b::By) = Group(b.f, b.it)
-
-IteratorSize(g::Group) = SizeUnknown()
-IteratorEltype(g::Group) = EltypeUnknown()
-
 """
     group(b::By)
 
@@ -61,6 +56,9 @@ julia> Group(By([1, 3, 2, 4], iseven)) |> collect
 ```
 """
 Group(b::By) = Group(b.f, b.it)
+
+IteratorSize(g::Group) = SizeUnknown()
+IteratorEltype(g::Group) = EltypeUnknown()
 
 function iterate(g::Group)
 	item, state = @ifsomething iterate(g.it)
