@@ -67,7 +67,7 @@ export @>
 """
     macro >(body)
 
-If body is in the form `body_ |> tail_`, call `@_` on `tail`, and recur on `body`.
+If body is in the form `body_ |> tail_`, call [`@_`](@ref) on `tail`, and recur on `body`.
 
 ```jldoctest
 julia> using LightQuery
