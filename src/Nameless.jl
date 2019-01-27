@@ -1,14 +1,3 @@
-export Nameless
-
-"A container for a function and the expression that generated it"
-struct Nameless{F}
-    f::F
-    expression::Expr
-end
-
-(nameless::Nameless)(arguments...; keyword_arguments...) =
-    nameless.f(arguments...; keyword_arguments...)
-
 substitute_underscores!(dictionary, body) = body
 substitute_underscores!(dictionary, body::Symbol) =
     if all(isequal('_'), string(body))
@@ -30,9 +19,9 @@ substitute_underscores!(dictionary, body::Expr) =
 
 string_length(something) = something |> String |> length
 
-unname_simple(body, line, file) = unname_simple(:($body(_)), line, file)
+unname(body, line, file) = unname(:($body(_)), line, file)
 
-function unname_simple(body::Expr, line, file)
+function unname(body::Expr, line, file)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
     sorted_dictionary = sort(
@@ -46,23 +35,12 @@ function unname_simple(body::Expr, line, file)
     )
 end
 
-
-function unname(body::Expr, line, file)
-    Expr(:call, Nameless, unname_simple(body, line, file), quot(body))
-end
-
-function unname(body, line, file)
-    unname(Expr(:block, LineNumberNode(line, file), body), line, file)
-end
-
 export @_
 """
     macro _(body)
 
-Create an `Nameless` object. The arguments are inside the body; the
-first arguments is `_`, the second argument is `__`, etc. Also stores a
-quoted version of the function. If body isn't an expression, use
-`:(\$body(_))` instead.
+Terser function syntax. The arguments are inside the body; the first
+argument is `_`, the second argument is `__`, etc.
 
 ```jldoctest
 julia> using LightQuery
@@ -72,9 +50,6 @@ julia> 1 |> @_(_ + 1)
 
 julia> map(@_(__ - _), (1, 2), (2, 1))
 (1, -1)
-
-julia> @_(_ + 1).expression
-:(_ + 1)
 ```
 """
 macro _(body)
@@ -83,7 +58,7 @@ end
 
 chain(body, line, file) =
     if @capture body head_ |> tail_
-        Expr(:call, unname_simple(tail, line, file), chain(head, line, file))
+        Expr(:call, unname(tail, line, file), chain(head, line, file))
     else
         body
     end
@@ -97,8 +72,8 @@ If body is in the form `body_ |> tail_`, call `@_` on `tail`, and recur on `body
 ```jldoctest
 julia> using LightQuery
 
-julia> @> 0 |> _ + 1 |> _ - 1
-0
+julia> @> 0 |> _ - 1 |> abs
+1
 ```
 """
 macro >(body)

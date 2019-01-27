@@ -3,7 +3,6 @@ struct ModelArray{ElementType, NumberOfDimensions, Model, Rest <: Tuple} <:
     model::Model
     rest::Rest
 end
-
 ModelArray(model, rest...) =
     ModelArray{
         Tuple{eltype(model), eltype.(rest)...},
@@ -11,41 +10,28 @@ ModelArray(model, rest...) =
         typeof(model),
         typeof(rest)
     }(model, rest)
-
 axes(array::ModelArray) = axes(array.model)
 size(array::ModelArray) = size(array.model)
-
 IndexStyle(array::ModelArray) = IndexStyle(array.model)
-
 arrays(m::ModelArray) = (m.model, m.rest...)
-
 @propagate_inbounds function getindex(array::ModelArray, index...)
     @propagate_inbounds inner(x) = x[index...]
     inner.(arrays(array))
 end
-
 @propagate_inbounds function setindex!(array::ModelArray, value, index...)
     @propagate_inbounds inner(x, value) = x[index...] = value
     inner.(arrays(array), value)
 end
 
 push!(array::ModelArray, value::Tuple) = push!.(arrays(array), value)
-
-@inline value_field_types(atype, n) = ntuple(index -> Val(fieldtype(atype, index)), n)
-
-function similar(array::ModelArray, ::Type{ElementType}, dims::Dims) where ElementType
-    n = length(arrays(array))
-    inner_types =
+similar(array::ModelArray, ::Type{ElementType}, dims::Dims) where ElementType =
+    ModelArray(ntuple(index -> Array{
         try
-            value_field_types(ElementType, n)
+            fieldtype(ElementType, index)
         catch
-            ntuple(x -> Val(Any), n)
+            Any
         end
-    inner_array(::Val{InnerElementType}) where InnerElementType =
-        Array{InnerElementType}(undef, dims...)
-    ModelArray(inner_array.(inner_types)...)
-end
-
+    }(undef, dims...), length(arrays(array)))...)
 empty(array::ModelArray{T}, ::Type{U} = T) where {T, U} = similar(array, U)
 
 export unzip
@@ -72,7 +58,7 @@ julia> unzip([(1, 1.0)], 2)
 ```
 """
 @inline unzip(it, n) = arrays(_collect(
-    ModelArray(ntuple(x -> Union{}[], n)...),
+    ModelArray(ntuple(x -> 1:1, n)...),
     it,
     IteratorEltype(it),
     IteratorSize(it)

@@ -63,13 +63,8 @@ size(e::Enumerate) = size(e.it)
 IteratorEltype(e::Enumerate) = IteratorEltype(e.it)
 eltype(e::Enumerate) = Tuple{eltype(e.it), Int}
 function iterate(e::Enumerate, state)
-	result = iterate(e.it, state)
-	if result === nothing
-		nothing
-	else
-		item, state = result
-		(item, previous_index(e.it, state)), state
-	end
+	item, state = @ifsomething iterate(e.it, state)
+	(item, previous_index(e.it, state)), state
 end
 function iterate(e::Enumerate)
 	item, state = @ifsomething iterate(e.it)
@@ -97,7 +92,15 @@ export By
 	By(it, f)
 
 Marks that `it` has been pre-sorted by the key `f`. If `f` is a symbol,
-interpret is as a [`Name`](@ref).
+interpret is as a [`Name`](@ref). Returned by [`order_by`](@ref). For use with
+[`group`](@ref) or [`LeftJoin`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> By([(a = 1,), (a = 2,)], :a).f
+Name{:a}()
+```
 """
 struct By{It, F}
     it::It
@@ -110,7 +113,8 @@ export order_by
 """
 	order_by(it, f)
 
-Generalized sort. If `f` is a symbol, interpret is as a [`Name`](@ref).
+Generalized sort. If `f` is a symbol, interpret is as a [`Name`](@ref). Will
+return a [`By`](@ref) object.
 
 ```jldoctest
 julia> using LightQuery
@@ -119,6 +123,11 @@ julia> order_by(["b", "a"], identity).it
 2-element view(::Array{String,1}, [2, 1]) with eltype String:
  "a"
  "b"
+
+julia> order_by([(a = 2,), (a = 1,)], :a).it
+2-element view(::Array{NamedTuple{(:a,),Tuple{Int64}},1}, [2, 1]) with eltype NamedTuple{(:a,),Tuple{Int64}}:
+ (a = 1,)
+ (a = 2,)
 ```
 """
 order_by(it, f) =
@@ -131,20 +140,19 @@ export group
 """
     group(b::By)
 
-Group consecutive keys in `b`.
+Group consecutive keys in `b`. Requires a presorted and indexible object (see
+[`By`](@ref)).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> group(By([1, 3, 2, 4], iseven)) |> collect
-2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
- 0 => [1, 3]
- 1 => [2, 4]
+julia> group(By([1, 3, 2, 4], iseven)) |> first
+false => [1, 3]
 ```
 """
 group(b::By) = group_inner(b.f, b.it, IteratorSize(b.it))
 
-group_inner(f, x, ::SizeUnknown) = group(f, collect(x), HasLength())
+group_inner(f, x, ::SizeUnknown) = error("Can group if thes size is known")
 function group_inner(f, x, ::Union{HasLength, HasShape})
 	Generator(
 		let x = x
@@ -177,7 +185,8 @@ export LeftJoin
 """
 	LeftJoin(left::By, right::By)
 
-For each value in left, look for a value with the same key in right.
+For each value in left, look for a value with the same key in right. Requires
+both to be presorted (see [`By`](@ref)).
 
 ```jldoctest
 julia> using LightQuery
@@ -212,27 +221,16 @@ IteratorSize(l::LeftJoin) = IteratorSize(l.left.it)
 length(l::LeftJoin) = length(l.left.it)
 size(l::LeftJoin) = size(l.left.it)
 function iterate(l::LeftJoin)
-	left_history = next_history(l.left)
-    if left_history === nothing
-        nothing
-    else
-	    right_history = next_history(l.right)
-        if right_history === nothing
-            (left_history.item => missing), nothing
-        else
-            seek_right_match(l, left_history, right_history)
-        end
-    end
+	left_match = @ifsomething next_history(l.left)
+	seek_right_match(l, left_match, next_history(l.right))
 end
 iterate(l::LeftJoin, ::Nothing) = nothing
 function iterate(l::LeftJoin, (left_history, right_history))
-	left_history = next_history(l.left, left_history)
-    if left_history === nothing
-        nothing
-    else
-        seek_right_match(l, left_history, right_history)
-    end
+	left_history = @ifsomething next_history(l.left, left_history)
+    seek_right_match(l, left_history, right_history)
 end
+seek_right_match(l, left_history, ::Nothing) =
+	(left_history.item => missing), nothing
 function seek_right_match(l, left_history, right_history)
 	while isless(right_history, left_history)
 		right_history = next_history(l.right, right_history)
@@ -255,6 +253,20 @@ export over
 
 Hackable version of `Generator`. If `f` is a symbol, interpret is as a
 [`Name`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> over([1, 2], x -> x + 1) |> collect
+2-element Array{Int64,1}:
+ 2
+ 3
+
+julia> over([(a = 1,), (a = 2,)], :a) |> collect
+2-element Array{Int64,1}:
+ 1
+ 2
+```
 """
 over(it, f) = Generator(f, it)
 
@@ -266,10 +278,20 @@ export when
 
 Hackable version of `Base.Iterators.Filter`. If `f` is a symbol, interpret is as 4
 a [`Name`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> when([1, 2], x -> x > 1) |> collect
+1-element Array{Int64,1}:
+ 2
+```
 """
 when(x, f) = Filter(f, x)
 
 # piracy
+axes(g::Generator, args...) = axes(g.iter, args...)
+axes(z::Zip, args...) = axes(z.is[1], args...)
 view(g::Generator, args...) = Generator(g.f, view(g.iter, args...))
 view(z::Zip, args...) = zip(map(
 	i -> view(i, args...),
@@ -281,5 +303,3 @@ getindex(z::Zip, args...) = zip(map(
 	z.is
 )...)
 getindex(g::Generator, args...) = Generator(g.f, getindex(g.iter, args...))
-axes(g::Generator, args...) = axes(g.iter, args...)
-axes(z::Zip, args...) = axes(z.is[1], args...)
