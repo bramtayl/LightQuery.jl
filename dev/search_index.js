@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.By",
     "category": "type",
-    "text": "By(it, f)\n\nMarks that it has been pre-sorted by the key f. If f is a symbol, interpret is as a Name.\n\n\n\n\n\n"
+    "text": "By(it, f)\n\nMarks that it has been pre-sorted by the key f. If f is a symbol, interpret is as a Name. Returned by order_by. For use with group or LeftJoin.\n\njulia> using LightQuery\n\njulia> By([(a = 1,), (a = 2,)], :a).f\nName{:a}()\n\n\n\n\n\n"
 },
 
 {
@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.LeftJoin",
     "category": "type",
-    "text": "LeftJoin(left::By, right::By)\n\nFor each value in left, look for a value with the same key in right.\n\njulia> using LightQuery\n\njulia> LeftJoin(\n            By([1, 2, 5, 6], identity),\n            By([1, 3, 4, 6], identity)\n       ) |> collect\n4-element Array{Pair{Int64,Union{Missing, Int64}},1}:\n 1 => 1\n 2 => missing\n 5 => missing\n 6 => 6\n\n\n\n\n\n"
+    "text": "LeftJoin(left::By, right::By)\n\nFor each value in left, look for a value with the same key in right. Requires both to be presorted (see By).\n\njulia> using LightQuery\n\njulia> LeftJoin(\n            By([1, 2, 5, 6], identity),\n            By([1, 3, 4, 6], identity)\n       ) |> collect\n4-element Array{Pair{Int64,Union{Missing, Int64}},1}:\n 1 => 1\n 2 => missing\n 5 => missing\n 6 => 6\n\n\n\n\n\n"
 },
 
 {
@@ -33,14 +33,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.Nameless",
-    "page": "LightQuery.jl",
-    "title": "LightQuery.Nameless",
-    "category": "type",
-    "text": "A container for a function and the expression that generated it\n\n\n\n\n\n"
-},
-
-{
     "location": "#LightQuery.Names",
     "page": "LightQuery.jl",
     "title": "LightQuery.Names",
@@ -49,7 +41,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
+    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
@@ -69,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.group",
     "category": "method",
-    "text": "group(b::By)\n\nGroup consecutive keys in b.\n\njulia> using LightQuery\n\njulia> group(By([1, 3, 2, 4], iseven)) |> collect\n2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:\n 0 => [1, 3]\n 1 => [2, 4]\n\n\n\n\n\n"
+    "text": "group(b::By)\n\nGroup consecutive keys in b. Requires a presorted and indexible object (see By).\n\njulia> using LightQuery\n\njulia> group(By([1, 3, 2, 4], iseven)) |> first\nfalse => [1, 3]\n\n\n\n\n\n"
 },
 
 {
@@ -89,7 +81,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
+    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.name",
     "category": "method",
@@ -109,7 +101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.order_by",
     "category": "method",
-    "text": "order_by(it, f)\n\nGeneralized sort. If f is a symbol, interpret is as a Name.\n\njulia> using LightQuery\n\njulia> order_by([\"b\", \"a\"], identity).it\n2-element view(::Array{String,1}, [2, 1]) with eltype String:\n \"a\"\n \"b\"\n\n\n\n\n\n"
+    "text": "order_by(it, f)\n\nGeneralized sort. If f is a symbol, interpret is as a Name. Will return a By object.\n\njulia> using LightQuery\n\njulia> order_by([\"b\", \"a\"], identity).it\n2-element view(::Array{String,1}, [2, 1]) with eltype String:\n \"a\"\n \"b\"\n\njulia> order_by([(a = 2,), (a = 1,)], :a).it\n2-element view(::Array{NamedTuple{(:a,),Tuple{Int64}},1}, [2, 1]) with eltype NamedTuple{(:a,),Tuple{Int64}}:\n (a = 1,)\n (a = 2,)\n\n\n\n\n\n"
 },
 
 {
@@ -117,11 +109,11 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.over",
     "category": "method",
-    "text": "over(it, f)\n\nHackable version of Generator. If f is a symbol, interpret is as a Name.\n\n\n\n\n\n"
+    "text": "over(it, f)\n\nHackable version of Generator. If f is a symbol, interpret is as a Name.\n\njulia> using LightQuery\n\njulia> over([1, 2], x -> x + 1) |> collect\n2-element Array{Int64,1}:\n 2\n 3\n\njulia> over([(a = 1,), (a = 2,)], :a) |> collect\n2-element Array{Int64,1}:\n 1\n 2\n\n\n\n\n\n"
 },
 
 {
-    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
+    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.remove",
     "category": "method",
@@ -145,7 +137,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
+    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.select",
     "category": "method",
@@ -197,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.when",
     "category": "method",
-    "text": "when(it, f)\n\nHackable version of Base.Iterators.Filter. If f is a symbol, interpret is as 4 a Name.\n\n\n\n\n\n"
+    "text": "when(it, f)\n\nHackable version of Base.Iterators.Filter. If f is a symbol, interpret is as 4 a Name.\n\njulia> using LightQuery\n\njulia> when([1, 2], x -> x > 1) |> collect\n1-element Array{Int64,1}:\n 2\n\n\n\n\n\n"
 },
 
 {
@@ -205,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.@>",
     "category": "macro",
-    "text": "macro >(body)\n\nIf body is in the form body_ |> tail_, call @_ on tail, and recur on body.\n\njulia> using LightQuery\n\njulia> @> 0 |> _ + 1 |> _ - 1\n0\n\n\n\n\n\n"
+    "text": "macro >(body)\n\nIf body is in the form body_ |> tail_, call @_ on tail, and recur on body.\n\njulia> using LightQuery\n\njulia> @> 0 |> _ - 1 |> abs\n1\n\n\n\n\n\n"
 },
 
 {
@@ -213,7 +205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.@_",
     "category": "macro",
-    "text": "macro _(body)\n\nCreate an Nameless object. The arguments are inside the body; the first arguments is _, the second argument is __, etc. Also stores a quoted version of the function. If body isn\'t an expression, use :($body(_)) instead.\n\njulia> using LightQuery\n\njulia> 1 |> @_(_ + 1)\n2\n\njulia> map(@_(__ - _), (1, 2), (2, 1))\n(1, -1)\n\njulia> @_(_ + 1).expression\n:(_ + 1)\n\n\n\n\n\n"
+    "text": "macro _(body)\n\nTerser function syntax. The arguments are inside the body; the first argument is _, the second argument is __, etc.\n\njulia> using LightQuery\n\njulia> 1 |> @_(_ + 1)\n2\n\njulia> map(@_(__ - _), (1, 2), (2, 1))\n(1, -1)\n\n\n\n\n\n"
 },
 
 {
