@@ -41,7 +41,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.columns-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
@@ -81,7 +81,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.name-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.name",
     "category": "method",
@@ -113,7 +113,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.remove-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.remove",
     "category": "method",
@@ -137,7 +137,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,Names{T}}} where T",
+    "location": "#LightQuery.select-Union{Tuple{T}, Tuple{Any,LightQuery.Names{T}}} where T",
     "page": "LightQuery.jl",
     "title": "LightQuery.select",
     "category": "method",
