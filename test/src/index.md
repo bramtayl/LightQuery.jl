@@ -9,10 +9,6 @@ tutorial [here](https://julia-data-query.readthedocs.io/en/latest/index.htm;).
 ```jldoctest
 julia> using LightQuery
 
-julia> url = "https://raw.githubusercontent.com/alstat/Julia-Data-Query/master/data-raw/flights.csv";
-
-julia> download(url, "flights.csv");
-
 julia> import CSV
 
 julia> flights =
