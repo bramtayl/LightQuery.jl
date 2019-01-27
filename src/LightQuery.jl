@@ -63,10 +63,13 @@ export named_tuple
 """
     named_tuple(x)
 
-Coerce to a `named_tuple`.
+Coerce to a `named_tuple`. For performance with working with arbitrary structs,
+explicitly define public `propertynames`.
 
 ```jldoctest
 julia> using LightQuery
+
+julia> Base.propertynames(p::Pair) = (:first, :second);
 
 julia> named_tuple(:a => 1)
 (first = :a, second = 1)
@@ -256,14 +259,28 @@ julia> test(x) = columns(x, :b, :a);
 julia> @inferred test([(a = 1, b = 1.0)])
 (b = [1.0], a = [1])
 
-julia> @inferred test(rows((a = [1, 2], b = [2, 1])))
-(b = [2, 1], a = [1, 2])
+julia> test(when(rows((a = [1, 2], b = [2, 1])), @_ _.a > 1)) |> collect
+1-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:
+ (a = 2, b = 1)
 ```
 """
 @inline function columns(it, names...)
     typed_names = Name.(names)
     @inline inner(x) = get_names(x, typed_names...)
     set_names(unzip(Generator(inner, it), length(typed_names)), names...)
+end
+
+@inline columns(g::Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}, names...) =
+    select(g.f(g.iter.is), names...)
+
+@inline function columns(f::Filter{F2, It} where {F2, It <: Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}}, names...)
+    template = map(f.flt, f.itr)
+    rows(map(
+        let template = template
+            x -> view(x, template)
+        end,
+        f.itr.f(f.itr.iter.is)
+    ))
 end
 
 export column

@@ -1,8 +1,5 @@
 # LightQuery.jl
 
-For performance with working with arbitrary structs, explicitly define public
-`propertynames`.
-
 For an example of how to use this package, see the demo below, which follows the
 tutorial [here](https://julia-data-query.readthedocs.io/en/latest/index.htm;).
 
