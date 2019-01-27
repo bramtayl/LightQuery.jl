@@ -1,120 +1,20 @@
-downsize(::HasShape) = HasLength()
-downsize(it) = it
-
-struct Couples{It} it::It end
-IteratorSize(c::Couples) = downsize(IteratorSize(c.it))
-length(c::Couples) = length(c.it) - 1
-IteratorEltype(c::Couples) = IteratorEltype(c.it)
-eltype(c::Couples) = Tuple{eltype(c.it), eltype(c.it)}
-iterate(c::Couples) = iterate(c, @ifsomething iterate(c.it))
-function iterate(c::Couples, (last_item, state))
-	item, state = @ifsomething iterate(c.it, state)
-	(last_item, item), (item, state)
-end
-
-struct Cap{It, C}
-	it::It
-	cap::C
-end
-substitute_cap(c::Cap, result) =
-	if result == nothing
-		c.cap, nothing
-	else
-		result
-	end
-iterate(c::Cap) = substitute_cap(c, iterate(c.it))
-iterate(c::Cap, state) = substitute_cap(c, iterate(c.it, state))
-iterate(::Cap, ::Nothing) = nothing
-IteratorSize(c::Cap) = downsize(IteratorSize(c.it))
-IteratorEltype(c::Cap) = IteratorEltype(c.it)
-length(c::Cap) = length(c.it) + 1
-eltype(c::Cap{It, C}) where {It, C} = Union{eltype(c.it), C}
-
-struct SkipRepeats{It} it::It end
-IteratorSize(s::SkipRepeats) = SizeUnknown()
-IteratorEltype(s::SkipRepeats) = HasEltype()
-eltype(s::SkipRepeats) = eltype(s.it)
-function iterate(s::SkipRepeats)
-	(item, state) = @ifsomething iterate(s.it)
-	item, (item, state)
-end
-
-function iterate(s::SkipRepeats, (last_item, state))
-	item, next_state = @ifsomething iterate(s.it, state)
-	if isequal(last_item, item)
-		iterate(s, (last_item, next_state))
-	else
-		item, (item, next_state)
-	end
-end
-
-previous_index(s::AbstractArray, state) = state[2] - 1
-previous_index(it::Array, state::Int) = state - 1
-previous_index(s::SkipRepeats, t::Tuple{T1, T2}) where {T1, T2} =
-	previous_index(s.it, t[2])
-previous_index(g::Generator, state) = previous_index(g.iter, state)
-previous_index(z::Zip, t::Tuple) = previous_index(z.is[1], t[1])
-previous_index(s::StepRange, t::Tuple) = t[2]
-
-struct Enumerate{It} it::It end
-IteratorSize(e::Enumerate) = IteratorSize(e.it)
-length(e::Enumerate) = length(e.it)
-size(e::Enumerate) = size(e.it)
-IteratorEltype(e::Enumerate) = IteratorEltype(e.it)
-eltype(e::Enumerate) = Tuple{eltype(e.it), Int}
-function iterate(e::Enumerate, state)
-	item, state = @ifsomething iterate(e.it, state)
-	(item, previous_index(e.it, state)), state
-end
-function iterate(e::Enumerate)
-	item, state = @ifsomething iterate(e.it)
-	(item, 1), state
-end
-
-export key
-"""
-    key(pair)
-
-The first item
-"""
-key(p::Pair) = p.first
-
-export value
-"""
-    value(pair)
-
-The second item
-"""
-value(p::Pair) = p.second
-
 export By
 """
 	By(it, f)
 
-Marks that `it` has been pre-sorted by the key `f`. If `f` is a symbol,
-interpret is as a [`Name`](@ref). Returned by [`order_by`](@ref). For use with
-[`group`](@ref) or [`LeftJoin`](@ref).
-
-```jldoctest
-julia> using LightQuery
-
-julia> By([(a = 1,), (a = 2,)], :a).f
-Name{:a}()
-```
+Marks that `it` has been pre-sorted by the key `f`. For use with
+[`Group`](@ref) or [`LeftJoin`](@ref).
 """
 struct By{It, F}
     it::It
 	f::F
 end
 
-@inline By(it, f::Symbol) = By(it, Name{f}())
-
 export order_by
 """
 	order_by(it, f)
 
-Generalized sort. If `f` is a symbol, interpret is as a [`Name`](@ref). Will
-return a [`By`](@ref) object.
+Generalized sort. Will return a [`By`](@ref) object.
 
 ```jldoctest
 julia> using LightQuery
@@ -123,46 +23,64 @@ julia> order_by(["b", "a"], identity).it
 2-element view(::Array{String,1}, [2, 1]) with eltype String:
  "a"
  "b"
-
-julia> order_by([(a = 2,), (a = 1,)], :a).it
-2-element view(::Array{NamedTuple{(:a,),Tuple{Int64}},1}, [2, 1]) with eltype NamedTuple{(:a,),Tuple{Int64}}:
- (a = 1,)
- (a = 2,)
 ```
 """
 order_by(it, f) =
 	By(view(it, mappedarray(first,
 		sort!(collect(enumerate(Generator(f, it))), by = last))), f)
 
-@inline order_by(it, f::Symbol) = order_by(it, Name{f}())
+state_to_index(s::AbstractArray, state) = state[2]
+state_to_index(it::Array, state::Int) = state
+state_to_index(g::Generator, state) = state_to_index(g.iter, state)
+state_to_index(z::Zip, t::Tuple) = state_to_index(z.is[1], t[1])
+state_to_index(s::StepRange, t::Tuple) = t[2] + 1
 
-export group
+export Group
+struct Group{F, It}
+	f::F
+	it::It
+end
+
+Group(b::By) = Group(b.f, b.it)
+
+IteratorSize(g::Group) = SizeUnknown()
+IteratorEltype(g::Group) = EltypeUnknown()
+
 """
     group(b::By)
 
-Group consecutive keys in `b`. Requires a presorted and indexible object (see
-[`By`](@ref)).
+Group consecutive keys in `b`. Requires a presorted object (see [`By`](@ref)).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> group(By([1, 3, 2, 4], iseven)) |> first
-false => [1, 3]
+julia> Group(By([1, 3, 2, 4], iseven)) |> collect
+2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
+ 0 => [1, 3]
+ 1 => [2, 4]
 ```
 """
-group(b::By) = group_inner(b.f, b.it, IteratorSize(b.it))
+Group(b::By) = Group(b.f, b.it)
 
-group_inner(f, x, ::SizeUnknown) = error("Can group if thes size is known")
-function group_inner(f, x, ::Union{HasLength, HasShape})
-	Generator(
-		let x = x
-			item_index__next_item_next_index -> begin
-				((item, index), (next_item, next_index)) = item_index__next_item_next_index
-				item => view(x, index:next_index - 1)
-			end
-		end,
-		Couples(Cap(Enumerate(SkipRepeats(Generator(f, x))), (nothing, length(x) + 1)))
-	)
+function iterate(g::Group)
+	item, state = @ifsomething iterate(g.it)
+	iterate(g::Group, (state, state_to_index(g.it, state) - 1, g.f(item)))
+end
+iterate(g::Group, ::Nothing) = nothing
+function iterate(g::Group, (state, left_index, last_result))
+	item_state = iterate(g.it, state)
+	if item_state === nothing
+		last_result => view(g.it, left_index:length(g.it)), nothing
+	else
+		item, state = item_state
+		result = g.f(item)
+		if isequal(result, last_result)
+			iterate(g, (state, left_index, last_result))
+		else
+			right_index = state_to_index(g.it, state) - 1
+			last_result => view(g.it, left_index:right_index - 1), (state, right_index, result)
+		end
+	end
 end
 
 struct History{S, I, R}
@@ -251,8 +169,7 @@ export over
 """
 	over(it, f)
 
-Hackable version of `Generator`. If `f` is a symbol, interpret is as a
-[`Name`](@ref).
+Hackable reversed version of `Base.Generator`.
 
 ```jldoctest
 julia> using LightQuery
@@ -261,23 +178,15 @@ julia> over([1, 2], x -> x + 1) |> collect
 2-element Array{Int64,1}:
  2
  3
-
-julia> over([(a = 1,), (a = 2,)], :a) |> collect
-2-element Array{Int64,1}:
- 1
- 2
 ```
 """
 over(it, f) = Generator(f, it)
-
-@inline over(it, f::Symbol) = over(it, Name{f}())
 
 export when
 """
 	when(it, f)
 
-Hackable version of `Base.Iterators.Filter`. If `f` is a symbol, interpret is as 4
-a [`Name`](@ref).
+Hackable reversed version of `Base.Iterators.Filter`.
 
 ```jldoctest
 julia> using LightQuery

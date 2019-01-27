@@ -22,16 +22,17 @@ end
     @propagate_inbounds inner(x, value) = x[index...] = value
     inner.(arrays(array), value)
 end
-
 push!(array::ModelArray, value::Tuple) = push!.(arrays(array), value)
-similar(array::ModelArray, ::Type{ElementType}, dims::Dims) where ElementType =
-    ModelArray(ntuple(index -> Array{
-        try
-            fieldtype(ElementType, index)
-        catch
-            Any
-        end
-    }(undef, dims...), length(arrays(array)))...)
+
+function similar(array::ModelArray, ::Type, dims::Dims)
+	@inline inner(i) = Array{Any}(undef, dims...)
+	ModelArray(ntuple(inner, length(arrays(array)))...)
+end
+function similar(array::ModelArray, ::Type{ElementType}, dims::Dims) where {ElementType <: Tuple}
+	@inline inner(i) = Array{fieldtype(ElementType, i)}(undef, dims...)
+	ModelArray(ntuple(inner, length(arrays(array)))...)
+end
+
 empty(array::ModelArray{T}, ::Type{U} = T) where {T, U} = similar(array, U)
 
 export unzip
