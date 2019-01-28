@@ -259,8 +259,8 @@ julia> @inferred test([(a = 1, b = 1.0)])
 (b = [1.0], a = [1])
 
 julia> test(when(rows((a = [1, 2], b = [2, 1])), @_ _.a > 1)) |> collect
-1-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:
- (a = 2, b = 1)
+1-element Array{NamedTuple{(:b, :a),Tuple{Int64,Int64}},1}:
+ (b = 1, a = 2)
 ```
 """
 @inline function columns(it, names...)
@@ -274,12 +274,12 @@ end
 
 @inline function columns(f::Filter{F2, It} where {F2, It <: Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}}, names...)
     template = map(f.flt, f.itr)
-    rows(map(
+    rows(select(map(
         let template = template
             x -> view(x, template)
         end,
         f.itr.f(f.itr.iter.is)
-    ))
+    ), names...))
 end
 
 export column
