@@ -141,7 +141,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.transform",
     "category": "method",
-    "text": "transform(data; assignments...)\n\nApply the functions in assignments to data, assign to the corresponding keys, and merge back in the original.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred transform((a = 1, b = 2.0), c = \"3\")\n(a = 1, b = 2.0, c = \"3\")\n\n\n\n\n\n"
+    "text": "transform(data; assignments...)\n\nMerge assignments into data.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> @inferred transform((a = 1, b = 2.0), c = \"3\")\n(a = 1, b = 2.0, c = \"3\")\n\n\n\n\n\n"
 },
 
 {
