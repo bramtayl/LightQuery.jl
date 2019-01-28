@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
-    "text": "columns(it, names...)\n\nCollect into columns. Inverse of rows.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = columns(x, :b, :a);\n\njulia> @inferred test([(a = 1, b = 1.0)])\n(b = [1.0], a = [1])\n\njulia> test(when(rows((a = [1, 2], b = [2, 1])), @_ _.a > 1)) |> collect\n1-element Array{NamedTuple{(:a, :b),Tuple{Int64,Int64}},1}:\n (a = 2, b = 1)\n\n\n\n\n\n"
+    "text": "columns(it, names...)\n\nCollect into columns. Inverse of rows.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = columns(x, :b, :a);\n\njulia> @inferred test([(a = 1, b = 1.0)])\n(b = [1.0], a = [1])\n\njulia> test(when(rows((a = [1, 2], b = [2, 1])), @_ _.a > 1)) |> collect\n1-element Array{NamedTuple{(:b, :a),Tuple{Int64,Int64}},1}:\n (b = 1, a = 2)\n\n\n\n\n\n"
 },
 
 {
