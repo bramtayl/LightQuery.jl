@@ -1,7 +1,7 @@
 # LightQuery.jl
 
 For an example of how to use this package, see the demo below, which follows the
-tutorial [here](https://julia-data-query.readthedocs.io/en/latest/index.htm;).
+tutorial [here](https://julia-data-query.readthedocs.io/en/latest/index.html).
 
 ```jldoctest
 julia> using LightQuery
