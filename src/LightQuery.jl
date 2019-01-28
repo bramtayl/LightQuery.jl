@@ -84,8 +84,7 @@ export transform
 """
     transform(data; assignments...)
 
-Apply the functions in assignments to `data`, assign to the corresponding
-keys, and merge back in the original.
+Merge `assignments` into `data`.
 
 ```jldoctest
 julia> using LightQuery
