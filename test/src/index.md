@@ -1,5 +1,12 @@
 # LightQuery.jl
 
+```@index
+```
+
+```@autodocs
+Modules = [LightQuery]
+```
+
 For an example of how to use this package, see the demo below, which follows the
 tutorial
 [here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). A
@@ -13,15 +20,15 @@ columns, in many cases, you will have to re-specify the column names (except in
 certain cases). This is inconvenient but prevents this package from having to
 rely on inference.
 
-You can easily convert most objects to named tuples using [`named_tuple`](@ref).
+You can easily convert most objects to named tuples using `named_tuple`.
 As a named tuple, the data will be in a column-wise form. If you want to display
-it, you can use [`pretty`](@ref) to hack the show methods of `DataFrame`s.
+it, you can use `pretty` to hack the show methods of `DataFrame`s.
 
 So read in flights, convert it into a named tuple, and remove the row-number
 column (which reads in without a name). This package comes with its own chaining
-macro [`@>`](@ref), which I'll make heavy use of.
+macro `@>`, which I'll make heavy use of.
 
-```jldoctest
+```jldoctest dplyr
 julia> using LightQuery
 
 julia> import CSV
@@ -29,7 +36,7 @@ julia> import CSV
 julia> flights =
           @> CSV.read("flights.csv", missingstring = "NA") |>
           named_tuple |>
-          remove(_, Symbol(""))
+          remove(_, Symbol(""));
 
 julia> pretty(flights)
 336776×19 DataFrames.DataFrame. Omitted printing of 13 columns
@@ -54,14 +61,14 @@ julia> pretty(flights)
 │ 336776 │ 2013   │ 9      │ 30     │ missing  │ 840            │ missing   │
 ```
 
-The [`rows`](@ref) iterator will convert the data to row-wise form.
-[`when`](@ref) will filter the data. You can make anonymous functions
- with [`@_`](@ref).
+The `rows` iterator will convert the data to row-wise form.
+`when` will filter the data. You can make anonymous functions
+ with `@_`.
 
 To display row-wise data, first, convert back to a columns-wise format with
-[`autocolumns`](@ref).
+`autocolumns`.
 
-```jldoctest
+```jldoctest dplyr
 julia> using LightQuery
 
 julia> @> flights |>
@@ -91,14 +98,14 @@ julia> @> flights |>
 │ 842 │ 2013   │ 1      │ 1      │ missing  │ 600            │ missing   │
 ```
 
-You can arrange rows with [`order_by`](@ref). Here, the currying version of
-[`select`](@ref) comes in handy.
+You can arrange rows with `order_by`. Here, the currying version of
+`select` comes in handy.
 
-```jldoctest
+```jldoctest dplyr
 julia> by_date =
           @> flights |>
           rows |>
-          order_by(_, select(:year, :month, :day));
+          order(_, select(:year, :month, :day));
 
 julia> @> by_date |>
           autocolumns |>
@@ -129,7 +136,7 @@ You can also pass in keyword arguments to `sort!` via `orderby`, like
 `rev = true`. The difference from the dplyr output here is caused by how `sort!`
 handles missing data in Julia.
 
-```jldoctest
+```jldoctest dplyr
 julia> @> flights |>
           rows |>
           order(_, select(:arr_delay), rev = true) |>
@@ -157,10 +164,9 @@ julia> @> flights |>
 │ 336776 │ 2013   │ 5      │ 7      │ 1715     │ 1729           │ -14       │
 ```
 
-In the original column-wise form, you can [`select`](@ref) or [`remove`](@ref)
-columns.
+In the original column-wise form, you can `select` or `remove` columns.
 
-```jldoctest
+```jldoctest dplyr
 julia> @> flights |>
           select(_, :year, :month, :day) |>
           pretty
@@ -212,9 +218,9 @@ julia> @> flights |>
 
 You can also rename columns. Because constants (currently) do not propagate
 through keyword arguments in Julia, it's smart to wrap column names with
-[`Name`](@ref).
+`Name`.
 
-```jldoctest
+```jldoctest dplyr
 julia> @> flights |>
           rename(_, tail_num = Name(:tailnum)) |>
           pretty
@@ -243,7 +249,7 @@ julia> @> flights |>
 You can add new columns with transform. If you want to refer to previous
 columns, you'll have to transform twice.
 
-```jldoctest
+```jldoctest dplyr
 julia> @> flights |>
           transform(_,
                     gain = _.arr_delay .- _.dep_delay,
@@ -277,7 +283,7 @@ julia> @> flights |>
 
 No summarize here, but you can just directly access columns:
 
-```jldoctest
+```jldoctest dplyr
 julia> using Statistics: mean;
 
 julia> mean(skipmissing(flights.dep_delay))
@@ -286,14 +292,14 @@ julia> mean(skipmissing(flights.dep_delay))
 
 I don't provide a export a sample function here, but StatsBase does.
 
-[`Group`](@ref)ing here works differently than in dplyr:
+`Group`ing here works differently than in dplyr:
 
-- You can only [`order_by`](@ref) sorted data. To let Julia know that the data
-has been sorted, you need to explicitly wrap the data with [`By`](@ref).
+- You can only `order_by` sorted data. To let Julia know that the data
+has been sorted, you need to explicitly wrap the data with `By`.
 
 - Second, groups return a pair, matching the key to the sub-data-frame. So:
 
-```jldoctest
+```jldoctest dplyr
 julia> by_tailnum =
           @> flights |>
           rows |>
@@ -319,13 +325,13 @@ julia> @> pair.second |>
 │ 4   │ 2013   │ 7      │ 5      │ 1253     │ 1259           │ -6        │
 ```
 
-- Third, you have to explicity use [`over`](@ref) to map over groups.
+- Third, you have to explicity use `over` to map over groups.
 
 So putting it all together, here is the example from the dplyr docs, LightQuery
 style. This is the first time in this example where `autocolumns` won't work.
-You'll have to explicitly use [`columns`](@ref) for the last call.
+You'll have to explicitly use `columns` for the last call.
 
-```jldoctest
+```jldoctest dplyr
 julia> @> by_tailnum |>
           over(_, @_ begin
                     sub_frame = autocolumns(_.second)
@@ -364,7 +370,7 @@ more efficient. This example shows how calling `columns` then `rows` is
 sometimes necessary to trigger eager evaluation.
 
 
-```jldoctest
+```jldoctest dplyr
 julia> dest_tailnum =
           @> flights |>
           rows |>
@@ -409,7 +415,7 @@ julia> dest_tailnum =
 As I mentioned before, you can use `By` instead of `order_by` if you know a
 dataset has been pre-sorted. This makes rolling up data-sets fairly easy.
 
-```jldoctest
+```jldoctest dplyr
 julia> per_day =
           @> by_date |>
           By(_, select(:year, :month, :day)) |>
@@ -485,7 +491,7 @@ julia> pretty(per_year)
 
 Here's the example in the dplyr docs for piping:
 
-```jldoctest
+```jldoctest dplyr
 julia> @> by_date |>
           By(_, select(:year, :month, :day)) |>
           Group |>
@@ -525,7 +531,7 @@ Again, for inference reasons, natural joins won't work. I only provide one join
 at the moment, but it's super efficient. Let's start by reading in airlines and
 letting julia konw that it's already sorted by `:carrier`.
 
-```jldoctest
+```jldoctest dplyr
 julia> airlines =
           @> CSV.read("airlines.csv", missingstring = "NA") |>
           named_tuple |>
@@ -542,7 +548,7 @@ the key). Finally we can join in the airline data. But the results are a bit
 tricky. Let's take a look at the first item. Just like the dplyr manual, I'm
 only using a few of the columns from `flights` for demonstration.
 
-```jldoctest
+```jldoctest dplyr
 julia> sample_join =
           @> flights |>
           select(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier) |>
@@ -558,7 +564,7 @@ julia> first_join = first(sample_join);
 
 We end up getting a group on the left, and a row on the right.
 
-```jldoctest
+```jldoctest dplyr
 julia> first_join.first.first
 (carrier = "9E",)
 
@@ -593,7 +599,7 @@ julia> first_join.second
 If you want to collect your results into a flat new dataframe, you need to do a
 bit of surgery, including making use of `Iterators.flatten`:
 
-```jldoctest
+```jldoctest dplyr
 julia> @> sample_join |>
           over(_, @_ begin
                     left_rows = _.first.second
@@ -625,11 +631,4 @@ julia> @> sample_join |>
 │ 336774 │ 2013  │ 9     │ 30    │ 16    │ LGA    │ IAD    │ N510MJ  │ YV      │
 │ 336775 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ CLT    │ N905FJ  │ YV      │
 │ 336776 │ 2013  │ 9     │ 30    │ 20    │ LGA    │ CLT    │ N924FJ  │ YV      │
-```
-
-```@index
-```
-
-```@autodocs
-Modules = [LightQuery]
 ```

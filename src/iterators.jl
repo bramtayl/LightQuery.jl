@@ -51,7 +51,7 @@ Group consecutive keys in `b`. Requires a presorted object (see [`By`](@ref)).
 ```jldoctest
 julia> using LightQuery
 
-julia> Group(By([1, 3, 2, 4], iseven))
+julia> Group(By([1, 3, 2, 4], iseven)) |> first
 false => [1, 3]
 ```
 """
@@ -59,14 +59,11 @@ Group(b::By) = Group(b.f, b.it)
 
 IteratorSize(g::Group) = SizeUnknown()
 IteratorEltype(g::Group) = EltypeUnknown()
-g = x
+
 function iterate(g::Group)
 	item, state = @ifsomething iterate(g.it)
 	iterate(g::Group, (state, state_to_index(g.it, state) - 1, g.f(item)))
 end
-
-left_index = state_to_index(g.it, state) - 1
-last_result = g.f(item)
 iterate(g::Group, ::Nothing) = nothing
 function iterate(g::Group, (state, left_index, last_result))
 	item_state = iterate(g.it, state)

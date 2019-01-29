@@ -247,7 +247,7 @@ export columns
     columns(it, names...)
 
 Collect into columns. Inverse of [`rows`](@ref). Unfortunately, you must specity names;
-sometimes, [`autocolumns`](@ref) will be able to detect them for you and run
+sometimes, `autocolumns` will be able to detect them for you and run
 column-wise optimizations.
 
 ```jldoctest
