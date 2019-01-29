@@ -10,24 +10,25 @@ struct By{It, F}
 	f::F
 end
 
-export order_by
+export order
 """
-	order_by(it, f)
+	order(it, f; kwargs...)
 
-Generalized sort. Will return a [`By`](@ref) object.
+Generalized sort. Will return a [`By`](@ref) object. `kwargs` will be passed to
+`sort!`; see the documentation there for options.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> order_by(["b", "a"], identity).it
+julia> order(["b", "a"], identity)
 2-element view(::Array{String,1}, [2, 1]) with eltype String:
  "a"
  "b"
 ```
 """
-order_by(it, f) =
-	By(view(it, mappedarray(first,
-		sort!(collect(enumerate(Generator(f, it))), by = last))), f)
+order(it, f; kwargs...) =
+	view(it, mappedarray(first,
+		sort!(collect(enumerate(Generator(f, it))), by = last; kwargs...)))
 
 state_to_index(s::AbstractArray, state) = state[2] + 1
 state_to_index(it::Array, state::Int) = state
@@ -50,7 +51,7 @@ Group consecutive keys in `b`. Requires a presorted object (see [`By`](@ref)).
 ```jldoctest
 julia> using LightQuery
 
-julia> Group(By([1, 3, 2, 4], iseven)) |> first
+julia> Group(By([1, 3, 2, 4], iseven))
 false => [1, 3]
 ```
 """
@@ -58,25 +59,37 @@ Group(b::By) = Group(b.f, b.it)
 
 IteratorSize(g::Group) = SizeUnknown()
 IteratorEltype(g::Group) = EltypeUnknown()
-
+g = x
 function iterate(g::Group)
 	item, state = @ifsomething iterate(g.it)
 	iterate(g::Group, (state, state_to_index(g.it, state) - 1, g.f(item)))
 end
+
+left_index = state_to_index(g.it, state) - 1
+last_result = g.f(item)
 iterate(g::Group, ::Nothing) = nothing
 function iterate(g::Group, (state, left_index, last_result))
 	item_state = iterate(g.it, state)
 	if item_state === nothing
-		last_result => view(g.it, left_index:length(g.it)), nothing
+		return last_result => view(g.it, left_index:length(g.it)), nothing
 	else
 		item, state = item_state
 		result = g.f(item)
-		if isequal(result, last_result)
-			iterate(g, (state, left_index, last_result))
-		else
-			right_index = state_to_index(g.it, state) - 1
-			last_result => view(g.it, left_index:right_index - 1), (state, right_index, result)
+		while isequal(result, last_result)
+			# manual inlining of iterate to avoid stackoverflow detector
+			item_state = iterate(g.it, state)
+			if item_state === nothing
+				return last_result => view(g.it, left_index:length(g.it)), nothing
+			else
+				item, state = item_state
+				if state === nothing
+					return nothing
+				end
+				result = g.f(item)
+			end
 		end
+		right_index = state_to_index(g.it, state) - 1
+		last_result => view(g.it, left_index:right_index - 1), (state, right_index, result)
 	end
 end
 

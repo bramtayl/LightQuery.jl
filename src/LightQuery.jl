@@ -246,7 +246,9 @@ export columns
 """
     columns(it, names...)
 
-Collect into columns. Inverse of [`rows`](@ref).
+Collect into columns. Inverse of [`rows`](@ref). Unfortunately, you must specity names;
+sometimes, [`autocolumns`](@ref) will be able to detect them for you and run
+column-wise optimizations.
 
 ```jldoctest
 julia> using LightQuery
@@ -257,10 +259,6 @@ julia> test(x) = columns(x, :b, :a);
 
 julia> @inferred test([(a = 1, b = 1.0)])
 (b = [1.0], a = [1])
-
-julia> test(when(rows((a = [1, 2], b = [2, 1])), @_ _.a > 1)) |> collect
-1-element Array{NamedTuple{(:b, :a),Tuple{Int64,Int64}},1}:
- (b = 1, a = 2)
 ```
 """
 @inline function columns(it, names...)
@@ -269,45 +267,36 @@ julia> test(when(rows((a = [1, 2], b = [2, 1])), @_ _.a > 1)) |> collect
     set_names(unzip(Generator(inner, it), length(typed_names)), names...)
 end
 
-@inline columns(g::Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}, names...) =
-    select(g.f(g.iter.is), names...)
+export autocolumns
+"""
+    autocolumns(it)
 
-@inline function columns(f::Filter{F2, It} where {F2, It <: Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}}, names...)
+In some select cases, instead of using [`columns`](@ref), you can use `autocolumns` to
+convert an iterate to named-tuple form. You need not specify names.
+
+```
+julia> using LightQuery
+
+julia> rowwise = rows((a = [1, 2], b = [2, 1]));
+
+julia> autocolumns(rowwise)
+(a = [1, 2], b = [2, 1])
+
+julia> autocolumns(when(rowwise, x -> x.a > 1))
+```
+"""
+
+@inline autocolumns(g::Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}) =
+    g.f(g.iter.is)
+
+@inline function autocolumns(f::Filter{F2, It} where {F2, It <: Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}})
     template = map(f.flt, f.itr)
-    rows(select(map(
+    map(
         let template = template
             x -> view(x, template)
         end,
         f.itr.f(f.itr.iter.is)
-    ), names...))
+    )
 end
-
-export column
-"""
-    column(it, name)
-
-Access just one column.
-
-```jldoctest
-julia> using LightQuery
-
-julia> using Test: @inferred
-
-julia> test(x) = column(x, :a);
-
-julia> @inferred test([(a = 1, b = 1.0)]) |> collect
-1-element Array{Int64,1}:
- 1
-
-julia> @inferred test(rows((a = [1, 2], b = [2, 1])))
-2-element Array{Int64,1}:
- 1
- 2
-```
-"""
-@inline column(g::Generator{It, F} where {It <: Zip, F <: Type{T} where T <: NamedTuple}, name) =
-    getproperty(g.f(g.iter.is), inner_name(name))
-
-@inline column(x, name) = Generator(Name(name), x)
 
 end
