@@ -11,9 +11,8 @@ Modules = [LightQuery]
 # Tutorial
 
 For an example of how to use this package, see the demo below, which follows the
-
-[here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). A
-copy of the flights data is included in the test folder of this package.
+example [here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html).
+A copy of the flights data is included in the test folder of this package.
 
 The biggest difference between this package and dplyr is that you have to
 explicitly move your data back and forth between rows (a vector of named tuples)
@@ -29,7 +28,8 @@ it, you can use `pretty` to hack the show methods of `DataFrame`s.
 
 So read in flights, convert it into a named tuple, and remove the row-number
 column (which reads in without a name). This package comes with its own chaining
-macro `@>`, which I'll make heavy use of.
+macro `@>`, which I'll make heavy use of. I've reexported CSV from the CSV
+package for convenient IO.
 
 ```jldoctest dplyr
 julia> using LightQuery
@@ -99,7 +99,7 @@ julia> @> flights |>
 │ 842 │ 2013   │ 1      │ 1      │ missing  │ 600            │ missing   │
 ```
 
-You can arrange rows with `order_by`. Here, the currying version of
+You can arrange rows with `order`. Here, the currying version of
 `select` comes in handy.
 
 ```jldoctest dplyr
@@ -133,9 +133,9 @@ julia> @> by_date |>
 │ 336776 │ 2013   │ 12     │ 31     │ missing  │ 830            │ missing   │
 ```
 
-You can also pass in keyword arguments to `sort!` via `orderby`, like
+You can also pass in keyword arguments to `sort!` via `order`, like
 `rev = true`. The difference from the dplyr output here is caused by how `sort!`
-handles missing data in Julia.
+handles missing data in Julia (I think).
 
 ```jldoctest dplyr
 julia> @> flights |>
@@ -295,10 +295,8 @@ I don't provide a export a sample function here, but StatsBase does.
 
 `Group`ing here works differently than in dplyr:
 
-- You can only `order_by` sorted data. To let Julia know that the data
-has been sorted, you need to explicitly wrap the data with `By`.
-
-- Second, groups return a pair, matching the key to the sub-data-frame. So:
+- You can only `order` sorted data. To let Julia know that the data has been sorted, you need to explicitly wrap the data with `By`.
+- Second, groups return a pair, key => sub-data-frame. So:
 
 ```jldoctest dplyr
 julia> by_tailnum =
@@ -413,7 +411,7 @@ julia> dest_tailnum =
 │ 105 │ 1036    │ 176    │
 ```
 
-As I mentioned before, you can use `By` instead of `order_by` if you know a
+As I mentioned before, you can use `By` without `order` if you know a
 dataset has been pre-sorted. This makes rolling up data-sets fairly easy.
 
 ```jldoctest dplyr

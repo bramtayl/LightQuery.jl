@@ -14,8 +14,9 @@ export order
 """
 	order(it, f; kwargs...)
 
-Generalized sort. Will return a [`By`](@ref) object. `kwargs` will be passed to
-`sort!`; see the documentation there for options.
+Generalized sort. `kwargs` will be passed to `sort!`; see the documentation
+there for options. See [`By`](@ref) for a way to explicitly mark that an object
+has been sorted.
 
 ```jldoctest
 julia> using LightQuery
@@ -176,7 +177,7 @@ export over
 """
 	over(it, f)
 
-Hackable reversed version of `Base.Generator`.
+`Base.Generator` with the reverse argument order.
 
 ```jldoctest
 julia> using LightQuery
@@ -193,7 +194,7 @@ export when
 """
 	when(it, f)
 
-Hackable reversed version of `Base.Iterators.Filter`.
+`Base.Iterators.Filter` with the reverse argument order.
 
 ```jldoctest
 julia> using LightQuery
