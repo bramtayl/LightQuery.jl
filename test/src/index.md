@@ -3,6 +3,13 @@
 ```@index
 ```
 
+
+```@autodocs
+Modules = [LightQuery]
+```
+
+# Tutorial
+
 For an example of how to use this package, see the demo below, which follows the
 
 [here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). A
@@ -625,8 +632,4 @@ julia> @> sample_join |>
 │ 336774 │ 2013  │ 9     │ 30    │ 16    │ LGA    │ IAD    │ N510MJ  │ YV      │
 │ 336775 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ CLT    │ N905FJ  │ YV      │
 │ 336776 │ 2013  │ 9     │ 30    │ 20    │ LGA    │ CLT    │ N924FJ  │ YV      │
-```
-
-```@autodocs
-Modules = [LightQuery]
 ```
