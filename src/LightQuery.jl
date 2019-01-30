@@ -1,6 +1,8 @@
 module LightQuery
-__precompile__(false)
 
+# re-export CSV
+import CSV
+export CSV
 using Base: diff_names, SizeUnknown, HasEltype, HasLength, HasShape, Generator, promote_op, EltypeUnknown, StepRange, @propagate_inbounds, _collect, @default_eltype
 import Base: iterate, IteratorEltype, eltype, IteratorSize, axes, size, length, IndexStyle, getindex, setindex!, push!, similar, merge, view, isless, setindex_widen_up_to, collect, empty, push_widen, getproperty
 import IterTools: @ifsomething

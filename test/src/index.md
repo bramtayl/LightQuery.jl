@@ -31,8 +31,6 @@ macro `@>`, which I'll make heavy use of.
 ```jldoctest dplyr
 julia> using LightQuery
 
-julia> import CSV
-
 julia> flights =
           @> CSV.read("flights.csv", missingstring = "NA") |>
           named_tuple |>
