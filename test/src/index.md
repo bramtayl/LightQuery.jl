@@ -3,12 +3,8 @@
 ```@index
 ```
 
-```@autodocs
-Modules = [LightQuery]
-```
-
 For an example of how to use this package, see the demo below, which follows the
-tutorial
+
 [here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). A
 copy of the flights data is included in the test folder of this package.
 
@@ -629,4 +625,8 @@ julia> @> sample_join |>
 │ 336774 │ 2013  │ 9     │ 30    │ 16    │ LGA    │ IAD    │ N510MJ  │ YV      │
 │ 336775 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ CLT    │ N905FJ  │ YV      │
 │ 336776 │ 2013  │ 9     │ 30    │ 20    │ LGA    │ CLT    │ N924FJ  │ YV      │
+```
+
+```@autodocs
+Modules = [LightQuery]
 ```
