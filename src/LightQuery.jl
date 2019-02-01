@@ -360,9 +360,10 @@ end
 
 export summarize
 """
-    summarize(it)
+    summarize(it; assignments...)
 
-A handy wrapper for summarizing groups.
+A handy wrapper for summarizing groups. Assignments will be passed subtables,
+and will merge into the grouping keys.
 
     function summarize(it; assignments...)
         function inner(pair)

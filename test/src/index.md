@@ -385,8 +385,7 @@ julia> @> by_tailnum |>
 This is the first time in the code when inference hasn't been able to figure out
 the column names for us; we need to provide it them explicitly.
 Again, for convenience, I provide a `summarize` function for typical usage.
-You're welcome. Here, all the columns in the subframe have the same length, so
-we can just grab the first one.
+You're welcome.
 
 ```jldoctest dplyr
 julia> @> by_tailnum |>
