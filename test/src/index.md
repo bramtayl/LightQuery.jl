@@ -67,7 +67,7 @@ The `rows` iterator will convert the data to row-wise form.
  with `@_`.
 
 To display row-wise data, first, convert back to a columns-wise format with
-`autocolumns`.
+`columns`.
 
 ```jldoctest dplyr
 julia> using LightQuery
@@ -295,8 +295,9 @@ I don't provide a export a sample function here, but StatsBase does.
 
 `Group`ing here works differently than in dplyr:
 
-- You can only `order` sorted data. To let Julia know that the data has been sorted, you need to explicitly wrap the data with `By`.
-- Second, groups return a pair, key => sub-data-frame. So:
+- You can only `Group` sorted data. To let Julia know that the data has been sorted, you need to explicitly wrap the data with `By`.
+- It's useful to collect after `Group` for performance; this allows Julia to know the number of groups ahead of time.
+- Groups return a pair, key => sub-data-frame. So:
 
 ```jldoctest dplyr
 julia> by_tailnum =
@@ -304,7 +305,8 @@ julia> by_tailnum =
           rows |>
           order(_, select(:tailnum)) |>
           By(_, select(:tailnum)) |>
-          Group;
+          Group |>
+          collect;
 
 julia> pair = first(by_tailnum);
 
@@ -324,11 +326,27 @@ julia> @> pair.second |>
 │ 4   │ 2013   │ 7      │ 5      │ 1253     │ 1259           │ -6        │
 ```
 
-- Third, you have to explicity use `over` to map over groups.
+If you would like to combine these steps, I have provided the convenience
+function `group_by`.
 
-So putting it all together, here is the example from the dplyr docs, LightQuery
-style. This is the first time in this example where `autocolumns` won't work.
-You'll have to explicitly use `columns` for the last call.
+```jldoctest dplyr
+julia> pair = first(group_by(flights, :tailnum));
+
+julia> pair.first
+(tailnum = "D942DN",)
+
+julia> pair.second |> autocolumns |> pretty
+4×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│     │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├─────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1   │ 2013   │ 2      │ 11     │ 1508     │ 1400           │ 68        │
+│ 2   │ 2013   │ 3      │ 23     │ 1340     │ 1300           │ 40        │
+│ 3   │ 2013   │ 3      │ 24     │ 859      │ 835            │ 24        │
+│ 4   │ 2013   │ 7      │ 5      │ 1253     │ 1259           │ -6        │
+```
+
+- Third, you have to explicity use `over` to map over groups. So for example:
 
 ```jldoctest dplyr
 julia> @> by_tailnum |>
@@ -364,63 +382,89 @@ julia> @> by_tailnum |>
 │ 4044 │ missing │ 2512  │ 710.258  │ NaN      │
 ```
 
-For the n-distinct example, I've switched things around to be just a smidge
-more efficient. This example shows how calling `columns` then `rows` is
-sometimes necessary to trigger eager evaluation.
-
+This is the first time in the code when inference hasn't been able to figure out
+the column names for us; we need to provide it them explicitly.
+Again, for convenience, I provide a `summarize` function for typical usage.
+You're welcome. Here, all the columns in the subframe have the same length, so
+we can just grab the first one.
 
 ```jldoctest dplyr
-julia> dest_tailnum =
-          @> flights |>
-          rows |>
-          order(_, select(:dest, :tailnum)) |>
-          By(_, select(:dest, :tailnum)) |>
-          Group |>
-          over(_, @_ transform(_.first,
-                    flights = length(_.second)
-          )) |>
-          columns(_, :dest, :tailnum, :flights) |>
-          rows |>
-          By(_, select(:dest)) |>
-          Group |>
-          over(_, @_ transform(_.first,
-                    flights = sum(autocolumns(_.second).flights),
-                    planes = length(_.second)
-          )) |>
-          columns(_, :flights, :planes) |>
+julia> @> by_tailnum |>
+          summarize(_,
+            count = length,
+            distance = (@_ autocolumns(_).distance |> skipmissing |> mean),
+            delay = (@_ autocolumns(_).dep_delay |> skipmissing |> mean)
+          ) |>
+          columns(_, :tailnum, :count, :distance, :delay) |>
           pretty
-105×2 DataFrames.DataFrame
-│ Row │ flights │ planes │
-│     │ Int64   │ Int64  │
-├─────┼─────────┼────────┤
-│ 1   │ 254     │ 108    │
-│ 2   │ 265     │ 58     │
-│ 3   │ 439     │ 172    │
-│ 4   │ 8       │ 6      │
-│ 5   │ 17215   │ 1180   │
-│ 6   │ 2439    │ 993    │
-│ 7   │ 275     │ 159    │
+4044×4 DataFrames.DataFrame
+│ Row  │ tailnum │ count │ distance │ delay    │
+│      │ String⍰ │ Int64 │ Float64  │ Float64  │
+├──────┼─────────┼───────┼──────────┼──────────┤
+│ 1    │ D942DN  │ 4     │ 854.5    │ 31.5     │
+│ 2    │ N0EGMQ  │ 371   │ 676.189  │ 8.49153  │
+│ 3    │ N10156  │ 153   │ 757.948  │ 17.8151  │
+│ 4    │ N102UW  │ 48    │ 535.875  │ 8.0      │
+│ 5    │ N103US  │ 46    │ 535.196  │ -3.19565 │
+│ 6    │ N104UW  │ 47    │ 535.255  │ 9.93617  │
+│ 7    │ N10575  │ 289   │ 519.702  │ 22.6507  │
 ⋮
-│ 98  │ 4339    │ 960    │
-│ 99  │ 522     │ 87     │
-│ 100 │ 1761    │ 383    │
-│ 101 │ 7466    │ 1126   │
-│ 102 │ 315     │ 105    │
-│ 103 │ 101     │ 60     │
-│ 104 │ 631     │ 273    │
-│ 105 │ 1036    │ 176    │
+│ 4037 │ N996DL  │ 102   │ 897.304  │ 6.85149  │
+│ 4038 │ N997AT  │ 44    │ 679.045  │ 17.0233  │
+│ 4039 │ N997DL  │ 63    │ 867.762  │ 7.62903  │
+│ 4040 │ N998AT  │ 26    │ 593.538  │ 31.96    │
+│ 4041 │ N998DL  │ 77    │ 857.818  │ 23.1711  │
+│ 4042 │ N999DN  │ 61    │ 895.459  │ 18.9016  │
+│ 4043 │ N9EAMQ  │ 248   │ 674.665  │ 9.88235  │
+│ 4044 │ missing │ 2512  │ 710.258  │ NaN      │
 ```
 
-As I mentioned before, you can use `By` without `order` if you know a
-dataset has been pre-sorted. This makes rolling up data-sets fairly easy.
+For the n-distinct example, I've switched things around to be just a smidge
+more efficient. This example shows how calling `columns` is sometimes necessary
+to trigger eager evaluation.
+
+```jldoctest dplyr
+julia> @> flights |>
+          group_by(_, :dest, :tailnum) |>
+          summarize(_, flights = length) |>
+          columns(_, :dest, :tailnum, :flights) |>
+          group_by(_, :dest) |>
+          summarize(_,
+            planes = length,
+            flights = @_ sum(autocolumns(_).flights)
+          ) |>
+          autocolumns |>
+          pretty
+105×3 DataFrames.DataFrame
+│ Row │ dest   │ planes │ flights │
+│     │ String │ Int64  │ Int64   │
+├─────┼────────┼────────┼─────────┤
+│ 1   │ ABQ    │ 108    │ 254     │
+│ 2   │ ACK    │ 58     │ 265     │
+│ 3   │ ALB    │ 172    │ 439     │
+│ 4   │ ANC    │ 6      │ 8       │
+│ 5   │ ATL    │ 1180   │ 17215   │
+│ 6   │ AUS    │ 993    │ 2439    │
+│ 7   │ AVL    │ 159    │ 275     │
+⋮
+│ 98  │ STL    │ 960    │ 4339    │
+│ 99  │ STT    │ 87     │ 522     │
+│ 100 │ SYR    │ 383    │ 1761    │
+│ 101 │ TPA    │ 1126   │ 7466    │
+│ 102 │ TUL    │ 105    │ 315     │
+│ 103 │ TVC    │ 60     │ 101     │
+│ 104 │ TYS    │ 273    │ 631     │
+│ 105 │ XNA    │ 176    │ 1036    │
+```
+
+Of course, you can group repeatedly.
 
 ```jldoctest dplyr
 julia> per_day =
-          @> by_date |>
-          By(_, select(:year, :month, :day)) |>
-          Group |>
-          over(_, @_ transform(_.first, flights = length(_.second))) |>
-          columns(_, :year, :month, :day, :flights);
+          @> flights |>
+          group_by(_, :year, :month, :day) |>
+          summarize(_, flights = length) |>
+          autocolumns;
 
 julia> pretty(per_day)
 365×4 DataFrames.DataFrame
@@ -445,13 +489,10 @@ julia> pretty(per_day)
 │ 365 │ 2013  │ 12    │ 31    │ 776     │
 
 julia> per_month =
-          @> per_day|>
-          rows |>
-          By(_, select(:year, :month)) |>
-          Group |>
-          over(_, @_ transform(_.first,
-                    flights = sum(autocolumns(_.second).flights))) |>
-          columns(_, :year, :month, :flights);
+          @> per_day |>
+          group_by(_, :year, :month) |>
+          summarize(_, flights = @_ sum(autocolumns(_).flights)) |>
+          autocolumns;
 
 julia> pretty(per_month)
 12×3 DataFrames.DataFrame
@@ -473,12 +514,9 @@ julia> pretty(per_month)
 
 julia> per_year =
           @> per_month |>
-          rows |>
-          By(_, select(:year)) |>
-          Group |>
-          over(_, @_ transform(_.first,
-                    flights = sum(autocolumns(_.second).flights))) |>
-          columns(_, :year, :flights);
+          group_by(_, :year) |>
+          summarize(_, flights = @_ sum(autocolumns(_).flights)) |>
+          autocolumns;
 
 julia> pretty(per_year)
 1×2 DataFrames.DataFrame
@@ -491,18 +529,14 @@ julia> pretty(per_year)
 Here's the example in the dplyr docs for piping:
 
 ```jldoctest dplyr
-julia> @> by_date |>
-          By(_, select(:year, :month, :day)) |>
-          Group |>
-          over(_, @_ begin
-                    sub_frame = autocolumns(_.second)
-                    transform(_.first,
-                              arr = sub_frame.arr_delay |> skipmissing |> mean,
-                              dep = sub_frame.dep_delay |> skipmissing |> mean
-                    )
-          end) |>
+julia> @> flights |>
+          group_by(_, :year, :month, :day) |>
+          summarize(_,
+            arr = (@_ autocolumns(_).arr_delay |> skipmissing |> mean),
+            dep = @_ autocolumns(_).dep_delay |> skipmissing |> mean
+          ) |>
           when(_, @_ _.arr > 30 || _.dep > 30) |>
-          columns(_, :year, :month, :day, :arr, :dep) |>
+          autocolumns |>
           pretty
 49×5 DataFrames.DataFrame
 │ Row │ year  │ month │ day   │ arr     │ dep     │
@@ -526,6 +560,10 @@ julia> @> by_date |>
 │ 49  │ 2013  │ 12    │ 23    │ 32.226  │ 32.2541 │
 ```
 
+# Two table verbs
+
+I'm following the example [here](https://cran.r-project.org/web/packages/dplyr/vignettes/two-table.html).
+
 Again, for inference reasons, natural joins won't work. I only provide one join
 at the moment, but it's super efficient. Let's start by reading in airlines and
 letting julia konw that it's already sorted by `:carrier`.
@@ -534,7 +572,10 @@ letting julia konw that it's already sorted by `:carrier`.
 julia> airlines =
           @> CSV.read("airlines.csv", missingstring = "NA") |>
           named_tuple |>
-          remove(_, Symbol("")) |>
+          remove(_, Symbol(""));
+
+julia> airlines_by_carrier =
+          @> airlines |>
           rows |>
           By(_, select(:carrier));
 ```
@@ -548,26 +589,26 @@ tricky. Let's take a look at the first item. Just like the dplyr manual, I'm
 only using a few of the columns from `flights` for demonstration.
 
 ```jldoctest dplyr
-julia> sample_join =
-          @> flights |>
-          select(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier) |>
-          rows |>
-          order(_, select(:carrier)) |>
-          By(_, select(:carrier)) |>
-          Group |>
-          By(_, first) |>
-          LeftJoin(_, airlines);
+julia> flights2 =
+            @> flights |>
+            select(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier);
 
-julia> first_join = first(sample_join);
+julia> airline_join =
+          @> flights2 |>
+          group_by(_, :carrier) |>
+          By(_, first) |>
+          LeftJoin(_, airlines_by_carrier);
+
+julia> first_airline_join = first(airline_join);
 ```
 
-We end up getting a group on the left, and a row on the right.
+We end up getting a group and subframe on the left, and a row on the right.
 
 ```jldoctest dplyr
-julia> first_join.first.first
+julia> first_airline_join.first.first
 (carrier = "9E",)
 
-julia> @> first_join.first.second |>
+julia> @> first_airline_join.first.second |>
             autocolumns |>
             pretty
 18460×8 DataFrames.DataFrame. Omitted printing of 1 columns
@@ -591,24 +632,31 @@ julia> @> first_join.first.second |>
 │ 18459 │ 2013   │ 9      │ 30     │ 14     │ JFK     │ DCA     │ missing │
 │ 18460 │ 2013   │ 9      │ 30     │ 22     │ LGA     │ SYR     │ missing │
 
-julia> first_join.second
+julia> first_airline_join.second
 (carrier = "9E", name = "Endeavor Air Inc.")
 ```
 
 If you want to collect your results into a flat new dataframe, you need to do a
-bit of surgery, including making use of `Iterators.flatten`:
+bit of surgery, including making use of `Iterators.flatten`. We also need to
+make a fake row to insert on the right in case we can't find a match.
 
 ```jldoctest dplyr
-julia> @> sample_join |>
+julia> empty_right_row =
+            @> airlines |>
+            remove(_, :carrier) |>
+            map(x -> missing, _);
+
+julia> @> airline_join |>
           over(_, @_ begin
-                    left_rows = _.first.second
-                    right_row = _.second
-                    over(left_rows, @_ transform(_,
-                              airline_name = right_row.name))
+              right_row = _.second
+              if right_row === missing
+                  right_row = empty_right_row
+              end
+              over(_.first.second, x -> merge(x, right_row))
           end) |>
           Iterators.flatten(_) |>
           columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum,
-                    :carrier, :airline_name) |>
+                    :carrier, :name) |>
           pretty
 336776×9 DataFrames.DataFrame. Omitted printing of 1 columns
 │ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
@@ -631,3 +679,148 @@ julia> @> sample_join |>
 │ 336775 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ CLT    │ N905FJ  │ YV      │
 │ 336776 │ 2013  │ 9     │ 30    │ 20    │ LGA    │ CLT    │ N924FJ  │ YV      │
 ```
+
+Are you exhaused? I am. To streamline this entire process, I've provided a
+`left_join` function which will conduct a natural, many-to-one left join. Here,
+autocolumns isn't working (take it up with Base inference), so you'll have to
+manually provide column names.
+
+```jldoctest dplyr
+julia> @> left_join(flights2, airlines) |>
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier, :name) |>
+            pretty
+336776×9 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String⍰ │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 1     │ 1     │ 8     │ JFK    │ MSP    │ N915XJ  │ 9E      │
+│ 2      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ IAD    │ N8444F  │ 9E      │
+│ 3      │ 2013  │ 1     │ 1     │ 14    │ JFK    │ BUF    │ N920XJ  │ 9E      │
+│ 4      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ SYR    │ N8409N  │ 9E      │
+│ 5      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ ROC    │ N8631E  │ 9E      │
+│ 6      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ BWI    │ N913XJ  │ 9E      │
+│ 7      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ ORD    │ N904XJ  │ 9E      │
+⋮
+│ 336769 │ 2013  │ 9     │ 27    │ 16    │ LGA    │ IAD    │ N514MJ  │ YV      │
+│ 336770 │ 2013  │ 9     │ 27    │ 17    │ LGA    │ CLT    │ N925FJ  │ YV      │
+│ 336771 │ 2013  │ 9     │ 28    │ 19    │ LGA    │ IAD    │ N501MJ  │ YV      │
+│ 336772 │ 2013  │ 9     │ 29    │ 16    │ LGA    │ IAD    │ N518LR  │ YV      │
+│ 336773 │ 2013  │ 9     │ 29    │ 17    │ LGA    │ CLT    │ N932LR  │ YV      │
+│ 336774 │ 2013  │ 9     │ 30    │ 16    │ LGA    │ IAD    │ N510MJ  │ YV      │
+│ 336775 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ CLT    │ N905FJ  │ YV      │
+│ 336776 │ 2013  │ 9     │ 30    │ 20    │ LGA    │ CLT    │ N924FJ  │ YV      │
+```
+
+Let's keep going in the examples. I'm going to name the weather key. I'm also
+going to make a "fake" weather row that only contains missing objects, and we
+can use this when weather data is missing. Yes, I know it's a bit frustrating to
+have to explicitly deal with missing data, but it adds a lot more flexibility
+(e.g. you could do mean replacement).
+
+```jldoctest dplyr
+julia> weather =
+            @> CSV.read( "weather.csv", missingstring = "NA") |>
+            named_tuple |>
+            remove(_, Symbol(""));
+
+julia> @> left_join(flights2, weather) |>
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier,
+                :temp, :dewp, :humid, :wind_dir, :wind_speed, :wind_gust, :precip,
+                :pressure, :visib, :time_hour
+            ) |>
+            pretty
+335862×18 DataFrames.DataFrame. Omitted printing of 10 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String⍰ │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 1     │ 1     │ 5     │ EWR    │ IAH    │ N14228  │ UA      │
+│ 2      │ 2013  │ 1     │ 1     │ 5     │ EWR    │ ORD    │ N39463  │ UA      │
+│ 3      │ 2013  │ 1     │ 1     │ 5     │ JFK    │ MIA    │ N619AA  │ AA      │
+│ 4      │ 2013  │ 1     │ 1     │ 5     │ JFK    │ BQN    │ N804JB  │ B6      │
+│ 5      │ 2013  │ 1     │ 1     │ 5     │ JFK    │ BOS    │ N708JB  │ B6      │
+│ 6      │ 2013  │ 1     │ 1     │ 5     │ LGA    │ IAH    │ N24211  │ UA      │
+│ 7      │ 2013  │ 1     │ 1     │ 6     │ EWR    │ FLL    │ N516JB  │ B6      │
+⋮
+│ 335855 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ CLE    │ N24715  │ UA      │
+│ 335856 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ DSM    │ N14168  │ EV      │
+│ 335857 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ PDX    │ N39475  │ UA      │
+│ 335858 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ PBI    │ N77258  │ UA      │
+│ 335859 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ DCA    │ N13979  │ EV      │
+│ 335860 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ MCO    │ N37468  │ UA      │
+│ 335861 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ BOS    │ N486UA  │ UA      │
+│ 335862 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ BNA    │ N17984  │ EV      │
+```
+
+Now try merging in the airplane data. Note that I rename the year column to avoid
+a collision in the natural join.
+
+```jldoctest dplyr
+julia> planes =
+            @> CSV.read( "planes.csv", missingstring = "NA") |>
+            named_tuple |>
+            remove(_, Symbol("")) |>
+            rename(_, construction_year = Name(:year));
+
+julia> @> left_join(flights2, planes) |>
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum,
+                :carrier, :type, :manufacturer, :model, :engines, :seats,
+                :speed, :engine, :construction_year
+            ) |>
+            pretty
+334264×16 DataFrames.DataFrame. Omitted printing of 8 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String  │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 2     │ 11    │ 14    │ LGA    │ ATL    │ D942DN  │ DL      │
+│ 2      │ 2013  │ 3     │ 23    │ 13    │ LGA    │ MCO    │ D942DN  │ DL      │
+│ 3      │ 2013  │ 3     │ 24    │ 8     │ JFK    │ MCO    │ D942DN  │ DL      │
+│ 4      │ 2013  │ 7     │ 5     │ 12    │ LGA    │ ATL    │ D942DN  │ DL      │
+│ 5      │ 2013  │ 1     │ 1     │ 15    │ LGA    │ CLT    │ N0EGMQ  │ MQ      │
+│ 6      │ 2013  │ 1     │ 1     │ 21    │ LGA    │ CLT    │ N0EGMQ  │ MQ      │
+│ 7      │ 2013  │ 1     │ 2     │ 8     │ LGA    │ ATL    │ N0EGMQ  │ MQ      │
+⋮
+│ 334257 │ 2013  │ 9     │ 26    │ 13    │ LGA    │ CLT    │ N9EAMQ  │ MQ      │
+│ 334258 │ 2013  │ 9     │ 26    │ 19    │ LGA    │ MSP    │ N9EAMQ  │ MQ      │
+│ 334259 │ 2013  │ 9     │ 27    │ 10    │ LGA    │ DTW    │ N9EAMQ  │ MQ      │
+│ 334260 │ 2013  │ 9     │ 27    │ 16    │ LGA    │ ATL    │ N9EAMQ  │ MQ      │
+│ 334261 │ 2013  │ 9     │ 29    │ 12    │ LGA    │ BNA    │ N9EAMQ  │ MQ      │
+│ 334262 │ 2013  │ 9     │ 29    │ 18    │ LGA    │ CMH    │ N9EAMQ  │ MQ      │
+│ 334263 │ 2013  │ 9     │ 30    │ 11    │ JFK    │ DCA    │ N9EAMQ  │ MQ      │
+│ 334264 │ 2013  │ 9     │ 30    │ 14    │ JFK    │ TPA    │ N9EAMQ  │ MQ      │
+```
+
+```jldoctest dplyr
+julia> airports =
+            @> CSV.read("airports.csv", missingstring = "NA") |>
+            named_tuple |>
+            remove(_, Symbol("")) |>
+            rename(_, dest = Name(:faa));
+
+julia> @> left_join(flights2, airports) |>
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier, :name, :lat, :lon, :alt, :tz, :dst, :tzone) |>
+            pretty
+336776×15 DataFrames.DataFrame. Omitted printing of 7 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String⍰ │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 10    │ 1     │ 20    │ JFK    │ ABQ    │ N554JB  │ B6      │
+│ 2      │ 2013  │ 10    │ 2     │ 20    │ JFK    │ ABQ    │ N607JB  │ B6      │
+│ 3      │ 2013  │ 10    │ 3     │ 20    │ JFK    │ ABQ    │ N591JB  │ B6      │
+│ 4      │ 2013  │ 10    │ 4     │ 20    │ JFK    │ ABQ    │ N662JB  │ B6      │
+│ 5      │ 2013  │ 10    │ 5     │ 19    │ JFK    │ ABQ    │ N580JB  │ B6      │
+│ 6      │ 2013  │ 10    │ 6     │ 20    │ JFK    │ ABQ    │ N507JB  │ B6      │
+│ 7      │ 2013  │ 10    │ 7     │ 20    │ JFK    │ ABQ    │ N565JB  │ B6      │
+⋮
+│ 336769 │ 2013  │ 9     │ 27    │ 7     │ LGA    │ XNA    │ N724MQ  │ MQ      │
+│ 336770 │ 2013  │ 9     │ 27    │ 8     │ EWR    │ XNA    │ N17146  │ EV      │
+│ 336771 │ 2013  │ 9     │ 27    │ 15    │ LGA    │ XNA    │ N724MQ  │ MQ      │
+│ 336772 │ 2013  │ 9     │ 29    │ 17    │ LGA    │ XNA    │ N725MQ  │ MQ      │
+│ 336773 │ 2013  │ 9     │ 30    │ 7     │ LGA    │ XNA    │ N735MQ  │ MQ      │
+│ 336774 │ 2013  │ 9     │ 30    │ 8     │ EWR    │ XNA    │ N14117  │ EV      │
+│ 336775 │ 2013  │ 9     │ 30    │ 15    │ LGA    │ XNA    │ N725MQ  │ MQ      │
+│ 336776 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ XNA    │ N720MQ  │ MQ      │
+```
+
+I have not decided to support any other kind of join. However, using the
+iterators in this package, equivalents to right_join, inner_join, semi_join, and
+anti_join are all possible.
