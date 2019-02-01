@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>LightQuery.jl · LightQuery.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>LightQuery.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li class="current"><a class="toctext" href>LightQuery.jl</a><ul class="internal"><li class="toplevel"><a class="toctext" href="#Tutorial-1">Tutorial</a></li><li class="toplevel"><a class="toctext" href="#Two-table-verbs-1">Two table verbs</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href>LightQuery.jl</a></li></ul><a class="edit-page" href="https://github.com/bramtayl/LightQuery.jl/blob/master/test/src/index.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>LightQuery.jl</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="LightQuery.jl-1" href="#LightQuery.jl-1">LightQuery.jl</a></h1><ul><li><a href="#LightQuery.By"><code>LightQuery.By</code></a></li><li><a href="#LightQuery.Group-Tuple{LightQuery.By}"><code>LightQuery.Group</code></a></li><li><a href="#LightQuery.LeftJoin"><code>LightQuery.LeftJoin</code></a></li><li><a href="#LightQuery.Name"><code>LightQuery.Name</code></a></li><li><a href="#LightQuery.autocolumns-Tuple{Any}"><code>LightQuery.autocolumns</code></a></li><li><a href="#LightQuery.columns-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.columns</code></a></li><li><a href="#LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}"><code>LightQuery.gather</code></a></li><li><a href="#LightQuery.group_by-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.group_by</code></a></li><li><a href="#LightQuery.in_common-Tuple{Any,Any}"><code>LightQuery.in_common</code></a></li><li><a href="#LightQuery.left_join-Tuple{Any,Any}"><code>LightQuery.left_join</code></a></li><li><a href="#LightQuery.named_tuple-Tuple{Any}"><code>LightQuery.named_tuple</code></a></li><li><a href="#LightQuery.order-Tuple{Any,Any}"><code>LightQuery.order</code></a></li><li><a href="#LightQuery.over-Tuple{Any,Any}"><code>LightQuery.over</code></a></li><li><a href="#LightQuery.pretty-Tuple{Any}"><code>LightQuery.pretty</code></a></li><li><a href="#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.remove</code></a></li><li><a href="#LightQuery.rename-Tuple{Any}"><code>LightQuery.rename</code></a></li><li><a href="#LightQuery.rows-Tuple{Any}"><code>LightQuery.rows</code></a></li><li><a href="#LightQuery.select-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.select</code></a></li><li><a href="#LightQuery.spread-Tuple{Any,Any}"><code>LightQuery.spread</code></a></li><li><a href="#LightQuery.summarize-Tuple{Any}"><code>LightQuery.summarize</code></a></li><li><a href="#LightQuery.transform-Tuple{NamedTuple}"><code>LightQuery.transform</code></a></li><li><a href="#LightQuery.unzip-Tuple{Any,Any}"><code>LightQuery.unzip</code></a></li><li><a href="#LightQuery.when-Tuple{Any,Any}"><code>LightQuery.when</code></a></li><li><a href="#LightQuery.@&gt;-Tuple{Any}"><code>LightQuery.@&gt;</code></a></li><li><a href="#LightQuery.@_-Tuple{Any}"><code>LightQuery.@_</code></a></li></ul><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.By" href="#LightQuery.By"><code>LightQuery.By</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">By(it, f)</code></pre><p>Marks that <code>it</code> has been pre-sorted by the key <code>f</code>. For use with <a href="#LightQuery.Group-Tuple{LightQuery.By}"><code>Group</code></a> or <a href="#LightQuery.LeftJoin"><code>LeftJoin</code></a>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/iterators.jl#L2-L7">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Group-Tuple{LightQuery.By}" href="#LightQuery.Group-Tuple{LightQuery.By}"><code>LightQuery.Group</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">group(b::By)</code></pre><p>Group consecutive keys in <code>b</code>. Requires a presorted object (see <a href="#LightQuery.By"><code>By</code></a>).</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; Group(By([1, 3, 2, 4], iseven)) |&gt; first
+false =&gt; [1, 3]</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/iterators.jl#L47-L58">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.LeftJoin" href="#LightQuery.LeftJoin"><code>LightQuery.LeftJoin</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">LeftJoin(left::By, right::By)</code></pre><p>For each value in left, look for a value with the same key in right. Requires both to be presorted (see <a href="#LightQuery.By"><code>By</code></a>).</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; LeftJoin(
+            By([1, 2, 5, 6], identity),
+            By([1, 3, 4, 6], identity)
+       ) |&gt; collect
+4-element Array{Pair{Int64,Union{Missing, Int64}},1}:
+ 1 =&gt; 1
+ 2 =&gt; missing
+ 5 =&gt; missing
+ 6 =&gt; 6</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/iterators.jl#L111-L130">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Name" href="#LightQuery.Name"><code>LightQuery.Name</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">Name(x)</code></pre><p>Force into the type domain. Can also be used as a function.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; Name(:a)((a = 1,))
+1</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L40-L51">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.autocolumns-Tuple{Any}" href="#LightQuery.autocolumns-Tuple{Any}"><code>LightQuery.autocolumns</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">autocolumns(it)</code></pre><p>Instead of using <a href="#LightQuery.columns-Tuple{Any,Vararg{Any,N} where N}"><code>columns</code></a>, you can use <code>autocolumns</code> to convert an iterate to named-tuple form. You need not specify names, but this function is fragile because it relies on inference.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; autocolumns([(a = 1, b = 1.0), (a = 2, b = 2.0)])
+(a = [1, 2], b = [1.0, 2.0])
+
+julia&gt; autocolumns(rows((a = [1, 1.0], b = [2, 2.0])))
+(a = [1.0, 1.0], b = [2.0, 2.0])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L289-L305">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.columns-Tuple{Any,Vararg{Any,N} where N}" href="#LightQuery.columns-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.columns</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">columns(it, names...)</code></pre><p>Collect into columns. Inverse of <a href="#LightQuery.rows-Tuple{Any}"><code>rows</code></a>. Unfortunately, you must specity names; sometimes, <code>autocolumns</code> will be able to detect them for you and run column-wise optimizations.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; test(x) = columns(x, :b, :a);
+
+julia&gt; @inferred test([(a = 1, b = 1.0)])
+(b = [1.0], a = [1])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L264-L281">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}" href="#LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}"><code>LightQuery.gather</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">gather(data, name, names...)</code></pre><p>Gather all the data in <code>names</code> into a single <code>name</code>. Inverse of <a href="#LightQuery.spread-Tuple{Any,Any}"><code>spread</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; test(x) = gather(x, :d, :a, :c);
+
+julia&gt; @inferred test((a = 1, b = 2.0, c = &quot;c&quot;))
+(b = 2.0, d = (a = 1, c = &quot;c&quot;))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L105-L121">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.group_by-Tuple{Any,Vararg{Any,N} where N}" href="#LightQuery.group_by-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.group_by</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">group_by(it)</code></pre><p>A handy wrapper for grouping.</p><pre><code class="language-none">@inline function group_by(it, columns...)
+    selector = select(columns...)
+    collect(Group(By(order(rows(it), selector), selector)))
+end</code></pre><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; data = (a = [:A, :A, :B, :B], b = [1, 2, 3, 4]);
+
+julia&gt; pair = first(group_by(data, :a));
+
+julia&gt; pair.first
+(a = :A,)
+
+julia&gt; autocolumns(pair.second)
+(a = Symbol[:A, :A], b = [1, 2])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L332-L355">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.in_common-Tuple{Any,Any}" href="#LightQuery.in_common-Tuple{Any,Any}"><code>LightQuery.in_common</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">in_common(data1, data2)</code></pre><p>Find the names in common between <code>data1</code> and <code>data2</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; in_common((a = 1, b = 2.0), (a = 1, c = 3.0))
+(:a,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L229-L240">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.left_join-Tuple{Any,Any}" href="#LightQuery.left_join-Tuple{Any,Any}"><code>LightQuery.left_join</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">left_join(data1, data2)</code></pre><p>Conduct a natural, many-to-one left join by combining several exported functions.</p><pre><code class="language-none">function left_join(data1, data2)
+    names_in_common = in_common(data1, data2)
+    empty_data2_row = map(x -&gt; missing, remove(data2, names_in_common...))
+    selector = select(names_in_common...)
+    function inner(pair)
+        right_row = pair.second
+        if right_row === missing
+            right_row = empty_data2_row
+        end
+        over(
+            pair.first.second,
+            left_row -&gt; merge(left_row, right_row),
+        )
+    end
+    flatten(over(
+        LeftJoin(
+            By(group_by(data1, names_in_common...), first),
+            By(rows(autocolumns(order(rows(data2), selector))), selector)
+        ),
+        inner
+    ))
+end</code></pre><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; data1 = (a = [:A, :A, :B, :B], b = [1, 2, 3, 4]);
+
+julia&gt; data2 = (a = [:A], c = [1.0]);
+
+julia&gt; columns(left_join(data1, data2), :a, :b, :c)
+(a = Symbol[:A, :A, :B, :B], b = [1, 2, 3, 4], c = Union{Missing, Float64}[1.0, 1.0, missing, missing])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L396-L435">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.named_tuple-Tuple{Any}" href="#LightQuery.named_tuple-Tuple{Any}"><code>LightQuery.named_tuple</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">named_tuple(x)</code></pre><p>Coerce to a <code>named_tuple</code>. For performance with working with arbitrary structs, explicitly define public <code>propertynames</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; Base.propertynames(p::Pair) = (:first, :second);
+
+julia&gt; named_tuple(:a =&gt; 1)
+(first = :a, second = 1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L66-L80">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.order-Tuple{Any,Any}" href="#LightQuery.order-Tuple{Any,Any}"><code>LightQuery.order</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">order(it, f; kwargs...)</code></pre><p>Generalized sort. <code>kwargs</code> will be passed to <code>sort!</code>; see the documentation there for options. See <a href="#LightQuery.By"><code>By</code></a> for a way to explicitly mark that an object has been sorted.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; order([&quot;b&quot;, &quot;a&quot;], identity)
+2-element view(::Array{String,1}, [2, 1]) with eltype String:
+ &quot;a&quot;
+ &quot;b&quot;</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/iterators.jl#L14-L29">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.over-Tuple{Any,Any}" href="#LightQuery.over-Tuple{Any,Any}"><code>LightQuery.over</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">over(it, f)</code></pre><p><code>Base.Generator</code> with the reverse argument order.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; over([1, 2], x -&gt; x + 1) |&gt; collect
+2-element Array{Int64,1}:
+ 2
+ 3</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/iterators.jl#L177-L190">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.pretty-Tuple{Any}" href="#LightQuery.pretty-Tuple{Any}"><code>LightQuery.pretty</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">pretty(x)</code></pre><p>Pretty display.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; pretty((a = [1, 2], b = [1.0, 2.0]))
+2×2 DataFrames.DataFrame
+│ Row │ a     │ b       │
+│     │ Int64 │ Float64 │
+├─────┼───────┼─────────┤
+│ 1   │ 1     │ 1.0     │
+│ 2   │ 2     │ 2.0     │</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L20-L36">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}" href="#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.remove</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">remove(data, names...)</code></pre><p>Remove <code>names</code>. Inverse of <a href="#LightQuery.transform-Tuple{NamedTuple}"><code>transform</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; test(x) = remove(x, :b);
+
+julia&gt; @inferred test((a = 1, b = 2.0))
+(a = 1,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L183-L198">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.rename-Tuple{Any}" href="#LightQuery.rename-Tuple{Any}"><code>LightQuery.rename</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">rename(data; renames...)</code></pre><p>Rename data. Currently unstable without <a href="#LightQuery.Name"><code>Name</code></a></p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; test(x) = rename(x, c = Name(:a));
+
+julia&gt; @inferred test((a = 1, b = 2.0))
+(b = 2.0, c = 1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L203-L218">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.rows-Tuple{Any}" href="#LightQuery.rows-Tuple{Any}"><code>LightQuery.rows</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">rows(n::NamedTuple)</code></pre><p>Iterator over rows of a <code>NamedTuple</code> of names. Inverse of <a href="#LightQuery.columns-Tuple{Any,Vararg{Any,N} where N}"><code>columns</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; @inferred first(rows((a = [1, 2], b = [2, 1])))
+(a = 1, b = 2)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L244-L257">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.select-Tuple{Any,Vararg{Any,N} where N}" href="#LightQuery.select-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.select</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">select(data::NamedTuple, names...)</code></pre><p>Select <code>names</code>.</p><pre><code class="language-none">select(ss::Symbol...)</code></pre><p>Curried form.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; test(x) = select(x, :a);
+
+julia&gt; @inferred test((a = 1, b = 2.0))
+(a = 1,)
+
+julia&gt; test(x) = select(:a)(x);
+
+julia&gt; @inferred test((a = 1, b = 2.0))
+(a = 1,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L150-L174">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.spread-Tuple{Any,Any}" href="#LightQuery.spread-Tuple{Any,Any}"><code>LightQuery.spread</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">spread(data::NamedTuple, name)</code></pre><p>Unnest nested data in <code>name</code>. Inverse of <a href="#LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}"><code>gather</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; test(x) = spread(x, :d);
+
+julia&gt; @inferred test((b = 2.0, d = (a = 1, c = &quot;c&quot;)))
+(b = 2.0, a = 1, c = &quot;c&quot;)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L128-L143">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.summarize-Tuple{Any}" href="#LightQuery.summarize-Tuple{Any}"><code>LightQuery.summarize</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">summarize(it; assignments...)</code></pre><p>A handy wrapper for summarizing groups. Assignments will be passed subtables, and will merge into the grouping keys.</p><pre><code class="language-none">function summarize(it; assignments...)
+    function inner(pair)
+        transform(pair.first; map(
+            f -&gt; f(pair.second), assignments.data
+        )...)
+    end
+    over(it, inner)
+end</code></pre><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; grouped = group_by((a = [:A, :A, :B, :B], b = [1, 2, 3, 4]), :a);
+
+julia&gt; summarize(grouped, b = @_ sum(autocolumns(_).b)) |&gt; autocolumns
+(a = Symbol[:A, :B], b = [3, 7])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L362-L385">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.transform-Tuple{NamedTuple}" href="#LightQuery.transform-Tuple{NamedTuple}"><code>LightQuery.transform</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">transform(data; assignments...)</code></pre><p>Merge <code>assignments</code> into <code>data</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Test: @inferred
+
+julia&gt; @inferred transform((a = 1, b = 2.0), c = &quot;3&quot;)
+(a = 1, b = 2.0, c = &quot;3&quot;)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/LightQuery.jl#L87-L100">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.unzip-Tuple{Any,Any}" href="#LightQuery.unzip-Tuple{Any,Any}"><code>LightQuery.unzip</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">unzip(it, n)</code></pre><p>Unzip an iterator <code>it</code> which returns tuples of length <code>n</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; f(x) = (x, x + 1.0);
+
+julia&gt; unzip(over([1], f), 2)
+([1], [2.0])
+
+julia&gt; unzip(over([1, missing], f), 2)
+(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[2.0, missing])
+
+julia&gt; unzip(zip([1], [1.0]), 2)
+([1], [1.0])
+
+julia&gt; unzip([(1, 1.0)], 2)
+([1], [1.0])
+
+julia&gt; unzip(over(when([1, missing, 2], x -&gt; ismissing(x) || x &gt; 1), f), 2)
+(Union{Missing, Int64}[missing, 2], Union{Missing, Float64}[missing, 3.0])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/Unzip.jl#L46-L71">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.when-Tuple{Any,Any}" href="#LightQuery.when-Tuple{Any,Any}"><code>LightQuery.when</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">when(it, f)</code></pre><p><code>Base.Iterators.Filter</code> with the reverse argument order.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; when([1, 2], x -&gt; x &gt; 1) |&gt; collect
+1-element Array{Int64,1}:
+ 2</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/iterators.jl#L194-L206">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@&gt;-Tuple{Any}" href="#LightQuery.@&gt;-Tuple{Any}"><code>LightQuery.@&gt;</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro &gt;(body)</code></pre><p>If body is in the form <code>body_ |&gt; tail_</code>, call <a href="#LightQuery.@_-Tuple{Any}"><code>@_</code></a> on <code>tail</code>, and recur on <code>body</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; @&gt; 0 |&gt; _ - 1 |&gt; abs
+1</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/Nameless.jl#L67-L78">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@_-Tuple{Any}" href="#LightQuery.@_-Tuple{Any}"><code>LightQuery.@_</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro _(body)</code></pre><p>Terser function syntax. The arguments are inside the body; the first argument is <code>_</code>, the second argument is <code>__</code>, etc.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; 1 |&gt; @_(_ + 1)
+2
+
+julia&gt; map(@_(__ - _), (1, 2), (2, 1))
+(1, -1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/30cb58338e969183168d9004173422cd22deabdb/src/Nameless.jl#L39-L54">source</a></section><h1><a class="nav-anchor" id="Tutorial-1" href="#Tutorial-1">Tutorial</a></h1><p>For an example of how to use this package, see the demo below, which follows the example <a href="https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html">here</a>. A copy of the flights data is included in the test folder of this package.</p><p>The biggest difference between this package and dplyr is that you have to explicitly move your data back and forth between rows (a vector of named tuples) and columns (a named tuple of vectors) depending on the kind of operation you want to do. Another inconvenience is that when you are moving from rows to columns, in many cases, you will have to re-specify the column names (except in certain cases). This is inconvenient but prevents this package from having to rely on inference.</p><p>You can easily convert most objects to named tuples using <code>named_tuple</code>. As a named tuple, the data will be in a column-wise form. If you want to display it, you can use <code>pretty</code> to hack the show methods of <code>DataFrame</code>s.</p><p>So read in flights, convert it into a named tuple, and remove the row-number column (which reads in without a name). This package comes with its own chaining macro <code>@&gt;</code>, which I&#39;ll make heavy use of. I&#39;ve reexported CSV from the CSV package for convenient IO.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; flights =
+          @&gt; CSV.read(&quot;flights.csv&quot;, missingstring = &quot;NA&quot;) |&gt;
+          named_tuple |&gt;
+          remove(_, Symbol(&quot;&quot;));
+
+julia&gt; pretty(flights)
+336776×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row    │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│        │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├────────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1      │ 2013   │ 1      │ 1      │ 517      │ 515            │ 2         │
+│ 2      │ 2013   │ 1      │ 1      │ 533      │ 529            │ 4         │
+│ 3      │ 2013   │ 1      │ 1      │ 542      │ 540            │ 2         │
+│ 4      │ 2013   │ 1      │ 1      │ 544      │ 545            │ -1        │
+│ 5      │ 2013   │ 1      │ 1      │ 554      │ 600            │ -6        │
+│ 6      │ 2013   │ 1      │ 1      │ 554      │ 558            │ -4        │
+│ 7      │ 2013   │ 1      │ 1      │ 555      │ 600            │ -5        │
+⋮
+│ 336769 │ 2013   │ 9      │ 30     │ 2307     │ 2255           │ 12        │
+│ 336770 │ 2013   │ 9      │ 30     │ 2349     │ 2359           │ -10       │
+│ 336771 │ 2013   │ 9      │ 30     │ missing  │ 1842           │ missing   │
+│ 336772 │ 2013   │ 9      │ 30     │ missing  │ 1455           │ missing   │
+│ 336773 │ 2013   │ 9      │ 30     │ missing  │ 2200           │ missing   │
+│ 336774 │ 2013   │ 9      │ 30     │ missing  │ 1210           │ missing   │
+│ 336775 │ 2013   │ 9      │ 30     │ missing  │ 1159           │ missing   │
+│ 336776 │ 2013   │ 9      │ 30     │ missing  │ 840            │ missing   │</code></pre><p>The <code>rows</code> iterator will convert the data to row-wise form. <code>when</code> will filter the data. You can make anonymous functions  with <code>@_</code>.</p><p>To display row-wise data, first, convert back to a columns-wise format with <code>columns</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; @&gt; flights |&gt;
+          rows |&gt;
+          when(_, @_ _.month == 1 &amp;&amp; _.day == 1) |&gt;
+          autocolumns |&gt;
+          pretty
+842×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│     │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├─────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1   │ 2013   │ 1      │ 1      │ 517      │ 515            │ 2         │
+│ 2   │ 2013   │ 1      │ 1      │ 533      │ 529            │ 4         │
+│ 3   │ 2013   │ 1      │ 1      │ 542      │ 540            │ 2         │
+│ 4   │ 2013   │ 1      │ 1      │ 544      │ 545            │ -1        │
+│ 5   │ 2013   │ 1      │ 1      │ 554      │ 600            │ -6        │
+│ 6   │ 2013   │ 1      │ 1      │ 554      │ 558            │ -4        │
+│ 7   │ 2013   │ 1      │ 1      │ 555      │ 600            │ -5        │
+⋮
+│ 835 │ 2013   │ 1      │ 1      │ 2343     │ 1724           │ 379       │
+│ 836 │ 2013   │ 1      │ 1      │ 2353     │ 2359           │ -6        │
+│ 837 │ 2013   │ 1      │ 1      │ 2353     │ 2359           │ -6        │
+│ 838 │ 2013   │ 1      │ 1      │ 2356     │ 2359           │ -3        │
+│ 839 │ 2013   │ 1      │ 1      │ missing  │ 1630           │ missing   │
+│ 840 │ 2013   │ 1      │ 1      │ missing  │ 1935           │ missing   │
+│ 841 │ 2013   │ 1      │ 1      │ missing  │ 1500           │ missing   │
+│ 842 │ 2013   │ 1      │ 1      │ missing  │ 600            │ missing   │</code></pre><p>You can arrange rows with <code>order</code>. Here, the currying version of <code>select</code> comes in handy.</p><pre><code class="language-julia-repl">julia&gt; by_date =
+          @&gt; flights |&gt;
+          rows |&gt;
+          order(_, select(:year, :month, :day));
+
+julia&gt; @&gt; by_date |&gt;
+          autocolumns |&gt;
+          pretty
+336776×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row    │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│        │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├────────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1      │ 2013   │ 1      │ 1      │ 517      │ 515            │ 2         │
+│ 2      │ 2013   │ 1      │ 1      │ 533      │ 529            │ 4         │
+│ 3      │ 2013   │ 1      │ 1      │ 542      │ 540            │ 2         │
+│ 4      │ 2013   │ 1      │ 1      │ 544      │ 545            │ -1        │
+│ 5      │ 2013   │ 1      │ 1      │ 554      │ 600            │ -6        │
+│ 6      │ 2013   │ 1      │ 1      │ 554      │ 558            │ -4        │
+│ 7      │ 2013   │ 1      │ 1      │ 555      │ 600            │ -5        │
+⋮
+│ 336769 │ 2013   │ 12     │ 31     │ missing  │ 1500           │ missing   │
+│ 336770 │ 2013   │ 12     │ 31     │ missing  │ 1430           │ missing   │
+│ 336771 │ 2013   │ 12     │ 31     │ missing  │ 855            │ missing   │
+│ 336772 │ 2013   │ 12     │ 31     │ missing  │ 705            │ missing   │
+│ 336773 │ 2013   │ 12     │ 31     │ missing  │ 825            │ missing   │
+│ 336774 │ 2013   │ 12     │ 31     │ missing  │ 1615           │ missing   │
+│ 336775 │ 2013   │ 12     │ 31     │ missing  │ 600            │ missing   │
+│ 336776 │ 2013   │ 12     │ 31     │ missing  │ 830            │ missing   │</code></pre><p>You can also pass in keyword arguments to <code>sort!</code> via <code>order</code>, like <code>rev = true</code>. The difference from the dplyr output here is caused by how <code>sort!</code> handles missing data in Julia (I think).</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
+          rows |&gt;
+          order(_, select(:arr_delay), rev = true) |&gt;
+          autocolumns |&gt;
+          pretty
+336776×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row    │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│        │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├────────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1      │ 2013   │ 1      │ 1      │ 1525     │ 1530           │ -5        │
+│ 2      │ 2013   │ 1      │ 1      │ 1528     │ 1459           │ 29        │
+│ 3      │ 2013   │ 1      │ 1      │ 1740     │ 1745           │ -5        │
+│ 4      │ 2013   │ 1      │ 1      │ 1807     │ 1738           │ 29        │
+│ 5      │ 2013   │ 1      │ 1      │ 1939     │ 1840           │ 59        │
+│ 6      │ 2013   │ 1      │ 1      │ 1952     │ 1930           │ 22        │
+│ 7      │ 2013   │ 1      │ 1      │ 2016     │ 1930           │ 46        │
+⋮
+│ 336769 │ 2013   │ 5      │ 7      │ 2054     │ 2055           │ -1        │
+│ 336770 │ 2013   │ 5      │ 13     │ 657      │ 700            │ -3        │
+│ 336771 │ 2013   │ 5      │ 2      │ 1926     │ 1929           │ -3        │
+│ 336772 │ 2013   │ 5      │ 4      │ 1816     │ 1820           │ -4        │
+│ 336773 │ 2013   │ 5      │ 2      │ 1947     │ 1949           │ -2        │
+│ 336774 │ 2013   │ 5      │ 6      │ 1826     │ 1830           │ -4        │
+│ 336775 │ 2013   │ 5      │ 20     │ 719      │ 735            │ -16       │
+│ 336776 │ 2013   │ 5      │ 7      │ 1715     │ 1729           │ -14       │</code></pre><p>In the original column-wise form, you can <code>select</code> or <code>remove</code> columns.</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
+          select(_, :year, :month, :day) |&gt;
+          pretty
+336776×3 DataFrames.DataFrame
+│ Row    │ year   │ month  │ day    │
+│        │ Int64⍰ │ Int64⍰ │ Int64⍰ │
+├────────┼────────┼────────┼────────┤
+│ 1      │ 2013   │ 1      │ 1      │
+│ 2      │ 2013   │ 1      │ 1      │
+│ 3      │ 2013   │ 1      │ 1      │
+│ 4      │ 2013   │ 1      │ 1      │
+│ 5      │ 2013   │ 1      │ 1      │
+│ 6      │ 2013   │ 1      │ 1      │
+│ 7      │ 2013   │ 1      │ 1      │
+⋮
+│ 336769 │ 2013   │ 9      │ 30     │
+│ 336770 │ 2013   │ 9      │ 30     │
+│ 336771 │ 2013   │ 9      │ 30     │
+│ 336772 │ 2013   │ 9      │ 30     │
+│ 336773 │ 2013   │ 9      │ 30     │
+│ 336774 │ 2013   │ 9      │ 30     │
+│ 336775 │ 2013   │ 9      │ 30     │
+│ 336776 │ 2013   │ 9      │ 30     │
+
+julia&gt; @&gt; flights |&gt;
+          remove(_, :year, :month, :day) |&gt;
+          pretty
+336776×16 DataFrames.DataFrame. Omitted printing of 11 columns
+│ Row    │ dep_time │ sched_dep_time │ dep_delay │ arr_time │ sched_arr_time │
+│        │ Int64⍰   │ Int64⍰         │ Int64⍰    │ Int64⍰   │ Int64⍰         │
+├────────┼──────────┼────────────────┼───────────┼──────────┼────────────────┤
+│ 1      │ 517      │ 515            │ 2         │ 830      │ 819            │
+│ 2      │ 533      │ 529            │ 4         │ 850      │ 830            │
+│ 3      │ 542      │ 540            │ 2         │ 923      │ 850            │
+│ 4      │ 544      │ 545            │ -1        │ 1004     │ 1022           │
+│ 5      │ 554      │ 600            │ -6        │ 812      │ 837            │
+│ 6      │ 554      │ 558            │ -4        │ 740      │ 728            │
+│ 7      │ 555      │ 600            │ -5        │ 913      │ 854            │
+⋮
+│ 336769 │ 2307     │ 2255           │ 12        │ 2359     │ 2358           │
+│ 336770 │ 2349     │ 2359           │ -10       │ 325      │ 350            │
+│ 336771 │ missing  │ 1842           │ missing   │ missing  │ 2019           │
+│ 336772 │ missing  │ 1455           │ missing   │ missing  │ 1634           │
+│ 336773 │ missing  │ 2200           │ missing   │ missing  │ 2312           │
+│ 336774 │ missing  │ 1210           │ missing   │ missing  │ 1330           │
+│ 336775 │ missing  │ 1159           │ missing   │ missing  │ 1344           │
+│ 336776 │ missing  │ 840            │ missing   │ missing  │ 1020           │</code></pre><p>You can also rename columns. Because constants (currently) do not propagate through keyword arguments in Julia, it&#39;s smart to wrap column names with <code>Name</code>.</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
+          rename(_, tail_num = Name(:tailnum)) |&gt;
+          pretty
+336776×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row    │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│        │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├────────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1      │ 2013   │ 1      │ 1      │ 517      │ 515            │ 2         │
+│ 2      │ 2013   │ 1      │ 1      │ 533      │ 529            │ 4         │
+│ 3      │ 2013   │ 1      │ 1      │ 542      │ 540            │ 2         │
+│ 4      │ 2013   │ 1      │ 1      │ 544      │ 545            │ -1        │
+│ 5      │ 2013   │ 1      │ 1      │ 554      │ 600            │ -6        │
+│ 6      │ 2013   │ 1      │ 1      │ 554      │ 558            │ -4        │
+│ 7      │ 2013   │ 1      │ 1      │ 555      │ 600            │ -5        │
+⋮
+│ 336769 │ 2013   │ 9      │ 30     │ 2307     │ 2255           │ 12        │
+│ 336770 │ 2013   │ 9      │ 30     │ 2349     │ 2359           │ -10       │
+│ 336771 │ 2013   │ 9      │ 30     │ missing  │ 1842           │ missing   │
+│ 336772 │ 2013   │ 9      │ 30     │ missing  │ 1455           │ missing   │
+│ 336773 │ 2013   │ 9      │ 30     │ missing  │ 2200           │ missing   │
+│ 336774 │ 2013   │ 9      │ 30     │ missing  │ 1210           │ missing   │
+│ 336775 │ 2013   │ 9      │ 30     │ missing  │ 1159           │ missing   │
+│ 336776 │ 2013   │ 9      │ 30     │ missing  │ 840            │ missing   │</code></pre><p>You can add new columns with transform. If you want to refer to previous columns, you&#39;ll have to transform twice.</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
+          transform(_,
+                    gain = _.arr_delay .- _.dep_delay,
+                    speed = _.distance ./ _.air_time .* 60
+          ) |&gt;
+          transform(_,
+                    gain_per_hour = _.gain ./ (_.air_time / 60)
+          ) |&gt;
+          pretty
+336776×22 DataFrames.DataFrame. Omitted printing of 16 columns
+│ Row    │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│        │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├────────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1      │ 2013   │ 1      │ 1      │ 517      │ 515            │ 2         │
+│ 2      │ 2013   │ 1      │ 1      │ 533      │ 529            │ 4         │
+│ 3      │ 2013   │ 1      │ 1      │ 542      │ 540            │ 2         │
+│ 4      │ 2013   │ 1      │ 1      │ 544      │ 545            │ -1        │
+│ 5      │ 2013   │ 1      │ 1      │ 554      │ 600            │ -6        │
+│ 6      │ 2013   │ 1      │ 1      │ 554      │ 558            │ -4        │
+│ 7      │ 2013   │ 1      │ 1      │ 555      │ 600            │ -5        │
+⋮
+│ 336769 │ 2013   │ 9      │ 30     │ 2307     │ 2255           │ 12        │
+│ 336770 │ 2013   │ 9      │ 30     │ 2349     │ 2359           │ -10       │
+│ 336771 │ 2013   │ 9      │ 30     │ missing  │ 1842           │ missing   │
+│ 336772 │ 2013   │ 9      │ 30     │ missing  │ 1455           │ missing   │
+│ 336773 │ 2013   │ 9      │ 30     │ missing  │ 2200           │ missing   │
+│ 336774 │ 2013   │ 9      │ 30     │ missing  │ 1210           │ missing   │
+│ 336775 │ 2013   │ 9      │ 30     │ missing  │ 1159           │ missing   │
+│ 336776 │ 2013   │ 9      │ 30     │ missing  │ 840            │ missing   │</code></pre><p>No summarize here, but you can just directly access columns:</p><pre><code class="language-julia-repl">julia&gt; using Statistics: mean;
+
+julia&gt; mean(skipmissing(flights.dep_delay))
+12.639070257304708</code></pre><p>I don&#39;t provide a export a sample function here, but StatsBase does.</p><p><code>Group</code>ing here works differently than in dplyr:</p><ul><li>You can only <code>Group</code> sorted data. To let Julia know that the data has been sorted, you need to explicitly wrap the data with <code>By</code>.</li><li>It&#39;s useful to collect after <code>Group</code> for performance; this allows Julia to know the number of groups ahead of time.</li><li>Groups return a pair, key =&gt; sub-data-frame. So:</li></ul><pre><code class="language-julia-repl">julia&gt; by_tailnum =
+          @&gt; flights |&gt;
+          rows |&gt;
+          order(_, select(:tailnum)) |&gt;
+          By(_, select(:tailnum)) |&gt;
+          Group |&gt;
+          collect;
+
+julia&gt; pair = first(by_tailnum);
+
+julia&gt; pair.first
+(tailnum = &quot;D942DN&quot;,)
+
+julia&gt; @&gt; pair.second |&gt;
+          autocolumns |&gt;
+          pretty
+4×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│     │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├─────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1   │ 2013   │ 2      │ 11     │ 1508     │ 1400           │ 68        │
+│ 2   │ 2013   │ 3      │ 23     │ 1340     │ 1300           │ 40        │
+│ 3   │ 2013   │ 3      │ 24     │ 859      │ 835            │ 24        │
+│ 4   │ 2013   │ 7      │ 5      │ 1253     │ 1259           │ -6        │</code></pre><p>If you would like to combine these steps, I have provided the convenience function <code>group_by</code>.</p><pre><code class="language-julia-repl">julia&gt; pair = first(group_by(flights, :tailnum));
+
+julia&gt; pair.first
+(tailnum = &quot;D942DN&quot;,)
+
+julia&gt; pair.second |&gt; autocolumns |&gt; pretty
+4×19 DataFrames.DataFrame. Omitted printing of 13 columns
+│ Row │ year   │ month  │ day    │ dep_time │ sched_dep_time │ dep_delay │
+│     │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰   │ Int64⍰         │ Int64⍰    │
+├─────┼────────┼────────┼────────┼──────────┼────────────────┼───────────┤
+│ 1   │ 2013   │ 2      │ 11     │ 1508     │ 1400           │ 68        │
+│ 2   │ 2013   │ 3      │ 23     │ 1340     │ 1300           │ 40        │
+│ 3   │ 2013   │ 3      │ 24     │ 859      │ 835            │ 24        │
+│ 4   │ 2013   │ 7      │ 5      │ 1253     │ 1259           │ -6        │</code></pre><ul><li>Third, you have to explicity use <code>over</code> to map over groups. So for example:</li></ul><pre><code class="language-julia-repl">julia&gt; @&gt; by_tailnum |&gt;
+          over(_, @_ begin
+                    sub_frame = autocolumns(_.second)
+                    transform(_.first,
+                              count = length(_.second),
+                              distance = sub_frame.distance |&gt; skipmissing |&gt; mean,
+                              delay = sub_frame.arr_delay |&gt; skipmissing |&gt; mean
+                    )
+          end) |&gt;
+          columns(_, :tailnum, :count, :distance, :delay) |&gt;
+          pretty
+4044×4 DataFrames.DataFrame
+│ Row  │ tailnum │ count │ distance │ delay    │
+│      │ String⍰ │ Int64 │ Float64  │ Float64  │
+├──────┼─────────┼───────┼──────────┼──────────┤
+│ 1    │ D942DN  │ 4     │ 854.5    │ 31.5     │
+│ 2    │ N0EGMQ  │ 371   │ 676.189  │ 9.98295  │
+│ 3    │ N10156  │ 153   │ 757.948  │ 12.7172  │
+│ 4    │ N102UW  │ 48    │ 535.875  │ 2.9375   │
+│ 5    │ N103US  │ 46    │ 535.196  │ -6.93478 │
+│ 6    │ N104UW  │ 47    │ 535.255  │ 1.80435  │
+│ 7    │ N10575  │ 289   │ 519.702  │ 20.6914  │
+⋮
+│ 4037 │ N996DL  │ 102   │ 897.304  │ 0.524752 │
+│ 4038 │ N997AT  │ 44    │ 679.045  │ 16.3023  │
+│ 4039 │ N997DL  │ 63    │ 867.762  │ 4.90323  │
+│ 4040 │ N998AT  │ 26    │ 593.538  │ 29.96    │
+│ 4041 │ N998DL  │ 77    │ 857.818  │ 16.3947  │
+│ 4042 │ N999DN  │ 61    │ 895.459  │ 14.3115  │
+│ 4043 │ N9EAMQ  │ 248   │ 674.665  │ 9.23529  │
+│ 4044 │ missing │ 2512  │ 710.258  │ NaN      │</code></pre><p>This is the first time in the code when inference hasn&#39;t been able to figure out the column names for us; we need to provide it them explicitly. Again, for convenience, I provide a <code>summarize</code> function for typical usage. You&#39;re welcome.</p><pre><code class="language-julia-repl">julia&gt; @&gt; by_tailnum |&gt;
+          summarize(_,
+            count = length,
+            distance = (@_ autocolumns(_).distance |&gt; skipmissing |&gt; mean),
+            delay = (@_ autocolumns(_).dep_delay |&gt; skipmissing |&gt; mean)
+          ) |&gt;
+          columns(_, :tailnum, :count, :distance, :delay) |&gt;
+          pretty
+4044×4 DataFrames.DataFrame
+│ Row  │ tailnum │ count │ distance │ delay    │
+│      │ String⍰ │ Int64 │ Float64  │ Float64  │
+├──────┼─────────┼───────┼──────────┼──────────┤
+│ 1    │ D942DN  │ 4     │ 854.5    │ 31.5     │
+│ 2    │ N0EGMQ  │ 371   │ 676.189  │ 8.49153  │
+│ 3    │ N10156  │ 153   │ 757.948  │ 17.8151  │
+│ 4    │ N102UW  │ 48    │ 535.875  │ 8.0      │
+│ 5    │ N103US  │ 46    │ 535.196  │ -3.19565 │
+│ 6    │ N104UW  │ 47    │ 535.255  │ 9.93617  │
+│ 7    │ N10575  │ 289   │ 519.702  │ 22.6507  │
+⋮
+│ 4037 │ N996DL  │ 102   │ 897.304  │ 6.85149  │
+│ 4038 │ N997AT  │ 44    │ 679.045  │ 17.0233  │
+│ 4039 │ N997DL  │ 63    │ 867.762  │ 7.62903  │
+│ 4040 │ N998AT  │ 26    │ 593.538  │ 31.96    │
+│ 4041 │ N998DL  │ 77    │ 857.818  │ 23.1711  │
+│ 4042 │ N999DN  │ 61    │ 895.459  │ 18.9016  │
+│ 4043 │ N9EAMQ  │ 248   │ 674.665  │ 9.88235  │
+│ 4044 │ missing │ 2512  │ 710.258  │ NaN      │</code></pre><p>For the n-distinct example, I&#39;ve switched things around to be just a smidge more efficient. This example shows how calling <code>columns</code> is sometimes necessary to trigger eager evaluation.</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
+          group_by(_, :dest, :tailnum) |&gt;
+          summarize(_, flights = length) |&gt;
+          columns(_, :dest, :tailnum, :flights) |&gt;
+          group_by(_, :dest) |&gt;
+          summarize(_,
+            planes = length,
+            flights = @_ sum(autocolumns(_).flights)
+          ) |&gt;
+          autocolumns |&gt;
+          pretty
+105×3 DataFrames.DataFrame
+│ Row │ dest   │ planes │ flights │
+│     │ String │ Int64  │ Int64   │
+├─────┼────────┼────────┼─────────┤
+│ 1   │ ABQ    │ 108    │ 254     │
+│ 2   │ ACK    │ 58     │ 265     │
+│ 3   │ ALB    │ 172    │ 439     │
+│ 4   │ ANC    │ 6      │ 8       │
+│ 5   │ ATL    │ 1180   │ 17215   │
+│ 6   │ AUS    │ 993    │ 2439    │
+│ 7   │ AVL    │ 159    │ 275     │
+⋮
+│ 98  │ STL    │ 960    │ 4339    │
+│ 99  │ STT    │ 87     │ 522     │
+│ 100 │ SYR    │ 383    │ 1761    │
+│ 101 │ TPA    │ 1126   │ 7466    │
+│ 102 │ TUL    │ 105    │ 315     │
+│ 103 │ TVC    │ 60     │ 101     │
+│ 104 │ TYS    │ 273    │ 631     │
+│ 105 │ XNA    │ 176    │ 1036    │</code></pre><p>Of course, you can group repeatedly.</p><pre><code class="language-julia-repl">julia&gt; per_day =
+          @&gt; flights |&gt;
+          group_by(_, :year, :month, :day) |&gt;
+          summarize(_, flights = length) |&gt;
+          autocolumns;
+
+julia&gt; pretty(per_day)
+365×4 DataFrames.DataFrame
+│ Row │ year  │ month │ day   │ flights │
+│     │ Int64 │ Int64 │ Int64 │ Int64   │
+├─────┼───────┼───────┼───────┼─────────┤
+│ 1   │ 2013  │ 1     │ 1     │ 842     │
+│ 2   │ 2013  │ 1     │ 2     │ 943     │
+│ 3   │ 2013  │ 1     │ 3     │ 914     │
+│ 4   │ 2013  │ 1     │ 4     │ 915     │
+│ 5   │ 2013  │ 1     │ 5     │ 720     │
+│ 6   │ 2013  │ 1     │ 6     │ 832     │
+│ 7   │ 2013  │ 1     │ 7     │ 933     │
+⋮
+│ 358 │ 2013  │ 12    │ 24    │ 761     │
+│ 359 │ 2013  │ 12    │ 25    │ 719     │
+│ 360 │ 2013  │ 12    │ 26    │ 936     │
+│ 361 │ 2013  │ 12    │ 27    │ 963     │
+│ 362 │ 2013  │ 12    │ 28    │ 814     │
+│ 363 │ 2013  │ 12    │ 29    │ 888     │
+│ 364 │ 2013  │ 12    │ 30    │ 968     │
+│ 365 │ 2013  │ 12    │ 31    │ 776     │
+
+julia&gt; per_month =
+          @&gt; per_day |&gt;
+          group_by(_, :year, :month) |&gt;
+          summarize(_, flights = @_ sum(autocolumns(_).flights)) |&gt;
+          autocolumns;
+
+julia&gt; pretty(per_month)
+12×3 DataFrames.DataFrame
+│ Row │ year  │ month │ flights │
+│     │ Int64 │ Int64 │ Int64   │
+├─────┼───────┼───────┼─────────┤
+│ 1   │ 2013  │ 1     │ 27004   │
+│ 2   │ 2013  │ 2     │ 24951   │
+│ 3   │ 2013  │ 3     │ 28834   │
+│ 4   │ 2013  │ 4     │ 28330   │
+│ 5   │ 2013  │ 5     │ 28796   │
+│ 6   │ 2013  │ 6     │ 28243   │
+│ 7   │ 2013  │ 7     │ 29425   │
+│ 8   │ 2013  │ 8     │ 29327   │
+│ 9   │ 2013  │ 9     │ 27574   │
+│ 10  │ 2013  │ 10    │ 28889   │
+│ 11  │ 2013  │ 11    │ 27268   │
+│ 12  │ 2013  │ 12    │ 28135   │
+
+julia&gt; per_year =
+          @&gt; per_month |&gt;
+          group_by(_, :year) |&gt;
+          summarize(_, flights = @_ sum(autocolumns(_).flights)) |&gt;
+          autocolumns;
+
+julia&gt; pretty(per_year)
+1×2 DataFrames.DataFrame
+│ Row │ year  │ flights │
+│     │ Int64 │ Int64   │
+├─────┼───────┼─────────┤
+│ 1   │ 2013  │ 336776  │</code></pre><p>Here&#39;s the example in the dplyr docs for piping:</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
+          group_by(_, :year, :month, :day) |&gt;
+          summarize(_,
+            arr = (@_ autocolumns(_).arr_delay |&gt; skipmissing |&gt; mean),
+            dep = @_ autocolumns(_).dep_delay |&gt; skipmissing |&gt; mean
+          ) |&gt;
+          when(_, @_ _.arr &gt; 30 || _.dep &gt; 30) |&gt;
+          autocolumns |&gt;
+          pretty
+49×5 DataFrames.DataFrame
+│ Row │ year  │ month │ day   │ arr     │ dep     │
+│     │ Int64 │ Int64 │ Int64 │ Float64 │ Float64 │
+├─────┼───────┼───────┼───────┼─────────┼─────────┤
+│ 1   │ 2013  │ 1     │ 16    │ 34.2474 │ 24.6129 │
+│ 2   │ 2013  │ 1     │ 31    │ 32.6029 │ 28.6584 │
+│ 3   │ 2013  │ 2     │ 11    │ 36.2901 │ 39.0736 │
+│ 4   │ 2013  │ 2     │ 27    │ 31.2525 │ 37.7633 │
+│ 5   │ 2013  │ 3     │ 8     │ 85.8622 │ 83.5369 │
+│ 6   │ 2013  │ 3     │ 18    │ 41.2919 │ 30.118  │
+│ 7   │ 2013  │ 4     │ 10    │ 38.4123 │ 33.0237 │
+⋮
+│ 42  │ 2013  │ 10    │ 11    │ 18.923  │ 31.2318 │
+│ 43  │ 2013  │ 12    │ 5     │ 51.6663 │ 52.328  │
+│ 44  │ 2013  │ 12    │ 8     │ 36.9118 │ 21.5153 │
+│ 45  │ 2013  │ 12    │ 9     │ 42.5756 │ 34.8002 │
+│ 46  │ 2013  │ 12    │ 10    │ 44.5088 │ 26.4655 │
+│ 47  │ 2013  │ 12    │ 14    │ 46.3975 │ 28.3616 │
+│ 48  │ 2013  │ 12    │ 17    │ 55.8719 │ 40.7056 │
+│ 49  │ 2013  │ 12    │ 23    │ 32.226  │ 32.2541 │</code></pre><h1><a class="nav-anchor" id="Two-table-verbs-1" href="#Two-table-verbs-1">Two table verbs</a></h1><p>I&#39;m following the example <a href="https://cran.r-project.org/web/packages/dplyr/vignettes/two-table.html">here</a>.</p><p>Again, for inference reasons, natural joins won&#39;t work. I only provide one join at the moment, but it&#39;s super efficient. Let&#39;s start by reading in airlines and letting julia konw that it&#39;s already sorted by <code>:carrier</code>.</p><pre><code class="language-julia-repl">julia&gt; airlines =
+          @&gt; CSV.read(&quot;airlines.csv&quot;, missingstring = &quot;NA&quot;) |&gt;
+          named_tuple |&gt;
+          remove(_, Symbol(&quot;&quot;));
+
+julia&gt; airlines_by_carrier =
+          @&gt; airlines |&gt;
+          rows |&gt;
+          By(_, select(:carrier));</code></pre><p>If we want to join this data into the flights data, here&#39;s what we do. <code>LeftJoin</code> requires not only presorted but <strong>unique</strong> keys. Of course, there are multiple flights from the same airline, so we need to group first. Then, we tell Julia that the groups are themselves sorted (by the first item, the key). Finally we can join in the airline data. But the results are a bit tricky. Let&#39;s take a look at the first item. Just like the dplyr manual, I&#39;m only using a few of the columns from <code>flights</code> for demonstration.</p><pre><code class="language-julia-repl">julia&gt; flights2 =
+            @&gt; flights |&gt;
+            select(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier);
+
+julia&gt; airline_join =
+          @&gt; flights2 |&gt;
+          group_by(_, :carrier) |&gt;
+          By(_, first) |&gt;
+          LeftJoin(_, airlines_by_carrier);
+
+julia&gt; first_airline_join = first(airline_join);</code></pre><p>We end up getting a group and subframe on the left, and a row on the right.</p><pre><code class="language-julia-repl">julia&gt; first_airline_join.first.first
+(carrier = &quot;9E&quot;,)
+
+julia&gt; @&gt; first_airline_join.first.second |&gt;
+            autocolumns |&gt;
+            pretty
+18460×8 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row   │ year   │ month  │ day    │ hour   │ origin  │ dest    │ tailnum │
+│       │ Int64⍰ │ Int64⍰ │ Int64⍰ │ Int64⍰ │ String⍰ │ String⍰ │ String⍰ │
+├───────┼────────┼────────┼────────┼────────┼─────────┼─────────┼─────────┤
+│ 1     │ 2013   │ 1      │ 1      │ 8      │ JFK     │ MSP     │ N915XJ  │
+│ 2     │ 2013   │ 1      │ 1      │ 15     │ JFK     │ IAD     │ N8444F  │
+│ 3     │ 2013   │ 1      │ 1      │ 14     │ JFK     │ BUF     │ N920XJ  │
+│ 4     │ 2013   │ 1      │ 1      │ 15     │ JFK     │ SYR     │ N8409N  │
+│ 5     │ 2013   │ 1      │ 1      │ 15     │ JFK     │ ROC     │ N8631E  │
+│ 6     │ 2013   │ 1      │ 1      │ 15     │ JFK     │ BWI     │ N913XJ  │
+│ 7     │ 2013   │ 1      │ 1      │ 15     │ JFK     │ ORD     │ N904XJ  │
+⋮
+│ 18453 │ 2013   │ 9      │ 30     │ 20     │ JFK     │ IAD     │ N8790A  │
+│ 18454 │ 2013   │ 9      │ 30     │ 20     │ LGA     │ TYS     │ N8924B  │
+│ 18455 │ 2013   │ 9      │ 30     │ 19     │ JFK     │ PHL     │ N602XJ  │
+│ 18456 │ 2013   │ 9      │ 30     │ 20     │ JFK     │ DCA     │ N602LR  │
+│ 18457 │ 2013   │ 9      │ 30     │ 20     │ JFK     │ BWI     │ N8423C  │
+│ 18458 │ 2013   │ 9      │ 30     │ 18     │ JFK     │ BUF     │ N906XJ  │
+│ 18459 │ 2013   │ 9      │ 30     │ 14     │ JFK     │ DCA     │ missing │
+│ 18460 │ 2013   │ 9      │ 30     │ 22     │ LGA     │ SYR     │ missing │
+
+julia&gt; first_airline_join.second
+(carrier = &quot;9E&quot;, name = &quot;Endeavor Air Inc.&quot;)</code></pre><p>If you want to collect your results into a flat new dataframe, you need to do a bit of surgery, including making use of <code>Iterators.flatten</code>. We also need to make a fake row to insert on the right in case we can&#39;t find a match.</p><pre><code class="language-julia-repl">julia&gt; empty_right_row =
+            @&gt; airlines |&gt;
+            remove(_, :carrier) |&gt;
+            map(x -&gt; missing, _);
+
+julia&gt; @&gt; airline_join |&gt;
+          over(_, @_ begin
+              right_row = _.second
+              if right_row === missing
+                  right_row = empty_right_row
+              end
+              over(_.first.second, x -&gt; merge(x, right_row))
+          end) |&gt;
+          Iterators.flatten(_) |&gt;
+          columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum,
+                    :carrier, :name) |&gt;
+          pretty
+336776×9 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String⍰ │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 1     │ 1     │ 8     │ JFK    │ MSP    │ N915XJ  │ 9E      │
+│ 2      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ IAD    │ N8444F  │ 9E      │
+│ 3      │ 2013  │ 1     │ 1     │ 14    │ JFK    │ BUF    │ N920XJ  │ 9E      │
+│ 4      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ SYR    │ N8409N  │ 9E      │
+│ 5      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ ROC    │ N8631E  │ 9E      │
+│ 6      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ BWI    │ N913XJ  │ 9E      │
+│ 7      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ ORD    │ N904XJ  │ 9E      │
+⋮
+│ 336769 │ 2013  │ 9     │ 27    │ 16    │ LGA    │ IAD    │ N514MJ  │ YV      │
+│ 336770 │ 2013  │ 9     │ 27    │ 17    │ LGA    │ CLT    │ N925FJ  │ YV      │
+│ 336771 │ 2013  │ 9     │ 28    │ 19    │ LGA    │ IAD    │ N501MJ  │ YV      │
+│ 336772 │ 2013  │ 9     │ 29    │ 16    │ LGA    │ IAD    │ N518LR  │ YV      │
+│ 336773 │ 2013  │ 9     │ 29    │ 17    │ LGA    │ CLT    │ N932LR  │ YV      │
+│ 336774 │ 2013  │ 9     │ 30    │ 16    │ LGA    │ IAD    │ N510MJ  │ YV      │
+│ 336775 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ CLT    │ N905FJ  │ YV      │
+│ 336776 │ 2013  │ 9     │ 30    │ 20    │ LGA    │ CLT    │ N924FJ  │ YV      │</code></pre><p>Are you exhaused? I am. To streamline this entire process, I&#39;ve provided a <code>left_join</code> function which will conduct a natural, many-to-one left join. Here, autocolumns isn&#39;t working (take it up with Base inference), so you&#39;ll have to manually provide column names.</p><pre><code class="language-julia-repl">julia&gt; @&gt; left_join(flights2, airlines) |&gt;
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier, :name) |&gt;
+            pretty
+336776×9 DataFrames.DataFrame. Omitted printing of 1 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String⍰ │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 1     │ 1     │ 8     │ JFK    │ MSP    │ N915XJ  │ 9E      │
+│ 2      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ IAD    │ N8444F  │ 9E      │
+│ 3      │ 2013  │ 1     │ 1     │ 14    │ JFK    │ BUF    │ N920XJ  │ 9E      │
+│ 4      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ SYR    │ N8409N  │ 9E      │
+│ 5      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ ROC    │ N8631E  │ 9E      │
+│ 6      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ BWI    │ N913XJ  │ 9E      │
+│ 7      │ 2013  │ 1     │ 1     │ 15    │ JFK    │ ORD    │ N904XJ  │ 9E      │
+⋮
+│ 336769 │ 2013  │ 9     │ 27    │ 16    │ LGA    │ IAD    │ N514MJ  │ YV      │
+│ 336770 │ 2013  │ 9     │ 27    │ 17    │ LGA    │ CLT    │ N925FJ  │ YV      │
+│ 336771 │ 2013  │ 9     │ 28    │ 19    │ LGA    │ IAD    │ N501MJ  │ YV      │
+│ 336772 │ 2013  │ 9     │ 29    │ 16    │ LGA    │ IAD    │ N518LR  │ YV      │
+│ 336773 │ 2013  │ 9     │ 29    │ 17    │ LGA    │ CLT    │ N932LR  │ YV      │
+│ 336774 │ 2013  │ 9     │ 30    │ 16    │ LGA    │ IAD    │ N510MJ  │ YV      │
+│ 336775 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ CLT    │ N905FJ  │ YV      │
+│ 336776 │ 2013  │ 9     │ 30    │ 20    │ LGA    │ CLT    │ N924FJ  │ YV      │</code></pre><p>Let&#39;s keep going in the examples. I&#39;m going to name the weather key. I&#39;m also going to make a &quot;fake&quot; weather row that only contains missing objects, and we can use this when weather data is missing. Yes, I know it&#39;s a bit frustrating to have to explicitly deal with missing data, but it adds a lot more flexibility (e.g. you could do mean replacement).</p><pre><code class="language-julia-repl">julia&gt; weather =
+            @&gt; CSV.read( &quot;weather.csv&quot;, missingstring = &quot;NA&quot;) |&gt;
+            named_tuple |&gt;
+            remove(_, Symbol(&quot;&quot;));
+
+julia&gt; @&gt; left_join(flights2, weather) |&gt;
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier,
+                :temp, :dewp, :humid, :wind_dir, :wind_speed, :wind_gust, :precip,
+                :pressure, :visib, :time_hour
+            ) |&gt;
+            pretty
+335862×18 DataFrames.DataFrame. Omitted printing of 10 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String⍰ │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 1     │ 1     │ 5     │ EWR    │ IAH    │ N14228  │ UA      │
+│ 2      │ 2013  │ 1     │ 1     │ 5     │ EWR    │ ORD    │ N39463  │ UA      │
+│ 3      │ 2013  │ 1     │ 1     │ 5     │ JFK    │ MIA    │ N619AA  │ AA      │
+│ 4      │ 2013  │ 1     │ 1     │ 5     │ JFK    │ BQN    │ N804JB  │ B6      │
+│ 5      │ 2013  │ 1     │ 1     │ 5     │ JFK    │ BOS    │ N708JB  │ B6      │
+│ 6      │ 2013  │ 1     │ 1     │ 5     │ LGA    │ IAH    │ N24211  │ UA      │
+│ 7      │ 2013  │ 1     │ 1     │ 6     │ EWR    │ FLL    │ N516JB  │ B6      │
+⋮
+│ 335855 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ CLE    │ N24715  │ UA      │
+│ 335856 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ DSM    │ N14168  │ EV      │
+│ 335857 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ PDX    │ N39475  │ UA      │
+│ 335858 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ PBI    │ N77258  │ UA      │
+│ 335859 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ DCA    │ N13979  │ EV      │
+│ 335860 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ MCO    │ N37468  │ UA      │
+│ 335861 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ BOS    │ N486UA  │ UA      │
+│ 335862 │ 2013  │ 12    │ 30    │ 19    │ EWR    │ BNA    │ N17984  │ EV      │</code></pre><p>Now try merging in the airplane data. Note that I rename the year column to avoid a collision in the natural join.</p><pre><code class="language-julia-repl">julia&gt; planes =
+            @&gt; CSV.read( &quot;planes.csv&quot;, missingstring = &quot;NA&quot;) |&gt;
+            named_tuple |&gt;
+            remove(_, Symbol(&quot;&quot;)) |&gt;
+            rename(_, construction_year = Name(:year));
+
+julia&gt; @&gt; left_join(flights2, planes) |&gt;
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum,
+                :carrier, :type, :manufacturer, :model, :engines, :seats,
+                :speed, :engine, :construction_year
+            ) |&gt;
+            pretty
+334264×16 DataFrames.DataFrame. Omitted printing of 8 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String  │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 2     │ 11    │ 14    │ LGA    │ ATL    │ D942DN  │ DL      │
+│ 2      │ 2013  │ 3     │ 23    │ 13    │ LGA    │ MCO    │ D942DN  │ DL      │
+│ 3      │ 2013  │ 3     │ 24    │ 8     │ JFK    │ MCO    │ D942DN  │ DL      │
+│ 4      │ 2013  │ 7     │ 5     │ 12    │ LGA    │ ATL    │ D942DN  │ DL      │
+│ 5      │ 2013  │ 1     │ 1     │ 15    │ LGA    │ CLT    │ N0EGMQ  │ MQ      │
+│ 6      │ 2013  │ 1     │ 1     │ 21    │ LGA    │ CLT    │ N0EGMQ  │ MQ      │
+│ 7      │ 2013  │ 1     │ 2     │ 8     │ LGA    │ ATL    │ N0EGMQ  │ MQ      │
+⋮
+│ 334257 │ 2013  │ 9     │ 26    │ 13    │ LGA    │ CLT    │ N9EAMQ  │ MQ      │
+│ 334258 │ 2013  │ 9     │ 26    │ 19    │ LGA    │ MSP    │ N9EAMQ  │ MQ      │
+│ 334259 │ 2013  │ 9     │ 27    │ 10    │ LGA    │ DTW    │ N9EAMQ  │ MQ      │
+│ 334260 │ 2013  │ 9     │ 27    │ 16    │ LGA    │ ATL    │ N9EAMQ  │ MQ      │
+│ 334261 │ 2013  │ 9     │ 29    │ 12    │ LGA    │ BNA    │ N9EAMQ  │ MQ      │
+│ 334262 │ 2013  │ 9     │ 29    │ 18    │ LGA    │ CMH    │ N9EAMQ  │ MQ      │
+│ 334263 │ 2013  │ 9     │ 30    │ 11    │ JFK    │ DCA    │ N9EAMQ  │ MQ      │
+│ 334264 │ 2013  │ 9     │ 30    │ 14    │ JFK    │ TPA    │ N9EAMQ  │ MQ      │</code></pre><pre><code class="language-julia-repl">julia&gt; airports =
+            @&gt; CSV.read(&quot;airports.csv&quot;, missingstring = &quot;NA&quot;) |&gt;
+            named_tuple |&gt;
+            remove(_, Symbol(&quot;&quot;)) |&gt;
+            rename(_, dest = Name(:faa));
+
+julia&gt; @&gt; left_join(flights2, airports) |&gt;
+            columns(_, :year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier, :name, :lat, :lon, :alt, :tz, :dst, :tzone) |&gt;
+            pretty
+336776×15 DataFrames.DataFrame. Omitted printing of 7 columns
+│ Row    │ year  │ month │ day   │ hour  │ origin │ dest   │ tailnum │ carrier │
+│        │ Int64 │ Int64 │ Int64 │ Int64 │ String │ String │ String⍰ │ String  │
+├────────┼───────┼───────┼───────┼───────┼────────┼────────┼─────────┼─────────┤
+│ 1      │ 2013  │ 10    │ 1     │ 20    │ JFK    │ ABQ    │ N554JB  │ B6      │
+│ 2      │ 2013  │ 10    │ 2     │ 20    │ JFK    │ ABQ    │ N607JB  │ B6      │
+│ 3      │ 2013  │ 10    │ 3     │ 20    │ JFK    │ ABQ    │ N591JB  │ B6      │
+│ 4      │ 2013  │ 10    │ 4     │ 20    │ JFK    │ ABQ    │ N662JB  │ B6      │
+│ 5      │ 2013  │ 10    │ 5     │ 19    │ JFK    │ ABQ    │ N580JB  │ B6      │
+│ 6      │ 2013  │ 10    │ 6     │ 20    │ JFK    │ ABQ    │ N507JB  │ B6      │
+│ 7      │ 2013  │ 10    │ 7     │ 20    │ JFK    │ ABQ    │ N565JB  │ B6      │
+⋮
+│ 336769 │ 2013  │ 9     │ 27    │ 7     │ LGA    │ XNA    │ N724MQ  │ MQ      │
+│ 336770 │ 2013  │ 9     │ 27    │ 8     │ EWR    │ XNA    │ N17146  │ EV      │
+│ 336771 │ 2013  │ 9     │ 27    │ 15    │ LGA    │ XNA    │ N724MQ  │ MQ      │
+│ 336772 │ 2013  │ 9     │ 29    │ 17    │ LGA    │ XNA    │ N725MQ  │ MQ      │
+│ 336773 │ 2013  │ 9     │ 30    │ 7     │ LGA    │ XNA    │ N735MQ  │ MQ      │
+│ 336774 │ 2013  │ 9     │ 30    │ 8     │ EWR    │ XNA    │ N14117  │ EV      │
+│ 336775 │ 2013  │ 9     │ 30    │ 15    │ LGA    │ XNA    │ N725MQ  │ MQ      │
+│ 336776 │ 2013  │ 9     │ 30    │ 17    │ LGA    │ XNA    │ N720MQ  │ MQ      │</code></pre><p>I have not decided to support any other kind of join. However, using the iterators in this package, equivalents to right<em>join, inner</em>join, semi<em>join, and anti</em>join are all possible.</p><footer><hr/></footer></article></body></html>
