@@ -289,7 +289,7 @@ export autocolumns
 """
     autocolumns(it)
 
-Instead of using [`columns`](@ref), you can use `autocolumns` to convert an iterate to
+Instead of using [`columns`](@ref), you can use `autocolumns` to convert an iterator to
 named-tuple form. You need not specify names, but this function is fragile because it relies on
 inference.
 

@@ -821,5 +821,5 @@ julia> @> left_join(flights2, airports) |>
 ```
 
 I have not decided to support any other kind of join. However, using the
-iterators in this package, equivalents to right_join, inner_join, semi_join, and
-anti_join are all possible.
+iterators in this package, equivalents to right\_join, inner\_join, semi\_join,
+and anti\_join are all possible.
