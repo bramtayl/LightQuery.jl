@@ -51,6 +51,8 @@ Unzip an iterator `it` which returns tuples of length `n`.
 ```jldoctest
 julia> using LightQuery
 
+julia> using Test: @inferred
+
 julia> f(x) = (x, x + 1.0);
 
 julia> unzip(over([1], f), 2)
@@ -88,13 +90,13 @@ setindex_widen_up_to(dest::ModelArray, el, i) =
     ModelArray(maybe_setindex_widen_up_to.(arrays(dest), el, i)...)
 
 
-function maybe_push_widen(dest::AbstractArray{T}, el) where T
-	if isa(el, T)
+maybe_push_widen(dest::AbstractArray{T}, el) where T =
+    if isa(el, T)
         push!(dest, el)
         dest
     else
         push_widen(dest, el)
     end
-end
 
-push_widen(dest::ModelArray, el) = ModelArray(maybe_push_widen.(arrays(dest), el)...)
+push_widen(dest::ModelArray, el) =
+    ModelArray(maybe_push_widen.(arrays(dest), el)...)

@@ -13,10 +13,12 @@ end
 export order
 """
 	order(it, f; kwargs...)
+	order(it, f, condition; kwargs...)
 
 Generalized sort. `kwargs` will be passed to `sort!`; see the documentation
 there for options. See [`By`](@ref) for a way to explicitly mark that an object
-has been sorted.
+has been sorted. Most performant it `f` is type stable, if not, consider
+using a condition to filter.
 
 ```jldoctest
 julia> using LightQuery
@@ -25,11 +27,19 @@ julia> order(["b", "a"], identity)
 2-element view(::Array{String,1}, [2, 1]) with eltype String:
  "a"
  "b"
+
+julia> order([missing, "a"], identity, !ismissing)
+1-element view(::Array{Union{Missing, String},1}, [2]) with eltype Union{Missing, String}:
+ "a"
 ```
 """
 order(it, f; kwargs...) =
 	view(it, mappedarray(first,
 		sort!(collect(enumerate(Generator(f, it))), by = last; kwargs...)))
+
+order(it, f, condition; kwargs...) =
+	view(it, mappedarray(first,
+		sort!(collect(when(enumerate(Generator(f, it)), x -> condition(x[2]))), by = last; kwargs...)))
 
 state_to_index(s::AbstractArray, state) = state[2] + 1
 state_to_index(it::Array, state::Int) = state
@@ -56,10 +66,13 @@ julia> Group(By([1, 3, 2, 4], iseven)) |> first
 false => [1, 3]
 ```
 """
-Group(b::By) = Group(b.f, b.it)
+@inline Group(b::By) = Group(b.f, b.it)
 
 IteratorSize(g::Group) = SizeUnknown()
 IteratorEltype(g::Group) = EltypeUnknown()
+
+IteratorSize(::Type{T}) where T <: Group = SizeUnknown()
+IteratorEltype(::Type{T}) where T <: Group  = EltypeUnknown()
 
 function iterate(g::Group)
 	item, state = @ifsomething iterate(g.it)
@@ -69,7 +82,7 @@ iterate(g::Group, ::Nothing) = nothing
 function iterate(g::Group, (state, left_index, last_result))
 	item_state = iterate(g.it, state)
 	if item_state === nothing
-		return last_result => view(g.it, left_index:length(g.it)), nothing
+		return last_result => (@inbounds view(g.it, left_index:length(g.it))), nothing
 	else
 		item, state = item_state
 		result = g.f(item)
@@ -77,7 +90,7 @@ function iterate(g::Group, (state, left_index, last_result))
 			# manual inlining of iterate to avoid stackoverflow detector
 			item_state = iterate(g.it, state)
 			if item_state === nothing
-				return last_result => view(g.it, left_index:length(g.it)), nothing
+				return last_result => (@inbounds view(g.it, left_index:length(g.it))), nothing
 			else
 				item, state = item_state
 				if state === nothing
@@ -87,7 +100,7 @@ function iterate(g::Group, (state, left_index, last_result))
 			end
 		end
 		right_index = state_to_index(g.it, state) - 1
-		last_result => view(g.it, left_index:right_index - 1), (state, right_index, result)
+		last_result => (@inbounds view(g.it, left_index:right_index - 1)), (state, right_index, result)
 	end
 end
 
@@ -143,6 +156,7 @@ eltype(l::LeftJoin) = Pair{
     eltype(l.left.it),
     Union{Missing, eltype(l.right.it)}
 }
+
 IteratorSize(l::LeftJoin) = IteratorSize(l.left.it)
 length(l::LeftJoin) = length(l.left.it)
 size(l::LeftJoin) = size(l.left.it)
@@ -177,7 +191,7 @@ export over
 """
 	over(it, f)
 
-`Base.Generator` with the reverse argument order.
+Lazy version of map, with the reverse argument order.
 
 ```jldoctest
 julia> using LightQuery
@@ -194,7 +208,7 @@ export when
 """
 	when(it, f)
 
-`Base.Iterators.Filter` with the reverse argument order.
+Lazy version of filter, with the reverse argument order.
 
 ```jldoctest
 julia> using LightQuery
@@ -214,9 +228,8 @@ view(z::Zip, args...) = zip(map(
 	i -> view(i, args...),
 	z.is
 )...)
-IteratorSize(g::Generator) = IteratorSize(g.iter)
-getindex(z::Zip, args...) = zip(map(
+@propagate_inbounds getindex(z::Zip, args...) = map(
 	i -> getindex(i, args...),
 	z.is
-)...)
-getindex(g::Generator, args...) = Generator(g.f, getindex(g.iter, args...))
+)
+@propagate_inbounds getindex(g::Generator, args...) = g.f(getindex(g.iter, args...))
