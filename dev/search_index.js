@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Group",
     "category": "method",
-    "text": "group(b::By)\n\nGroup consecutive keys in b. Requires a presorted object (see By).\n\njulia> using LightQuery\n\njulia> Group(By([1, 3, 2, 4], iseven)) |> first\nfalse => [1, 3]\n\n\n\n\n\n"
+    "text": "Group(b::By)\n\nGroup consecutive keys in b. Requires a presorted object (see By). Relies on the fact that iteration states can be converted to indices; thus, you might have to define LightQuery.state_to_index for unrecognized types (PR\'s welcome.)\n\njulia> using LightQuery\n\njulia> Group(By([1, 3, 2, 4], iseven)) |> first\nfalse => [1, 3]\n\n\n\n\n\n"
 },
 
 {
@@ -57,7 +57,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.columns-Union{Tuple{Generator{It,Names{Symbols}}}, Tuple{Symbols}, Tuple{It}} where Symbols where It<:Base.Iterators.Zip",
+    "location": "#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{Symbols}}}, Tuple{Symbols}, Tuple{It}} where Symbols where It<:Base.Iterators.Zip",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
@@ -125,7 +125,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.rename",
     "category": "method",
-    "text": "rename(data; renames...)\n\nRename data. Use Name for type stability; constants don\'t propagate through keyword arguments.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = rename(x, c = Name(:a));\n\njulia> @inferred test((a = 1, b = 2.0))\n(b = 2.0, c = 1)\n\n\n\n\n\n"
+    "text": "rename(data; renames...)\n\nRename data. Use Name for type stability; constants don\'t propagate through keyword arguments.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> test(x) = rename(x, c = Name(:a));\n\njulia> @inferred test((a = 1, b = 2.0))\n(b = 2.0, c = 1)\n\njulia> rename((a = 1, b = 2.0), c = :a)\n(b = 2.0, c = 1)\n\n\n\n\n\n"
 },
 
 {
