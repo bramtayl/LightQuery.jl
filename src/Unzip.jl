@@ -11,16 +11,10 @@ ModelArray(model, rest...) =
         typeof(rest)
     }(model, rest)
 axes(array::ModelArray) = axes(array.model)
-size(array::ModelArray) = size(array.model)
-IndexStyle(array::ModelArray) = IndexStyle(array.model)
 arrays(m::ModelArray) = (m.model, m.rest...)
 function sizehint!(array::ModelArray, n)
 	foreach(x -> sizehint!(x, n), arrays(array))
 	array
-end
-@propagate_inbounds function getindex(array::ModelArray, index...)
-    @propagate_inbounds inner(x) = x[index...]
-    inner.(arrays(array))
 end
 @propagate_inbounds function setindex!(array::ModelArray, value, index...)
     @propagate_inbounds inner(x, value) = x[index...] = value
@@ -28,13 +22,6 @@ end
 end
 push!(array::ModelArray, value::Tuple) = push!.(arrays(array), value)
 
-function similar(array::ModelArray, ::Type{ElementType}, dims::Dims) where {ElementType <: Union{}}
-	error("Attempt to create a model array without an element type, likely due to inner function error. Try `first` to see what's up.")
-end
-function similar(array::ModelArray, ::Type, dims::Dims)
-	@inline inner(i) = Array{Any}(undef, dims...)
-	ModelArray(ntuple(inner, length(arrays(array)))...)
-end
 function similar(array::ModelArray, ::Type{ElementType}, dims::Dims) where {ElementType <: Tuple}
 	@inline inner(i) = Array{fieldtype(ElementType, i)}(undef, dims...)
 	ModelArray(ntuple(inner, length(arrays(array)))...)

@@ -166,12 +166,14 @@ julia> test(x) = rename(x, c = Name(:a));
 
 julia> @inferred test((a = 1, b = 2.0))
 (b = 2.0, c = 1)
+
+julia> rename((a = 1, b = 2.0), c = :a)
+(b = 2.0, c = 1)
 ```
 """
 @inline function rename(data; renames...)
-    renames_data = renames.data
-    old_names = inner_name.(Tuple(renames_data))
-    new_names = propertynames(renames_data)
+    old_names = inner_name.(Tuple(renames.data))
+    new_names = propertynames(renames.data)
     merge(
         remove(data, old_names...),
         Names(new_names...)(Tuple(Names(old_names...)(data)))

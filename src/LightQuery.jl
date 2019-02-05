@@ -87,9 +87,6 @@ end
 @inline _auto_columns(it, ::HasEltype) = _nt_names(eltype(it))
 @inline _auto_columns(it, something) = _nt_names(@default_eltype(it))
 
-_nt_names(::Type{Any}) = error("inference cannot detect names")
-_nt_names(::Type{Union{}}) = error("inner error (so inference cannot detect names)")
-
 export columns
 """
     columns(it)

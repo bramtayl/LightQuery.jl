@@ -41,12 +41,10 @@ order(it, f, condition; kwargs...) =
 	view(it, mappedarray(first,
 		sort!(collect(when(enumerate(Generator(f, it)), x -> condition(x[2]))), by = last; kwargs...)))
 
-state_to_index(s::AbstractArray, state) = state[2] + 1
+state_to_index(s::SubArray, state) = state[2] + 1
 state_to_index(it::Array, state::Int) = state
 state_to_index(g::Generator, state) = state_to_index(g.iter, state)
 state_to_index(z::Zip, t::Tuple) = state_to_index(z.is[1], t[1])
-state_to_index(s::StepRange, t::Tuple) = t[2] + 1
-state_to_index(x, state) = error("Attempted to group a type not known to be indexible. Either add a method of `state_to_index` or collect x or call columns then rows")
 
 export Group
 struct Group{F, It}
@@ -55,9 +53,12 @@ struct Group{F, It}
 end
 
 """
-    group(b::By)
+    Group(b::By)
 
 Group consecutive keys in `b`. Requires a presorted object (see [`By`](@ref)).
+Relies on the fact that iteration states can be converted to indices; thus,
+you might have to define `LightQuery.state_to_index` for unrecognized types
+(PR's welcome.)
 
 ```jldoctest
 julia> using LightQuery
@@ -67,9 +68,6 @@ false => [1, 3]
 ```
 """
 @inline Group(b::By) = Group(b.f, b.it)
-
-IteratorSize(g::Group) = SizeUnknown()
-IteratorEltype(g::Group) = EltypeUnknown()
 
 IteratorSize(::Type{T}) where T <: Group = SizeUnknown()
 IteratorEltype(::Type{T}) where T <: Group  = EltypeUnknown()
@@ -221,15 +219,8 @@ julia> when([1, 2], x -> x > 1) |> collect
 when(x, f) = Filter(f, x)
 
 # piracy
-axes(g::Generator, args...) = axes(g.iter, args...)
-axes(z::Zip, args...) = axes(z.is[1], args...)
 view(g::Generator, args...) = Generator(g.f, view(g.iter, args...))
 view(z::Zip, args...) = zip(map(
 	i -> view(i, args...),
 	z.is
 )...)
-@propagate_inbounds getindex(z::Zip, args...) = map(
-	i -> getindex(i, args...),
-	z.is
-)
-@propagate_inbounds getindex(g::Generator, args...) = g.f(getindex(g.iter, args...))
