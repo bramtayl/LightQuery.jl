@@ -57,7 +57,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{Symbols}}}, Tuple{Symbols}, Tuple{It}} where Symbols where It<:Base.Iterators.Zip",
+    "location": "#LightQuery.columns-Union{Tuple{Generator{It,Names{Symbols}}}, Tuple{Symbols}, Tuple{It}} where Symbols where It<:Base.Iterators.Zip",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
