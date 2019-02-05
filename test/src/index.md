@@ -247,7 +247,7 @@ julia> first(by_tailnum)
 
 You can play around with the pair structure of groups to coerce it to the shape
 you want. Notice that I'm `collect`ing after the `Group` (for performance). I'm
-also explicitly `calling Peek` here; Julia can only guess that you want a peek
+also explicitly calling `Peek` here; Julia can only guess that you want a peek
 if `over` was used with a `Names` object.
 
 ```jldoctest dplyr
@@ -432,8 +432,9 @@ Showing 4 of 18460 rows
 We end up getting a group and subframe on the left, and a row on the right.
 
 If you want to collect your results into a flat new dataframe, you need to do a
-bit of surgery, including making use of `flatten`. We also need to
-make a fake row to insert on the right in case we can't find a match.
+bit of surgery, including making use of `flatten` (which I reexport from Base).
+We also need to make a fake row to insert on the right in case we can't find a
+match.
 
 ```jldoctest dplyr
 julia> @> airline_join |>

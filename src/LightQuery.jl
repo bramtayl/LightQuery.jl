@@ -138,16 +138,16 @@ export Peek
 """
     Peek(it)
 
-If an item is a `Generator` using `Names`, LightQuery will show you a peek of
-the data in table form. However, not all iterators which yield `NamedTuples`
-will print this way; in order to get a peek of them, you need to explicitly
-use `Peek`. In same cases, will error if inference cannot detect the names. In
-this case, map a [`Names`](@ref) object [`over`](@ref) `it` first.
+If `it` is `over`](@ref) [`Names`](@ref), LightQuery will automatically show
+you a peek of the data in table form. However, not all iterators which yield
+`NamedTuples` will print this way; in order to get a peek of them, you need to
+explicitly use `Peek`. In same cases, will error if inference cannot detect the
+names. In this case, map a `Names` object over `it` first.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> Peek(rows((a = [1, 1.0], b = [2, 2.0])))
+julia> rows((a = [1, 1.0], b = [2, 2.0])) |> Peek
 |  :a |  :b |
 | ---:| ---:|
 | 1.0 | 2.0 |

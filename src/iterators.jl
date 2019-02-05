@@ -18,7 +18,7 @@ export order
 Generalized sort. `kwargs` will be passed to `sort!`; see the documentation
 there for options. See [`By`](@ref) for a way to explicitly mark that an object
 has been sorted. Most performant it `f` is type stable, if not, consider
-using a condition to filter.
+using a `condition` to filter.
 
 ```jldoctest
 julia> using LightQuery
