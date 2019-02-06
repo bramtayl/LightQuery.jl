@@ -70,8 +70,8 @@ julia> using LightQuery
 
 julia> Group(By([1, 3, 2, 4], iseven)) |> collect
 2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
- false => [1, 3]
-  true => [2, 4]
+ 0 => [1, 3]
+ 1 => [2, 4]
 ```
 """
 @inline Group(it::By) = Group(it.it, it.call)
