@@ -72,6 +72,10 @@ julia> Group(By([1, 3, 2, 4], iseven)) |> collect
 2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
  0 => [1, 3]
  1 => [2, 4]
+
+julia> Group(By([1], iseven)) |> collect
+1-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
+ false => [1]
 ```
 """
 @inline Group(it::By) = Group(it.it, it.call)
@@ -98,9 +102,6 @@ function iterate(it::Group, (state, left_index, last_result))
 				return last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
 			else
 				item, state = item_state
-				if state === nothing
-					return nothing
-				end
 				result = it.call(item)
 			end
 		end
@@ -132,10 +133,18 @@ Requires both to be presorted (see [`By`](@ref)).
 ```jldoctest
 julia> using LightQuery
 
-julia> LeftJoin(
+julia> joined = LeftJoin(
             By([1, 2, 5, 6], identity),
             By([1, 3, 4, 6], identity)
-       ) |> collect
+       );
+
+julia> size(joined)
+(4,)
+
+julia> length(joined)
+4
+
+julia> collect(joined)
 4-element Array{Pair{Int64,Union{Missing, Int64}},1}:
  1 => 1
  2 => missing
@@ -164,13 +173,10 @@ function iterate(it::LeftJoin)
 	left_match = @ifsomething next_history(it.left)
 	seek_right_match(it, left_match, next_history(it.right))
 end
-iterate(it::LeftJoin, ::Nothing) = nothing
 function iterate(it::LeftJoin, (left_history, right_history))
 	left_history = @ifsomething next_history(it.left, left_history)
     seek_right_match(it, left_history, right_history)
 end
-seek_right_match(it, left_history, ::Nothing) =
-	(left_history.item => missing), nothing
 function seek_right_match(it, left_history, right_history)
 	while isless(right_history, left_history)
 		right_history = next_history(it.right, right_history)

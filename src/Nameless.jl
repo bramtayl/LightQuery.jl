@@ -9,16 +9,12 @@ substitute_underscores!(dictionary, body::Symbol) =
         body
     end
 substitute_underscores!(dictionary, body::Expr) =
-    if body.head == :quote
-        body
-    else
-        Expr(body.head, map(
-            let dictionary = dictionary
-                body -> substitute_underscores!(dictionary, body)
-            end,
-            body.args
-        )...)
-    end
+    Expr(body.head, map(
+        let dictionary = dictionary
+            body -> substitute_underscores!(dictionary, body)
+        end,
+        body.args
+    )...)
 
 unname(body, line, file) = unname(:($body(_)), line, file)
 function unname(body::Expr, line, file)
