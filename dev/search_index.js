@@ -85,7 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.make_columns",
     "category": "method",
-    "text": "make_columns(it)\n\nCollect into columns. See also columns. In same cases, will error if inference cannot detect the names. In this case, use the names of the first row.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> [(a = 1, b = 1.0), (a = 2, b = 2.0)] |>\n        make_columns\n(a = [1, 2], b = [1.0, 2.0])\n\n\n\n\n\n"
+    "text": "make_columns(it)\n\nCollect into columns. See also columns. In same cases, will error if inference cannot detect the names. In this case, use the names of the first row.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> [(a = 1, b = 1.0), (a = 2, b = 2.0)] |>\n        make_columns\n(a = [1, 2], b = [1.0, 2.0])\n\njulia> @> 1:2 |>\n        over(_, x -> error()) |>\n        make_columns\nERROR: Can\'t infer names due to inner function error\n\n\n\n\n\n"
 },
 
 {
@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.unzip",
     "category": "method",
-    "text": "unzip(it, n)\n\nUnzip an iterator it which returns tuples of length n.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> f(x) = (x, x + 0.0);\n\njulia> test(x) = unzip(x, 2);\n\njulia> test(over([1, missing], f))\n(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])\n\njulia> @inferred test(zip([1], [1.0]))\n([1], [1.0])\n\njulia> @inferred test([(1, 1.0)])\n([1], [1.0])\n\njulia> test(over(when([1, missing], x -> true), f))\n(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])\n\n\n\n\n\n"
+    "text": "unzip(it, n)\n\nUnzip an iterator it which returns tuples of length n.\n\njulia> using LightQuery\n\njulia> using Test: @inferred\n\njulia> f(x) = (x, x + 0.0);\n\njulia> test(x) = unzip(x, 2);\n\njulia> test(over([1, missing], f))\n(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])\n\njulia> @inferred test(zip([1], [1.0]))\n([1], [1.0])\n\njulia> @inferred test([(1, 1.0)])\n([1], [1.0])\n\njulia> test(over(when([1, missing], x -> true), f))\n(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])\n\njulia> zip([1], [1, 2])\nERROR: ArgumentError: All arrays passed to zip must have the same size\n\n\n\n\n\n"
 },
 
 {
