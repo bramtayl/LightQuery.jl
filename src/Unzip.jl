@@ -32,10 +32,6 @@ axes(arrays::ZippedArrays, args...) =
 size(arrays::ZippedArrays, args...) =
     size(arrays.arrays[1], args...)
 
-function sizehint!(arrays::ZippedArrays, new_size...)
-    (array -> size_hint!(array, new_size...)).(arrays.arrays)
-	arrays
-end
 @propagate_inbounds function getindex(arrays::ZippedArrays, index...)
     @propagate_inbounds inner_getindex(array) = array[index...]
     inner_getindex.(arrays.arrays)
