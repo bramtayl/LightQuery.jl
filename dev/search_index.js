@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Group",
     "category": "method",
-    "text": "Group(it::By)\n\nGroup consecutive keys in it. Requires a presorted object (see By). Relies on the fact that iteration states can be converted to indices; thus, you might have to define LightQuery.state_to_index for unrecognized types.\n\njulia> using LightQuery\n\njulia> Group(By([1, 3, 2, 4], iseven)) |> collect\n2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:\n false => [1, 3]\n  true => [2, 4]\n\n\n\n\n\n"
+    "text": "Group(it::By)\n\nGroup consecutive keys in it. Requires a presorted object (see By). Relies on the fact that iteration states can be converted to indices; thus, you might have to define LightQuery.state_to_index for unrecognized types.\n\njulia> using LightQuery\n\njulia> Group(By([1, 3, 2, 4], iseven)) |> collect\n2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:\n 0 => [1, 3]\n 1 => [2, 4]\n\n\n\n\n\n"
 },
 
 {
@@ -57,7 +57,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.columns-Union{Tuple{Generator{It,Names{names}}}, Tuple{names}, Tuple{It}} where names where It<:LightQuery.ZippedArrays",
+    "location": "#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It<:LightQuery.ZippedArrays",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
