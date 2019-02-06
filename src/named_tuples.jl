@@ -1,8 +1,8 @@
 export Name
 """
-    Name(x)
+    Name(name)
 
-Force into the type domain. Can also be used as a function.
+Force into the type domain. Can also be used as a function to `getproperty`
 
 ```jldoctest
 julia> using LightQuery
@@ -11,16 +11,16 @@ julia> Name(:a)((a = 1,))
 1
 ```
 """
-struct Name{N} end
-@inline Name(N) = Name{N}()
-@inline inner_name(n::Name{N}) where N = N
-@inline inner_name(x) = x
+struct Name{name} end
 
-(::Name{N})(x) where N = getproperty(x, N)
+@inline Name(name) = Name{name}()
+@inline inner_name(::Name{name}) where name = name
+
+(::Name{name})(it) where name = getproperty(it, name)
 
 export named_tuple
 """
-    named_tuple(x)
+    named_tuple(it)
 
 Coerce to a `named_tuple`. For performance with working with arbitrary structs,
 explicitly define inlined `propertynames`.
@@ -36,35 +36,35 @@ julia> @inferred named_tuple(:a => 1)
 (first = :a, second = 1)
 ```
 """
-function named_tuple(x)
-    names = propertynames(x)
-    @inline inner(name) = getproperty(x, name)
-    Names(names...)(Tuple(map(inner, names)))
+function named_tuple(it)
+    names = Tuple(propertynames(it))
+    @inline inner_getproperty(name) = getproperty(it, name)
+    NamedTuple{names}(map(inner_getproperty, names))
 end
 
 export transform
 """
-    transform(data; assignments...)
+    transform(it; assignments...)
 
-Merge `assignments` into `data`.
+Merge `assignments` into `it`.
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @inferred transform((a = 1, b = 2.0), c = "3")
-(a = 1, b = 2.0, c = "3")
+julia> @inferred transform((a = 1,), b = 1.0)
+(a = 1, b = 1.0)
 ```
 """
-transform(data::NamedTuple; assignments...) =
-    merge(data, assignments)
+transform(it; assignments...) =
+    merge(it, assignments)
 
 export gather
 """
-    gather(data, name, names...)
+    gather(it, name, names...)
 
-Gather all the data in `names` into a single `name`. Inverse of
+Gather all the it in `names` into a single `name`. Inverse of
 [`spread`](@ref).
 
 ```jldoctest
@@ -74,20 +74,20 @@ julia> using Test: @inferred
 
 julia> test(x) = gather(x, :d, :a, :c);
 
-julia> @inferred test((a = 1, b = 2.0, c = "c"))
-(b = 2.0, d = (a = 1, c = "c"))
+julia> @inferred test((a = 1, b = 1.0, c = 1//1))
+(b = 1.0, d = (a = 1, c = 1//1))
 ```
 """
-@inline gather(data, name, names...) = merge(
-    remove(data, names...),
-    Names(name)((Names(names...)(data),))
+@inline gather(it, name, names...) = merge(
+    remove(it, names...),
+    NamedTuple{(name,)}((Names(names...)(it),))
 )
 
 export spread
 """
-    spread(data::NamedTuple, name)
+    spread(it::NamedTuple, name)
 
-Unnest nested data in `name`. Inverse of [`gather`](@ref).
+Unnest nested it in `name`. Inverse of [`gather`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -96,26 +96,25 @@ julia> using Test: @inferred
 
 julia> test(x) = spread(x, :d);
 
-julia> @inferred test((b = 2.0, d = (a = 1, c = "c")))
-(b = 2.0, a = 1, c = "c")
+julia> @inferred test((b = 1.0, d = (a = 1, c = 1//1)))
+(b = 1.0, a = 1, c = 1//1)
 ```
 """
-@inline spread(data, name) = merge(
-    remove(data, name),
-    getproperty(data, name)
+@inline spread(it, name) = merge(
+    remove(it, name),
+    getproperty(it, name)
 )
 
-struct Names{Symbols} end
+struct Names{names} end
 
-function (::Names{Symbols})(x) where Symbols
-    NamedTuple{Symbols}(x)
-end
+(::Names{names})(it) where names =
+    NamedTuple{names}(it)
 
 export Names
 """
     Names(names...)
 
-Names in the type domain. Can be used to select columns.
+Force into the type domain. Can be used to as a function to select columns.
 
 ```jldoctest
 julia> using LightQuery
@@ -124,15 +123,15 @@ julia> using Test: @inferred
 
 julia> test(x) = Names(:a)(x);
 
-julia> @inferred test((a = 1, b = 2.0))
+julia> @inferred test((a = 1, b = 1.0))
 (a = 1,)
 ```
 """
-@inline Names(symbols...) = Names{symbols}()
+@inline Names(names...) = Names{names}()
 
 export remove
 """
-    remove(data, names...)
+    remove(it, names...)
 
 Remove `names`. Inverse of [`transform`](@ref).
 
@@ -143,19 +142,19 @@ julia> using Test: @inferred
 
 julia> test(x) = remove(x, :b);
 
-julia> @inferred test((a = 1, b = 2.0))
+julia> @inferred test((a = 1, b = 1.0))
 (a = 1,)
 ```
 """
-@inline remove(data, names...) =
-    Names(diff_names(propertynames(data), names)...)(data)
+@inline remove(it, names...) =
+    Names(diff_names(Tuple(propertynames(it)), names)...)(it)
 
 export rename
 """
-    rename(data; renames...)
+    rename(it; renames::Name...)
 
-Rename data. Use [`Name`](@ref) for type stability; constants don't propagate
-through keyword arguments.
+Rename `it`. Use [`Name`](@ref) for type stability; constants don't propagate
+through keyword arguments :(
 
 ```jldoctest
 julia> using LightQuery
@@ -164,33 +163,34 @@ julia> using Test: @inferred
 
 julia> test(x) = rename(x, c = Name(:a));
 
-julia> @inferred test((a = 1, b = 2.0))
-(b = 2.0, c = 1)
-
-julia> rename((a = 1, b = 2.0), c = :a)
-(b = 2.0, c = 1)
+julia> @inferred test((a = 1, b = 1.0))
+(b = 1.0, c = 1)
 ```
 """
-@inline function rename(data; renames...)
+@inline function rename(it; renames...)
     old_names = inner_name.(Tuple(renames.data))
-    new_names = propertynames(renames.data)
+    new_names = Tuple(propertynames(renames.data))
     merge(
-        remove(data, old_names...),
-        Names(new_names...)(Tuple(Names(old_names...)(data)))
+        remove(it, old_names...),
+        Names(new_names...)(Tuple(Names(old_names...)(it)))
     )
 end
 
 export in_common
 """
-    in_common(data1, data2)
+    in_common(it1, it2)
 
-Find the names in common between `data1` and `data2`.
+Find the names in common between `it1` and `it2`.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> in_common((a = 1, b = 2.0), (a = 1, c = 3.0))
+julia> in_common((a = 1, b = 1.0), (a = 2, c = 2//2))
 (:a,)
 ```
 """
-@inline in_common(data1, data2) = diff_names(propertynames(data1), diff_names(propertynames(data1), propertynames(data2)))
+@inline in_common(it1, it2) =
+    diff_names(
+        Tuple(propertynames(it1)),
+        diff_names(propertynames(it1), propertynames(it2))
+    )

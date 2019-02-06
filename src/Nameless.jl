@@ -12,25 +12,27 @@ substitute_underscores!(dictionary, body::Expr) =
     if body.head == :quote
         body
     else
-        Expr(body.head,
-            map(body -> substitute_underscores!(dictionary, body), body.args)
-        ...)
+        Expr(body.head, map(
+            let dictionary = dictionary
+                body -> substitute_underscores!(dictionary, body)
+            end,
+            body.args
+        )...)
     end
 
-string_length(something) = something |> String |> length
-
 unname(body, line, file) = unname(:($body(_)), line, file)
-
 function unname(body::Expr, line, file)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
-    sorted_dictionary = sort(
-        lt = (pair1, pair2) ->
-            isless(string_length(pair1.first), string_length(pair2.first)),
-        collect(dictionary)
-    )
     Expr(:->,
-        Expr(:tuple, (pair.second for pair in sorted_dictionary)...),
+        Expr(:tuple, Generator(
+            pair -> pair.second,
+            sort(
+                lt = (pair1, pair2) ->
+                    isless(length(String(pair1.first)), length(String(pair2.first))),
+                collect(dictionary)
+            )
+        )...),
         Expr(:block, LineNumberNode(line, file), new_body)
     )
 end
@@ -45,10 +47,10 @@ argument is `_`, the second argument is `__`, etc.
 ```jldoctest
 julia> using LightQuery
 
-julia> 1 |> @_(_ + 1)
+julia> (@_ _ + 1)(1)
 2
 
-julia> map(@_(__ - _), (1, 2), (2, 1))
+julia> map((@_ __ - _), (1, 2), (2, 1))
 (1, -1)
 ```
 """

@@ -3,521 +3,199 @@
 ```@index
 ```
 
-
 ```@autodocs
 Modules = [LightQuery]
 ```
 
 # Tutorial
 
-For an example of how to use this package, see the demo below, which follows the
-example [here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html).
+I started following the tutorial here
+[here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html), but
+got side-tracked by a data cleaning task. You get to see the results, hooray.
+I've included the flights data in test folder of this package.
 
-A copy of the flights data is included in the test folder of this package. I've
-reexported CSV from the CSV package for convenient IO. The data comes in as a
-data frame, but you can easily convert most objects to named tuples using
-`named_tuple`. I recollect to remove extra missing annotations unhelpfully
-provided by CSV.
+I've reexported CSV from the CSV package for convenient IO. We can process the
+data as we are reading in the file itself! This is because CSV.File returns an iterator.
+
+I do a lot of steps here so let's break them down:
+
+First, I bring in some dates functions, and make them work with missing data.
+
+In the `CSV.File` step, I mark that missing is denoted by "NA" in the file. I also
+specify that I want strings to come in as categorical data.
+
+Then I transform each row. First, I convert each row to a named tuple. Then, I combine
+the scheduled arrival and departure times into a single date-time. The bit at the end
+about `divrem` basically means that in a number like `530`, hours are in the hundreds
+place and minutes are in the rest (e.g. 5:30). Then I rename to get rid of
+abbreviations (you'll figure out if you haven't already that I'm a big fan of whole
+words). Then, I select just the columns we want. I've taken the liberty of ignoring
+calculated data, that is, data that we can calculate later on. Also, mapping a
+`Names` object with `over` helps Julia out. Julia can't infer the names of the rows
+without this step. This is the because we have two or more type-unstable
+columns (e.g. departure delay and arrival delay both might be missing).
 
 ```jldoctest dplyr
 julia> using LightQuery
+
+julia> using Dates: DateTime
+
+julia> import Dates: Minute
+
+julia> Minute(::Missing) = missing;
+
+julia> using Unitful: mi
 
 julia> flight_columns =
-        @> CSV.read("flights.csv", missingstring = "NA") |>
-        named_tuple |>
-        map(x -> collect(over(x, identity)), _);
+            @> CSV.File("flights.csv", missingstring = "NA", categorical = true) |>
+            over(_, @_ @> named_tuple(_) |>
+                transform(_,
+                    departure_time = DateTime(_.year, _.month, _.day,
+                        divrem(_.sched_dep_time, 100)...),
+                    departure_delay = Minute(_.dep_delay),
+                    arrival_time = DateTime(_.year, _.month, _.day,
+                        divrem(_.sched_arr_time, 100)...),
+                    arrival_delay = Minute(_.arr_delay),
+                    distance = _.distance * mi
+                ) |>
+                rename(_,
+                    tail_number = Name(:tailnum),
+                    destination = Name(:dest)
+                )
+            ) |>
+            over(_, Names(:departure_time, :departure_delay, :arrival_time,
+                :arrival_delay, :carrier, :flight, :tail_number, :origin,
+                :destination, :distance)
+            ) |>
+            make_columns;
 ```
 
-As a named tuple, the data will be in a column-wise form; lazily convert it to
-`rows`.
+Now that we have our data into Julia, let's have a look see. We'll start by converting
+it back to columns, and then taking a `Peek`. I've taken the liberty of increasing the
+number of visible columns to 10. The default max `Peek` size is 7 columns by 4 rows.
 
 ```jldoctest dplyr
-julia> flights = rows(flight_columns)
-Showing 7 of 19 columns
+julia> flights = rows(flight_columns);
+
+julia> Peek(flights, max_columns = 10)
 Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |
+|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance |
+| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:|
+| 2013-01-01T05:15:00 |        2 minutes | 2013-01-01T08:19:00 |     11 minutes |       UA |    1545 |       N14228 |     EWR |          IAH |   1400 mi |
+| 2013-01-01T05:29:00 |        4 minutes | 2013-01-01T08:30:00 |     20 minutes |       UA |    1714 |       N24211 |     LGA |          IAH |   1416 mi |
+| 2013-01-01T05:40:00 |        2 minutes | 2013-01-01T08:50:00 |     33 minutes |       AA |    1141 |       N619AA |     JFK |          MIA |   1089 mi |
+| 2013-01-01T05:45:00 |        -1 minute | 2013-01-01T10:22:00 |    -18 minutes |       B6 |     725 |       N804JB |     JFK |          BQN |   1576 mi |
 ```
 
-You can lazily filter data with `when`.
+There's one more cleaning step we can make. Note that distance is a calculated
+field. That is, the distance between two locations is always going to be the
+same. How can we get a clean dataset which only contains the distances between
+two airports?
+
+Let's start out by grouping our data by path. Before you group, you *MUST* sort.
+Otherwise, you will get incorrect results. Of course, if we have pre-sorted data, no need.
 
 ```jldoctest dplyr
-julia> using LightQuery
-
-julia> @> flights |>
-        when(_, @_ _.month == 1 && _.day == 1)
-Showing 7 of 19 columns
-Showing at most 4 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |
+julia> by_path =
+            @> flights |>
+            order(_, Names(:origin, :destination)) |>
+            Group(By(_, Names(:origin, :destination))) |>
+            collect;
 ```
 
-You might find it more efficient to do this columns-wise:
+I encourage you to collect after Grouping. This will not use much additional
+data, it will only store the keys locations of the groups. Grouping is a little
+different from dplyr; each group is a pair from key to sub-data-frame:
 
 ```jldoctest dplyr
-julia> using LightQuery
+julia> first_group = first(by_path);
 
-julia> @> flight_columns |>
-        (_.month .== 1) .& (_.day .== 1) |>
-        view(flights, _)
-Showing 7 of 19 columns
-Showing 4 of 842 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |
+julia> first_group.first
+(origin = CategoricalArrays.CategoricalString{UInt32} "EWR", destination = CategoricalArrays.CategoricalString{UInt32} "ALB")
+
+julia> Peek(first_group.second, max_columns = 10)
+Showing 4 of 439 rows
+|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance |
+| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:|
+| 2013-01-01T13:17:00 |       -2 minutes | 2013-01-01T14:23:00 |    -10 minutes |       EV |    4112 |       N13538 |     EWR |          ALB |    143 mi |
+| 2013-01-01T16:21:00 |       34 minutes | 2013-01-01T17:24:00 |     40 minutes |       EV |    3260 |       N19554 |     EWR |          ALB |    143 mi |
+| 2013-01-01T20:04:00 |       52 minutes | 2013-01-01T21:12:00 |     44 minutes |       EV |    4170 |       N12540 |     EWR |          ALB |    143 mi |
+| 2013-01-02T13:27:00 |        5 minutes | 2013-01-02T14:33:00 |    -14 minutes |       EV |    4316 |       N14153 |     EWR |          ALB |    143 mi |
 ```
 
-You can `order` the flights, using `Names` to select columns.
+So there are 439 flights between Newark (EWR lol) and Albany. The distances are the same, so we really only need the first one. So here's what we do:
+Calling `make_columns` and then `rows` will collect out data (the smart way).
 
 ```jldoctest dplyr
-julia> using MappedArrays: mappedarray
-
-julia> get_date = Names(:year, :month, :day)
-Names{(:year, :month, :day)}()
-
-julia> by_date =
-        @> flights |>
-        order(_, get_date)
-Showing 7 of 19 columns
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |
-```
-
-You can also pass in keyword arguments to `sort!` via `order`, like
-`rev = true`. Note also that `arr_delay` includes missing data. For performance,
-I'm adding a condition to remove the missing data. This will be a common
-pattern.
-
-```jldoctest dplyr
-julia> @> flights |>
-        order(_, Names(:arr_delay), (@_ !ismissing(_.arr_delay)), rev = true)
-Showing 7 of 19 columns
-Showing 4 of 327346 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    9 |       641 |             900 |       1301 |      1242 |
-|  2013 |      6 |   15 |      1432 |            1935 |       1137 |      1607 |
-|  2013 |      1 |   10 |      1121 |            1635 |       1126 |      1239 |
-|  2013 |      9 |   20 |      1139 |            1845 |       1014 |      1457 |
-```
-
-In the original column-wise form, you can select with `Names`. Then,
-use `rows` again to print.
-
-```jldoctest dplyr
-julia> get_date(flight_columns) |>
-          rows
-Showing 4 of 336776 rows
-| :year | :month | :day |
-| -----:| ------:| ----:|
-|  2013 |      1 |    1 |
-|  2013 |      1 |    1 |
-|  2013 |      1 |    1 |
-|  2013 |      1 |    1 |
-```
-
-You can also remove columns in the column-wise form.
-
-```jldoctest dplyr
-julia> @> flight_columns |>
-        remove(_, :year, :month, :day) |>
-        rows
-Showing 7 of 16 columns
-Showing 4 of 336776 rows
-| :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier |
-| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:|
-|       517 |             515 |          2 |       830 |             819 |         11 |       UA |
-|       533 |             529 |          4 |       850 |             830 |         20 |       UA |
-|       542 |             540 |          2 |       923 |             850 |         33 |       AA |
-|       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |
-```
-
-You can also rename columns. Because constants (currently) do not propagate
-through keyword arguments in Julia, it's smart to wrap column names with
-`Name`.
-
-```jldoctest dplyr
-julia> @> flight_columns |>
-        rename(_, tail_num = Name(:tailnum)) |>
-        rows
-Showing 7 of 19 columns
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |
-```
-
-You can add new columns with transform. If you want to refer to previous
-columns, you'll have to transform twice. You can do this row-wise. Note that
-I've added a second `over` simply to specify the names of the items. This will
-be a common pattern for when inference can't keep track of names.
-
-```jldoctest dplyr
-julia> @> flights |>
-        over(_, @_ @> transform(_,
-            gain = _.arr_delay - _.dep_delay,
-            speed = _.distance / _.air_time * 60
-        ) |> transform(_,
-            gain_per_hour = _.gain ./ (_.air_time / 60)
-        )) |>
-        over(_, Names(propertynames(flight_columns)..., :gain, :speed,
-            :gain_per_hour))
-Showing 7 of 22 columns
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |
-```
-
-You can also do the same thing column-wise:
-
-```jldoctest dplyr
-julia> @> flight_columns |>
-        transform(_,
-            gain = _.arr_delay .- _.dep_delay,
-            speed = _.distance ./ _.air_time .* 60
-        ) |>
-        transform(_,
-            gain_per_hour = _.gain ./ (_.air_time / 60)
-        ) |>
-        rows
-Showing 7 of 22 columns
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |
-```
-
-You can't summarize ungrouped data, but you can just directly access columns:
-
-```jldoctest dplyr
-julia> using Statistics: mean;
-
-julia> mean(skipmissing(flight_columns.dep_delay))
-12.639070257304708
-```
-
-I don't provide a export a sample function here, but StatsBase does.
-
-`Group`ing here works differently than in dplyr:
-
-- You can only `Group` sorted data. To let Julia know that the data has been sorted, you need to explicitly wrap the data with `By`.
-- Groups return a pair, key => sub-data-frame. So:
-
-```jldoctest dplyr
-julia> by_tailnum =
-        @> flights |>
-        order(_, Names(:tailnum), (@_ !ismissing(_.tailnum))) |>
-        Group(By(_, Names(:tailnum)));
-
-julia> first(by_tailnum)
-(tailnum = "D942DN",) => Showing 7 of 19 columns
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:|
-|  2013 |      2 |   11 |      1508 |            1400 |         68 |      1807 |
-|  2013 |      3 |   23 |      1340 |            1300 |         40 |      1638 |
-|  2013 |      3 |   24 |       859 |             835 |         24 |      1142 |
-|  2013 |      7 |    5 |      1253 |            1259 |         -6 |      1518 |
-```
-
-You can play around with the pair structure of groups to coerce it to the shape
-you want. Notice that I'm `collect`ing after the `Group` (for performance). I'm
-also explicitly calling `Peek` here; Julia can only guess that you want a peek
-if `over` was used with a `Names` object.
-
-```jldoctest dplyr
-julia> @> by_tailnum |>
-        collect |>
-        over(_, @_ transform(_.first,
-            count = length(_.second),
-            distance = columns(_.second).distance |> mean,
-            delay = columns(_.second).arr_delay |> skipmissing |> mean
-        )) |>
-        Peek
-Showing 4 of 4043 rows
-| :tailnum | :count |         :distance |             :delay |
-| --------:| ------:| -----------------:| ------------------:|
-|   D942DN |      4 |             854.5 |               31.5 |
-|   N0EGMQ |    371 |  676.188679245283 |  9.982954545454545 |
-|   N10156 |    153 | 757.9477124183006 | 12.717241379310344 |
-|   N102UW |     48 |           535.875 |             2.9375 |
-```
-
-For the n-distinct example, I've switched things around to be just a smidge
-more efficient. This example shows how calling `make_columns` and then `rows` is
-sometimes necessary to trigger eager evaluation. I've also defined a
-`count_flights` function because we'll be using it again.
-
-```jldoctest dplyr
-julia> count_flights(x) = over(x, @_ transform(_.first,
-            flights = length(_.second)
-        ));
-
-julia> @> flights |>
-        order(_, Names(:dest, :tailnum), (@_ !ismissing(_.tailnum))) |>
-        Group(By(_, Names(:dest, :tailnum))) |>
-        collect |>
-        count_flights |>
+julia> paths =
+        @> by_path |>
+        over(_, @_ first(_.second)) |>
+        over(_, Names(:origin, :destination, :distance)) |>
         make_columns |>
-        rows |>
-        Group(By(_, Names(:dest))) |>
-        over(_, @_ transform(_.first,
-            planes = length(_.second),
-            flights = sum(columns(_.second).flights)
-        )) |>
-        Peek
-Showing at most 4 rows
-| :dest | :planes | :flights |
-| -----:| -------:| --------:|
-|   ABQ |     108 |      254 |
-|   ACK |      58 |      265 |
-|   ALB |     172 |      439 |
-|   ANC |       6 |        8 |
+        rows;
+
+julia> Peek(paths)
+Showing 4 of 224 rows
+| :origin | :destination | :distance |
+| -------:| ------------:| ---------:|
+|     EWR |          ALB |    143 mi |
+|     EWR |          ANC |   3370 mi |
+|     EWR |          ATL |    746 mi |
+|     EWR |          AUS |   1504 mi |
 ```
 
-Of course, you can group repeatedly. You don't have to reorder each time if you
-do this.
+Ok, now let's do the whole damn thing in reverse, just for fun. How? We need to
+join back into the original data. Our data that was grouped by path is sorted by
+the first item, and our path data is sorted by `:origin` and `:destination`.
+Note there are no repeats: we've pregrouped our data. This is important for a
+left join.
 
 ```jldoctest dplyr
-julia> grouped_by_date =
-        @> by_date |>
-        Group(By(_, get_date)) |>
-        collect;
-
-julia> per_day =
-        @> grouped_by_date |>
-        count_flights |>
-        make_columns |>
-        rows
-Showing 4 of 365 rows
-| :year | :month | :day | :flights |
-| -----:| ------:| ----:| --------:|
-|  2013 |      1 |    1 |      842 |
-|  2013 |      1 |    2 |      943 |
-|  2013 |      1 |    3 |      914 |
-|  2013 |      1 |    4 |      915 |
-
-julia> sum_flights(x) = over(x, @_ transform(_.first,
-            flights = sum(columns(_.second).flights)
-        ));
-
-julia> per_month =
-        @> per_day |>
-        Group(By(_, Names(:year, :month))) |>
-        collect |>
-        sum_flights |>
-        make_columns |>
-        rows
-Showing 4 of 12 rows
-| :year | :month | :flights |
-| -----:| ------:| --------:|
-|  2013 |      1 |    27004 |
-|  2013 |      2 |    24951 |
-|  2013 |      3 |    28834 |
-|  2013 |      4 |    28330 |
-
-julia> @> per_month |>
-          Group(By(_, Names(:year))) |>
-          sum_flights |>
-          Peek
-Showing at most 4 rows
-| :year | :flights |
-| -----:| --------:|
-|  2013 |   336776 |
+julia> joined = LeftJoin(
+            By(by_path, first),
+            By(paths, Names(:origin, :destination))
+        );
 ```
 
-Here's the example in the dplyr docs for piping:
+A join will a row on the left and a row on the right. And the row on the left
+is a group, so it's also got a key and a value. Oy.
 
 ```jldoctest dplyr
-julia> @> grouped_by_date |>
-        over(_, @_ transform(_.first,
-            arr = columns(_.second).arr_delay |> skipmissing |> mean,
-            dep = columns(_.second).dep_delay |> skipmissing |> mean
-        )) |>
-        when(_, @_ _.arr > 30 || _.dep > 30) |>
-        over(_, Names(:year, :month, :day, :arr, :dep))
-Showing at most 4 rows
-| :year | :month | :day |               :arr |               :dep |
-| -----:| ------:| ----:| ------------------:| ------------------:|
-|  2013 |      1 |   16 |  34.24736225087925 | 24.612865497076022 |
-|  2013 |      1 |   31 | 32.602853745541026 | 28.658362989323845 |
-|  2013 |      2 |   11 |  36.29009433962264 |  39.07359813084112 |
-|  2013 |      2 |   27 |  31.25249169435216 |  37.76327433628319 |
+julia> pair = first(joined);
+
+julia> pair.first.first
+(origin = CategoricalArrays.CategoricalString{UInt32} "EWR", destination = CategoricalArrays.CategoricalString{UInt32} "ALB")
+
+julia> Peek(pair.first.second, max_columns = 10)
+Showing 4 of 439 rows
+|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance |
+| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:|
+| 2013-01-01T13:17:00 |       -2 minutes | 2013-01-01T14:23:00 |    -10 minutes |       EV |    4112 |       N13538 |     EWR |          ALB |    143 mi |
+| 2013-01-01T16:21:00 |       34 minutes | 2013-01-01T17:24:00 |     40 minutes |       EV |    3260 |       N19554 |     EWR |          ALB |    143 mi |
+| 2013-01-01T20:04:00 |       52 minutes | 2013-01-01T21:12:00 |     44 minutes |       EV |    4170 |       N12540 |     EWR |          ALB |    143 mi |
+| 2013-01-02T13:27:00 |        5 minutes | 2013-01-02T14:33:00 |    -14 minutes |       EV |    4316 |       N14153 |     EWR |          ALB |    143 mi |
+
+julia> pair.second
+(origin = CategoricalArrays.CategoricalString{UInt32} "EWR", destination = CategoricalArrays.CategoricalString{UInt32} "ALB", distance = 143 mi)
 ```
 
-# Two table verbs
+How are we gonna get this all back into a flat data-frame? We need to make use of flatten (which is reexported from Base).
 
-I'm following the example [here](https://cran.r-project.org/web/packages/dplyr/vignettes/two-table.html).
-
-Again, for inference reasons, natural joins won't work. I only provide one join
-at the moment, but it's super efficient. Let's start by reading in airlines and
-letting julia know that it's already sorted by `:carrier`.
-
-```jldoctest dplyr
-julia> airlines =
-        @> CSV.read("airlines.csv", missingstring = "NA") |>
-        named_tuple |>
-        map(x -> collect(over(x, identity)), _) |>
-        rows |>
-        By(_, Names(:carrier));
 ```
-
-If we want to join this data into the flights data, here's what we do.
-`LeftJoin` requires not only presorted but **unique** keys. Of course,
-there are multiple flights from the same airline, so we need to group first.
-Then, we tell Julia that the groups are themselves sorted (by the first item,
-the key). Finally we can join in the airline data. But the results are a bit
-tricky. Let's take a look at the first item. Just like the dplyr manual, I'm
-only using a few of the columns from `flights` for demonstration.
-
-```jldoctest dplyr
-julia> flight2_columns =
-        @> flight_columns |>
-        Names(:year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier)(_);
-
-julia> flights2 = rows(flight2_columns)
-Showing 7 of 8 columns
-Showing 4 of 336776 rows
-| :year | :month | :day | :hour | :origin | :dest | :tailnum |
-| -----:| ------:| ----:| -----:| -------:| -----:| --------:|
-|  2013 |      1 |    1 |     5 |     EWR |   IAH |   N14228 |
-|  2013 |      1 |    1 |     5 |     LGA |   IAH |   N24211 |
-|  2013 |      1 |    1 |     5 |     JFK |   MIA |   N619AA |
-|  2013 |      1 |    1 |     5 |     JFK |   BQN |   N804JB |
-
-julia> airline_join =
-        @> flights2 |>
-        order(_, Names(:carrier)) |>
-        Group(By(_, Names(:carrier))) |>
-        By(_, first) |>
-        LeftJoin(_, airlines);
-
-julia> first(airline_join)
-((carrier = "9E",)=>Showing 7 of 8 columns
-Showing 4 of 18460 rows
-| :year | :month | :day | :hour | :origin | :dest | :tailnum |
-| -----:| ------:| ----:| -----:| -------:| -----:| --------:|
-|  2013 |      1 |    1 |     8 |     JFK |   MSP |   N915XJ |
-|  2013 |      1 |    1 |    15 |     JFK |   IAD |   N8444F |
-|  2013 |      1 |    1 |    14 |     JFK |   BUF |   N920XJ |
-|  2013 |      1 |    1 |    15 |     JFK |   SYR |   N8409N |
-) => (carrier = "9E", name = "Endeavor Air Inc.")
-```
-
-We end up getting a group and subframe on the left, and a row on the right.
-
-If you want to collect your results into a flat new dataframe, you need to do a
-bit of surgery, including making use of `flatten` (which I reexport from Base).
-We also need to make a fake row to insert on the right in case we can't find a
-match.
-
-```jldoctest dplyr
-julia> @> airline_join |>
-        over(_, @_ over(_.first.second, x -> merge(x, _.second))) |>
+julia> @> joined |>
+        over(_, pair -> over(pair.first.second, @_ transform(_, distance_again = pair.second.distance))) |>
         flatten |>
-        over(_, Names(:year, :month, :day, :hour, :origin, :dest, :tailnum,
-            :carrier, :name))
-Showing 7 of 9 columns
+        Peek(_, max_columns = 11)
+
 Showing at most 4 rows
-| :year | :month | :day | :hour | :origin | :dest | :tailnum |
-| -----:| ------:| ----:| -----:| -------:| -----:| --------:|
-|  2013 |      1 |    1 |     8 |     JFK |   MSP |   N915XJ |
-|  2013 |      1 |    1 |    15 |     JFK |   IAD |   N8444F |
-|  2013 |      1 |    1 |    14 |     JFK |   BUF |   N920XJ |
-|  2013 |      1 |    1 |    15 |     JFK |   SYR |   N8409N |
+|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance | :distance_again |
+| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:| ---------------:|
+| 2013-01-01T13:17:00 |       -2 minutes | 2013-01-01T14:23:00 |    -10 minutes |       EV |    4112 |       N13538 |     EWR |          ALB |    143 mi |          143 mi |
+| 2013-01-01T16:21:00 |       34 minutes | 2013-01-01T17:24:00 |     40 minutes |       EV |    3260 |       N19554 |     EWR |          ALB |    143 mi |          143 mi |
+| 2013-01-01T20:04:00 |       52 minutes | 2013-01-01T21:12:00 |     44 minutes |       EV |    4170 |       N12540 |     EWR |          ALB |    143 mi |          143 mi |
+| 2013-01-02T13:27:00 |        5 minutes | 2013-01-02T14:33:00 |    -14 minutes |       EV |    4316 |       N14153 |     EWR |          ALB |    143 mi |          143 mi |
 ```
 
-Let's keep going in the examples. I'm going to read in the weather data, and let
-Julia know that it has already been sorted.
+Look! The distances match. Hooray!
 
-```jldoctest dplyr
-julia> weather_columns =
-        @> CSV.read( "weather.csv", missingstring = "NA") |>
-        named_tuple |>
-        map(x -> collect(over(x, identity)), _);
-
-julia> weather =
-        @> weather_columns |>
-        rows |>
-        By(_, Names(:origin, :year, :month, :day, :hour));
-```
-
-Unfortunately, we have to deal with another problem: there's gaps in the weather
-data. We need to make a missing row of data. I'm also going to use `union` to
-get all the names together.
-
-```jldoctest dplyr
-julia> const missing_weather =
-        @> weather_columns |>
-        remove(_, :origin, :year, :month, :day, :hour) |>
-        map(x -> missing, _);
-
-julia> weather_join =
-        @> flights2 |>
-        order(_, Names(:origin, :year, :month, :day, :hour)) |>
-        Group(By(_, Names(:origin, :year, :month, :day, :hour))) |>
-        By(_, first) |>
-        LeftJoin(_, weather);
-
-julia> flight2_and_weather_names = Names(union(
-            propertynames(flight2_columns),
-            propertynames(weather_columns)
-        )...);
-
-julia> @> weather_join |>
-        over(_, @_ over(_.first.second, x -> merge(x, coalesce(_.second, missing_weather)))) |>
-        flatten |>
-        over(_, flight2_and_weather_names)
-Showing 7 of 18 columns
-Showing at most 4 rows
-| :year | :month | :day | :hour | :origin | :dest | :tailnum |
-| -----:| ------:| ----:| -----:| -------:| -----:| --------:|
-|  2013 |      1 |    1 |     5 |     EWR |   IAH |   N14228 |
-|  2013 |      1 |    1 |     5 |     EWR |   ORD |   N39463 |
-|  2013 |      1 |    1 |     6 |     EWR |   FLL |   N516JB |
-|  2013 |      1 |    1 |     6 |     EWR |   SFO |   N53441 |
-```
-
-Of course, if you wanted, you could just remove the rows with missing weather
-data, essentially doing an inner join:
-
-```jldoctest dplyr
-julia> @> weather_join |>
-        when(_, @_ _.second !== missing) |>
-        over(_, @_ over(_.first.second, x -> merge(x, missing_weather))) |>
-        flatten |>
-        over(_, flight2_and_weather_names)
-Showing 7 of 18 columns
-Showing at most 4 rows
-| :year | :month | :day | :hour | :origin | :dest | :tailnum |
-| -----:| ------:| ----:| -----:| -------:| -----:| --------:|
-|  2013 |      1 |    1 |     5 |     EWR |   IAH |   N14228 |
-|  2013 |      1 |    1 |     5 |     EWR |   ORD |   N39463 |
-|  2013 |      1 |    1 |     6 |     EWR |   FLL |   N516JB |
-|  2013 |      1 |    1 |     6 |     EWR |   SFO |   N53441 |
-```
+Are you exhaused? I'll admit, I am. Hope you learned something.
