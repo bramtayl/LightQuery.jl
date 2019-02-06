@@ -75,7 +75,7 @@ julia> Group(By([1, 3, 2, 4], iseven)) |> collect
 
 julia> Group(By([1], iseven)) |> collect
 1-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
- false => [1]
+ 0 => [1]
 ```
 """
 @inline Group(it::By) = Group(it.it, it.call)
