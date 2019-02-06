@@ -6,7 +6,7 @@ end
     foreach(
         (@propagate_inbounds check_axes(array) =
             @boundscheck if axes(array) != axes(model)
-                throw(BoundsError("All arrays passed to zip must have the same size"))
+                throw(ArgumentError("All arrays passed to zip must have the same size"))
             end),
         rest
     )
@@ -61,7 +61,7 @@ export unzip
 
 Unzip an iterator `it` which returns tuples of length `n`.
 
-```jldoctest
+```jldoctest; filter = r"check_axes at .*"
 julia> using LightQuery
 
 julia> using Test: @inferred
@@ -81,6 +81,9 @@ julia> @inferred test([(1, 1.0)])
 
 julia> test(over(when([1, missing], x -> true), f))
 (Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])
+
+julia> zip([1], [1, 2])
+ERROR: ArgumentError: All arrays passed to zip must have the same size
 ```
 """
 @inline unzip(it, n) = _collect(

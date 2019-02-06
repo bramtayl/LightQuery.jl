@@ -78,7 +78,7 @@ Collect into columns. See also [`columns`](@ref). In same cases, will
 error if inference cannot detect the names. In this case, use the names of the first
 row.
 
-```jldoctest
+```jldoctest; filter = r"error(::String) at .*"
 julia> using LightQuery
 
 julia> using Test: @inferred
@@ -86,6 +86,11 @@ julia> using Test: @inferred
 julia> [(a = 1, b = 1.0), (a = 2, b = 2.0)] |>
         make_columns
 (a = [1, 2], b = [1.0, 2.0])
+
+julia> @> 1:2 |>
+        over(_, x -> error()) |>
+        make_columns
+ERROR: Can't infer names due to inner function error
 ```
 """
 function make_columns(it)

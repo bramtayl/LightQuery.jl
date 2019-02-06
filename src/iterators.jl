@@ -159,6 +159,7 @@ IteratorSize(::Type{LeftJoin{By{It1, Call1}, Right}}) where {It1, Call1, Right} 
 	IteratorSize(It1)
 length(it::LeftJoin) = length(it.left.it)
 size(it::LeftJoin) = size(it.left.it)
+axes(it::LeftJoin) = axes(it.left.it)
 function iterate(it::LeftJoin)
 	left_match = @ifsomething next_history(it.left)
 	seek_right_match(it, left_match, next_history(it.right))
