@@ -12,7 +12,7 @@ Modules = [LightQuery]
 I started following the tutorial here
 [here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html), but
 got side-tracked by a data cleaning task. You get to see the results, hooray.
-I've included the flights data in test folder of this package.
+I've included the flights data in the test folder of this package.
 
 I've reexported CSV from the CSV package for convenient IO. We can process the
 data as we are reading in the file itself! This is because CSV.File returns an iterator.
@@ -71,8 +71,8 @@ julia> flight_columns =
 ```
 
 Now that we have our data into Julia, let's have a look see. We'll start by converting
-it back to columns, and then taking a `Peek`. I've taken the liberty of increasing the
-number of visible columns to 10. The default max `Peek` size is 7 columns by 4 rows.
+it back to rows, and then taking a `Peek`. I've taken the liberty of increasing the
+number of visible columns to 10. The default max `Peek` size is 7 columns.
 
 ```jldoctest dplyr
 julia> flights = rows(flight_columns);
@@ -87,13 +87,13 @@ Showing 4 of 336776 rows
 | 2013-01-01T05:45:00 |        -1 minute | 2013-01-01T10:22:00 |    -18 minutes |       B6 |     725 |       N804JB |     JFK |          BQN |   1576 mi |
 ```
 
-There's one more cleaning step we can make. Note that distance is a calculated
+There's one more cleaning step we can take. Note that distance is a calculated
 field. That is, the distance between two locations is always going to be the
 same. How can we get a clean dataset which only contains the distances between
 two airports?
 
 Let's start out by grouping our data by path. Before you group, you *MUST* sort.
-Otherwise, you will get incorrect results. Of course, if we have pre-sorted data, no need.
+Otherwise, you will get incorrect results. Of course, if you have pre-sorted data, no need.
 
 ```jldoctest dplyr
 julia> by_path =
@@ -104,7 +104,7 @@ julia> by_path =
 ```
 
 I encourage you to collect after Grouping. This will not use much additional
-data, it will only store the keys locations of the groups. Grouping is a little
+data, it will only store the keys and locations of the groups. Grouping is a little
 different from dplyr; each group is a pair from key to sub-data-frame:
 
 ```jldoctest dplyr
@@ -124,7 +124,7 @@ Showing 4 of 439 rows
 ```
 
 So there are 439 flights between Newark (EWR lol) and Albany. The distances are the same, so we really only need the first one. So here's what we do:
-Calling `make_columns` and then `rows` will collect out data (the smart way).
+Calling `make_columns` and then `rows` will collect our data efficiently.
 
 ```jldoctest dplyr
 julia> paths =
@@ -144,11 +144,10 @@ Showing 4 of 224 rows
 |     EWR |          AUS |   1504 mi |
 ```
 
-Ok, now let's do the whole damn thing in reverse, just for fun. How? We need to
-join back into the original data. Our data that was grouped by path is sorted by
-the first item, and our path data is sorted by `:origin` and `:destination`.
-Note there are no repeats: we've pregrouped our data. This is important for a
-left join.
+Ok, now let's go in reverse, just for fun. How? We need to join back into the
+original data. Our data that was grouped by path is sorted by the first item,
+and our path data is sorted by `:origin` and `:destination`. Note there are no
+repeats: we've pregrouped our data. This is important for a left join.
 
 ```jldoctest dplyr
 julia> joined = LeftJoin(
@@ -158,7 +157,7 @@ julia> joined = LeftJoin(
 ```
 
 A join will a row on the left and a row on the right. And the row on the left
-is a group, so it's also got a key and a value. Oy.
+is a group, so it's also got a key and a value.
 
 ```jldoctest dplyr
 julia> pair = first(joined);
@@ -197,5 +196,3 @@ Showing at most 4 rows
 ```
 
 Look! The distances match. Hooray!
-
-Are you exhaused? I'll admit, I am. Hope you learned something.
