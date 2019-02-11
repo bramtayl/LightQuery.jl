@@ -30,7 +30,7 @@ test_rename(x) = rename(x, c = Name(:a))
     @test @inferred(test_rename((a = 1, b = 1.0))) == (b = 1.0, c = 1)
     @test @inferred(gather((a = 1, b = 1.0, c = 1//1), d = Names(:a, :c))) ==
         (b = 1.0, d = (a = 1, c = 1//1))
-    @test test_spread((b = 1.0, d = (a = 1, c = 1//1))) == (b = 1.0, a = 1, c = 1//1)
+    @test @inferred(test_spread((b = 1.0, d = (a = 1, c = 1//1)))) == (b = 1.0, a = 1, c = 1//1)
     @test @inferred(in_common((a = 1, b = 1.0), (a = 2, c = 2//2))) == (:a,)
 end
 
@@ -53,20 +53,13 @@ test(x) = unzip(x, 2)
     @test_throws ArgumentError zip([1], [1, 2])
 end
 
-joined = LeftJoin(
-    By([1, 2, 5, 6], identity),
-    By([1, 3, 4, 6], identity)
-)
-
 @testset "iterators" begin
     @test Group(By([1], iseven)) |> collect == [false => [1]]
-    @test size(joined) == (4,)
-    @test length(joined) == 4
 end
 
 @testset "LightQuery" begin
     @test @inferred(collect(rows((a = [1, 2], b = [1.0, 2.0])))) == [(a = 1, b = 1.0), (a = 2, b = 2.0)]
     @test @inferred(columns(rows((a = [1, 2], b = [1.0, 2.0])))) == (a = [1, 2], b = [1.0, 2.0])
-    @test @inferred(make_columns([(a = 1, b = 1.0), (a = 2, b = 2.0)])) == ([1, 2], [1.0, 2.0])
+    @test @inferred(make_columns([(a = 1, b = 1.0), (a = 2, b = 2.0)])) == (a = [1, 2], b = [1.0, 2.0])
     @test_throws ErrorException Generator(x -> error(), 1:2) |> make_columns
 end
