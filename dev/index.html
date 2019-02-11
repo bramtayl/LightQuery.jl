@@ -1,42 +1,59 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>LightQuery.jl · LightQuery.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>LightQuery.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li class="current"><a class="toctext" href>LightQuery.jl</a><ul class="internal"><li class="toplevel"><a class="toctext" href="#Tutorial-1">Tutorial</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href>LightQuery.jl</a></li></ul><a class="edit-page" href="https://github.com/bramtayl/LightQuery.jl/blob/master/test/src/index.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>LightQuery.jl</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="LightQuery.jl-1" href="#LightQuery.jl-1">LightQuery.jl</a></h1><ul><li><a href="#LightQuery.By"><code>LightQuery.By</code></a></li><li><a href="#LightQuery.Group-Tuple{LightQuery.By}"><code>LightQuery.Group</code></a></li><li><a href="#LightQuery.LeftJoin"><code>LightQuery.LeftJoin</code></a></li><li><a href="#LightQuery.Name"><code>LightQuery.Name</code></a></li><li><a href="#LightQuery.Names-Tuple"><code>LightQuery.Names</code></a></li><li><a href="#LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It"><code>LightQuery.Peek</code></a></li><li><a href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>LightQuery.columns</code></a></li><li><a href="#LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}"><code>LightQuery.gather</code></a></li><li><a href="#LightQuery.in_common-Tuple{Any,Any}"><code>LightQuery.in_common</code></a></li><li><a href="#LightQuery.make_columns-Tuple{Any}"><code>LightQuery.make_columns</code></a></li><li><a href="#LightQuery.named_tuple-Tuple{Any}"><code>LightQuery.named_tuple</code></a></li><li><a href="#LightQuery.order-Tuple{Any,Any}"><code>LightQuery.order</code></a></li><li><a href="#LightQuery.over-Tuple{Any,Any}"><code>LightQuery.over</code></a></li><li><a href="#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.remove</code></a></li><li><a href="#LightQuery.rename-Tuple{Any}"><code>LightQuery.rename</code></a></li><li><a href="#LightQuery.rows-Tuple{Any}"><code>LightQuery.rows</code></a></li><li><a href="#LightQuery.spread-Tuple{Any,Any}"><code>LightQuery.spread</code></a></li><li><a href="#LightQuery.transform-Tuple{Any}"><code>LightQuery.transform</code></a></li><li><a href="#LightQuery.unzip-Tuple{Any,Any}"><code>LightQuery.unzip</code></a></li><li><a href="#LightQuery.when-Tuple{Any,Any}"><code>LightQuery.when</code></a></li><li><a href="#LightQuery.@&gt;-Tuple{Any}"><code>LightQuery.@&gt;</code></a></li><li><a href="#LightQuery.@_-Tuple{Any}"><code>LightQuery.@_</code></a></li></ul><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.By" href="#LightQuery.By"><code>LightQuery.By</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">By(it, call)</code></pre><p>Marks that <code>it</code> has been pre-sorted by the key <code>call</code>. For use with <a href="#LightQuery.Group-Tuple{LightQuery.By}"><code>Group</code></a> or <a href="#LightQuery.LeftJoin"><code>LeftJoin</code></a>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/iterators.jl#L2-L7">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Group-Tuple{LightQuery.By}" href="#LightQuery.Group-Tuple{LightQuery.By}"><code>LightQuery.Group</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">Group(it::By)</code></pre><p>Group consecutive keys in <code>it</code>. Requires a presorted object (see <a href="#LightQuery.By"><code>By</code></a>). Relies on the fact that iteration states can be converted to indices; thus, you might have to define <code>LightQuery.state_to_index</code> for unrecognized types.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>LightQuery.jl · LightQuery.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>LightQuery.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li class="current"><a class="toctext" href>LightQuery.jl</a><ul class="internal"></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href>LightQuery.jl</a></li></ul><a class="edit-page" href="https://github.com/bramtayl/LightQuery.jl/blob/master/test/src/index.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>LightQuery.jl</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="LightQuery.jl-1" href="#LightQuery.jl-1">LightQuery.jl</a></h1><ul><li><a href="#LightQuery.By"><code>LightQuery.By</code></a></li><li><a href="#LightQuery.FullJoin"><code>LightQuery.FullJoin</code></a></li><li><a href="#LightQuery.Group-Tuple{LightQuery.By}"><code>LightQuery.Group</code></a></li><li><a href="#LightQuery.Length"><code>LightQuery.Length</code></a></li><li><a href="#LightQuery.Name-Tuple{Any}"><code>LightQuery.Name</code></a></li><li><a href="#LightQuery.Names-Tuple"><code>LightQuery.Names</code></a></li><li><a href="#LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It"><code>LightQuery.Peek</code></a></li><li><a href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>LightQuery.columns</code></a></li><li><a href="#LightQuery.gather-Tuple{Any}"><code>LightQuery.gather</code></a></li><li><a href="#LightQuery.in_common-Tuple{Any,Any}"><code>LightQuery.in_common</code></a></li><li><a href="#LightQuery.make_columns-Tuple{Any}"><code>LightQuery.make_columns</code></a></li><li><a href="#LightQuery.named_tuple-Tuple{Any}"><code>LightQuery.named_tuple</code></a></li><li><a href="#LightQuery.order-Tuple{Any,Any}"><code>LightQuery.order</code></a></li><li><a href="#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.remove</code></a></li><li><a href="#LightQuery.rename-Tuple{Any}"><code>LightQuery.rename</code></a></li><li><a href="#LightQuery.row_type-Tuple{CSV.File}"><code>LightQuery.row_type</code></a></li><li><a href="#LightQuery.rows-Tuple{Any}"><code>LightQuery.rows</code></a></li><li><a href="#LightQuery.spread-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.spread</code></a></li><li><a href="#LightQuery.transform-Tuple{Any}"><code>LightQuery.transform</code></a></li><li><a href="#LightQuery.unzip-Tuple{Any,Any}"><code>LightQuery.unzip</code></a></li><li><a href="#LightQuery.@&gt;-Tuple{Any}"><code>LightQuery.@&gt;</code></a></li><li><a href="#LightQuery.@_-Tuple{Any}"><code>LightQuery.@_</code></a></li></ul><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.By" href="#LightQuery.By"><code>LightQuery.By</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">By(it, call)</code></pre><p>Marks that <code>it</code> has been pre-sorted by the key <code>call</code>. For use with <a href="#LightQuery.Group-Tuple{LightQuery.By}"><code>Group</code></a> or <a href="#LightQuery.FullJoin"><code>FullJoin</code></a>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/iterators.jl#L1-L6">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.FullJoin" href="#LightQuery.FullJoin"><code>LightQuery.FullJoin</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">FullJoin(left::By, right::By)</code></pre><p>Find all pairs where <code>isequal(left.call(left.it), right.call(right.it))</code>. Assumes <code>left</code> and <code>right</code> are both strictly sorted (no repeats). If there are repeats, <a href="#LightQuery.Group-Tuple{LightQuery.By}"><code>Group</code></a> first. For other join flavors, combine with <code>Filter</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; FullJoin(
+            By([1, 2, 5, 6], identity),
+            By([1, 3, 4, 6], identity)
+        ) |&gt;
+        collect
+6-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
+       1 =&gt; 1
+       2 =&gt; missing
+ missing =&gt; 3
+ missing =&gt; 4
+       5 =&gt; missing
+       6 =&gt; 6
+
+julia&gt; @&gt; [1, 1, 2, 2] |&gt;
+        Group(By(_, identity)) |&gt;
+        By(_, first) |&gt;
+        FullJoin(_, By([1, 2], identity)) |&gt;
+        collect
+2-element Array{Pair{Pair{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},Int64},1}:
+ (1=&gt;[1, 1]) =&gt; 1
+ (2=&gt;[2, 2]) =&gt; 2
+
+julia&gt; @&gt; FullJoin(
+            By([1, 2, 5, 6], identity),
+            By([1, 3, 4, 6], identity)
+        ) |&gt;
+        Filter((@_ !ismissing(_.first)), _) |&gt;
+        collect
+4-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
+ 1 =&gt; 1
+ 2 =&gt; missing
+ 5 =&gt; missing
+ 6 =&gt; 6</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/iterators.jl#L118-L162">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Group-Tuple{LightQuery.By}" href="#LightQuery.Group-Tuple{LightQuery.By}"><code>LightQuery.Group</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">Group(it::By)</code></pre><p>Group consecutive keys in <code>it</code>. Requires a presorted object (see <a href="#LightQuery.By"><code>By</code></a>). Relies on the fact that iteration states can be converted to indices; thus, you might have to define <code>LightQuery.state_to_index</code> for unrecognized types.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; Group(By([1, 3, 2, 4], iseven)) |&gt; collect
 2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
  0 =&gt; [1, 3]
- 1 =&gt; [2, 4]
+ 1 =&gt; [2, 4]</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/iterators.jl#L60-L75">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Length" href="#LightQuery.Length"><code>LightQuery.Length</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">Length(it, length)</code></pre><p>Allow optimizations based on length. Especially useful before <a href="#LightQuery.make_columns-Tuple{Any}"><code>make_columns</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; Group(By([1], iseven)) |&gt; collect
-1-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
- 0 =&gt; [1]</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/iterators.jl#L61-L80">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.LeftJoin" href="#LightQuery.LeftJoin"><code>LightQuery.LeftJoin</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">LeftJoin(left::By, right::By)</code></pre><p>For each value in <code>left</code>, look for a value with the same key in <code>right</code>. Requires both to be presorted (see <a href="#LightQuery.By"><code>By</code></a>).</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+julia&gt; @&gt; Filter(iseven, 1:4) |&gt;
+        Length(_, 2) |&gt;
+        collect
+2-element Array{Int64,1}:
+ 2
+ 4</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/iterators.jl#L204-L220">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Name-Tuple{Any}" href="#LightQuery.Name-Tuple{Any}"><code>LightQuery.Name</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">Name(name)</code></pre><p>Force into the type domain. Can also be used as a function to <code>getproperty</code></p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; joined = LeftJoin(
-            By([1, 2, 5, 6], identity),
-            By([1, 3, 4, 6], identity)
-       );
+julia&gt; @&gt; (a = 1,) |&gt;
+        Name(:a)(_)
+1</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L2-L14">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Names-Tuple" href="#LightQuery.Names-Tuple"><code>LightQuery.Names</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">Names(the_names...)</code></pre><p>Force into the type domain. Can be used to as a function to select columns.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; size(joined)
-(4,)
-
-julia&gt; length(joined)
-4
-
-julia&gt; collect(joined)
-4-element Array{Pair{Int64,Union{Missing, Int64}},1}:
- 1 =&gt; 1
- 2 =&gt; missing
- 5 =&gt; missing
- 6 =&gt; 6</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/iterators.jl#L127-L154">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Name" href="#LightQuery.Name"><code>LightQuery.Name</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">Name(name)</code></pre><p>Force into the type domain. Can also be used as a function to <code>getproperty</code></p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; Name(:a)((a = 1,))
-1</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L2-L13">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Names-Tuple" href="#LightQuery.Names-Tuple"><code>LightQuery.Names</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">Names(names...)</code></pre><p>Force into the type domain. Can be used to as a function to select columns.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; using Test: @inferred
-
-julia&gt; test(x) = Names(:a)(x);
-
-julia&gt; @inferred test((a = 1, b = 1.0))
-(a = 1,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L114-L129">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It" href="#LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It"><code>LightQuery.Peek</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">Peek(it; max_columns = 7, max_rows = 4)</code></pre><p>Get a peek of an iterator which returns named tuples. If inference cannot detect names, it will use the names of the first item. Map a <a href="#LightQuery.Names-Tuple"><code>Names</code></a> object <a href="#LightQuery.over-Tuple{Any,Any}"><code>over</code></a> <code>it</code> to help inference.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+julia&gt; @&gt; (a = 1, b = 1.0) |&gt;
+        Names(:a)(_)
+(a = 1,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L22-L34">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It" href="#LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It"><code>LightQuery.Peek</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">Peek(it; max_columns = 7, max_rows = 4)</code></pre><p>Get a peek of an iterator which returns named tuples. If inference cannot detect names, it will use the names of the first item.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; [(a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8)] |&gt;
         Peek
@@ -58,43 +75,33 @@ Showing 4 of 6 rows
 
 julia&gt; @&gt; (a = 1:2,) |&gt;
         rows |&gt;
-        when(_, @_ _.a &gt; 1) |&gt;
+        Filter((@_ _.a &gt; 1), _) |&gt;
         Peek
 Showing at most 4 rows
 |  :a |
 | ---:|
-|   2 |</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/LightQuery.jl#L108-L145">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays" href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>LightQuery.columns</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">columns(it)</code></pre><p>Inverse of <a href="#LightQuery.rows-Tuple{Any}"><code>rows</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+|   2 |</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/LightQuery.jl#L109-L145">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays" href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>LightQuery.columns</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">columns(it)</code></pre><p>Inverse of <a href="#LightQuery.rows-Tuple{Any}"><code>rows</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; (a = [1], b = [1.0]) |&gt; rows |&gt; columns
-(a = [1], b = [1.0])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/LightQuery.jl#L48-L59">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}" href="#LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}"><code>LightQuery.gather</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">gather(it, name, names...)</code></pre><p>Gather all the it in <code>names</code> into a single <code>name</code>. Inverse of <a href="#LightQuery.spread-Tuple{Any,Any}"><code>spread</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+julia&gt; (a = [1], b = [1.0]) |&gt;
+        rows |&gt;
+        columns
+(a = [1], b = [1.0])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/LightQuery.jl#L50-L63">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.gather-Tuple{Any}" href="#LightQuery.gather-Tuple{Any}"><code>LightQuery.gather</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">gather(it; assignments...)</code></pre><p>For each <code>key =&gt; value</code> pair in assignments, gather the <a href="#LightQuery.Names-Tuple"><code>Names</code></a> in <code>value</code> into a single <code>key</code>. Inverse of <a href="#LightQuery.spread-Tuple{Any,Vararg{Any,N} where N}"><code>spread</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; using Test: @inferred
-
-julia&gt; test(x) = gather(x, :d, :a, :c);
-
-julia&gt; @inferred test((a = 1, b = 1.0, c = 1//1))
-(b = 1.0, d = (a = 1, c = 1//1))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L64-L80">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.in_common-Tuple{Any,Any}" href="#LightQuery.in_common-Tuple{Any,Any}"><code>LightQuery.in_common</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">in_common(it1, it2)</code></pre><p>Find the names in common between <code>it1</code> and <code>it2</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+julia&gt; @&gt; (a = 1, b = 1.0, c = 1//1) |&gt;
+        gather(_, d = Names(:a, :c))
+(b = 1.0, d = (a = 1, c = 1//1))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L117-L130">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.in_common-Tuple{Any,Any}" href="#LightQuery.in_common-Tuple{Any,Any}"><code>LightQuery.in_common</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">in_common(it1, it2)</code></pre><p>Find the the_names in common between <code>it1</code> and <code>it2</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; in_common((a = 1, b = 1.0), (a = 2, c = 2//2))
-(:a,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L180-L191">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.make_columns-Tuple{Any}" href="#LightQuery.make_columns-Tuple{Any}"><code>LightQuery.make_columns</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">make_columns(it)</code></pre><p>Collect into columns. See also <a href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>columns</code></a>. In same cases, will error if inference cannot detect the names. In this case, use the names of the first row.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; using Test: @inferred
+(:a,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L167-L178">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.make_columns-Tuple{Any}" href="#LightQuery.make_columns-Tuple{Any}"><code>LightQuery.make_columns</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">make_columns(it)</code></pre><p>Collect into columns. See also <a href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>columns</code></a>. If inference cannot detect names, it will use the names of the first item. Much more efficient if <code>it</code> has a known <code>length</code>/<code>size</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; [(a = 1, b = 1.0), (a = 2, b = 2.0)] |&gt;
         make_columns
-(a = [1, 2], b = [1.0, 2.0])
-
-julia&gt; @&gt; 1:2 |&gt;
-        over(_, x -&gt; error()) |&gt;
-        make_columns
-ERROR: Can&#39;t infer names due to inner function error</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/LightQuery.jl#L74-L95">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.named_tuple-Tuple{Any}" href="#LightQuery.named_tuple-Tuple{Any}"><code>LightQuery.named_tuple</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">named_tuple(it)</code></pre><p>Coerce to a <code>named_tuple</code>. For performance with working with arbitrary structs, explicitly define inlined <code>propertynames</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; using Test: @inferred
+(a = [1, 2], b = [1.0, 2.0])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/LightQuery.jl#L82-L96">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.named_tuple-Tuple{Any}" href="#LightQuery.named_tuple-Tuple{Any}"><code>LightQuery.named_tuple</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">named_tuple(it)</code></pre><p>Coerce to a <code>named_tuple</code>. For performance with working with arbitrary structs, requires <code>propertynames</code> to constant propagate.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; @inline Base.propertynames(p::Pair) = (:first, :second);
 
-julia&gt; @inferred named_tuple(:a =&gt; 1)
-(first = :a, second = 1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L22-L38">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.order-Tuple{Any,Any}" href="#LightQuery.order-Tuple{Any,Any}"><code>LightQuery.order</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">order(it, call; keywords...)
+julia&gt; named_tuple(:a =&gt; 1)
+(first = :a, second = 1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L38-L52">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.order-Tuple{Any,Any}" href="#LightQuery.order-Tuple{Any,Any}"><code>LightQuery.order</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">order(it, call; keywords...)
 order(it, call, condition; keywords...)</code></pre><p>Generalized sort. <code>keywords</code> will be passed to <code>sort!</code>; see the documentation there for options. See <a href="#LightQuery.By"><code>By</code></a> for a way to explicitly mark that an object has been sorted. Most performant if <code>call</code> is type stable, if not, consider using a <code>condition</code> to filter.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; order([2, 1], identity)
@@ -105,174 +112,38 @@ julia&gt; order([2, 1], identity)
 julia&gt; order([1, 2, missing], identity, !ismissing)
 2-element view(::Array{Union{Missing, Int64},1}, [1, 2]) with eltype Union{Missing, Int64}:
  1
- 2</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/iterators.jl#L14-L36">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.over-Tuple{Any,Any}" href="#LightQuery.over-Tuple{Any,Any}"><code>LightQuery.over</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">over(it, call)</code></pre><p>Lazy version of map, with the reverse argument order.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+ 2</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/iterators.jl#L13-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}" href="#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.remove</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">remove(it, the_names...)</code></pre><p>Remove <code>the_names</code>. Inverse of <a href="#LightQuery.transform-Tuple{Any}"><code>transform</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; over([1, 2], x -&gt; x + 0.0) |&gt; collect
-2-element Array{Float64,1}:
- 1.0
- 2.0</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/iterators.jl#L195-L208">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}" href="#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.remove</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">remove(it, names...)</code></pre><p>Remove <code>names</code>. Inverse of <a href="#LightQuery.transform-Tuple{Any}"><code>transform</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+julia&gt; @&gt; (a = 1, b = 1.0) |&gt;
+        remove(_, :b)
+(a = 1,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L75-L87">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.rename-Tuple{Any}" href="#LightQuery.rename-Tuple{Any}"><code>LightQuery.rename</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">rename(it; renames::Name...)</code></pre><p>Rename <code>it</code>. Use <a href="#LightQuery.Name-Tuple{Any}"><code>Name</code></a> for type stability; constants don&#39;t propagate through keyword arguments :(</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; using Test: @inferred
+julia&gt; @&gt; (a = 1, b = 1.0) |&gt;
+        rename(_, c = Name(:a))
+(b = 1.0, c = 1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L94-L107">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.row_type-Tuple{CSV.File}" href="#LightQuery.row_type-Tuple{CSV.File}"><code>LightQuery.row_type</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">row_type(f::File)</code></pre><p>Find the type of a row of a <code>CSV.File</code> if it was converted to a <a href="#LightQuery.named_tuple-Tuple{Any}"><code>named_tuple</code></a>.</p><p>``` julia&gt; using LightQuery</p><p>julia&gt; @&gt; &quot;test.csv&quot; |&gt;         CSV.File(<em>, allowmissing = :auto) |&gt;         row</em>type NamedTuple{(:a, :b),T} where T&lt;:Tuple{Int64,Float64}</p></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/LightQuery.jl#L178-L191">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.rows-Tuple{Any}" href="#LightQuery.rows-Tuple{Any}"><code>LightQuery.rows</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">rows(it)</code></pre><p>Iterator over <code>rows</code> of a <code>NamedTuple</code> of arrays. Inverse of <a href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>columns</code></a>. See <a href="#LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It"><code>Peek</code></a> for a way to view <code>rows</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; test(x) = remove(x, :b);
+julia&gt; (a = [1, 2], b = [1.0, 2.0]) |&gt;
+        rows |&gt;
+        collect
+2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Float64}},1}:
+ (a = 1, b = 1.0)
+ (a = 2, b = 2.0)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/LightQuery.jl#L23-L39">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.spread-Tuple{Any,Vararg{Any,N} where N}" href="#LightQuery.spread-Tuple{Any,Vararg{Any,N} where N}"><code>LightQuery.spread</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">spread(it::NamedTuple, the_names...)</code></pre><p>Unnest nested it in <code>name</code>. Inverse of <a href="#LightQuery.gather-Tuple{Any}"><code>gather</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; @inferred test((a = 1, b = 1.0))
-(a = 1,)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L133-L148">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.rename-Tuple{Any}" href="#LightQuery.rename-Tuple{Any}"><code>LightQuery.rename</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">rename(it; renames::Name...)</code></pre><p>Rename <code>it</code>. Use <a href="#LightQuery.Name"><code>Name</code></a> for type stability; constants don&#39;t propagate through keyword arguments :(</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+julia&gt; @&gt; (b = 1.0, d = (a = 1, c = 1//1)) |&gt;
+        spread(_, :d)
+(b = 1.0, a = 1, c = 1//1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L143-L155">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.transform-Tuple{Any}" href="#LightQuery.transform-Tuple{Any}"><code>LightQuery.transform</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">transform(it; assignments...)</code></pre><p>Merge <code>assignments</code> into <code>it</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; using Test: @inferred
+julia&gt; transform((a = 1,), b = 1.0)
+(a = 1, b = 1.0)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/named_tuples.jl#L60-L71">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.unzip-Tuple{Any,Any}" href="#LightQuery.unzip-Tuple{Any,Any}"><code>LightQuery.unzip</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">unzip(it, n)</code></pre><p>Unzip an iterator <code>it</code> which returns tuples of length <code>n</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
-julia&gt; test(x) = rename(x, c = Name(:a));
-
-julia&gt; @inferred test((a = 1, b = 1.0))
-(b = 1.0, c = 1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L153-L169">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.rows-Tuple{Any}" href="#LightQuery.rows-Tuple{Any}"><code>LightQuery.rows</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">rows(it)</code></pre><p>Iterator over <code>rows</code> of a <code>NamedTuple</code> of arrays. Inverse of <a href="#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It&lt;:LightQuery.ZippedArrays"><code>columns</code></a>. See <a href="#LightQuery.Peek-Union{Tuple{It}, Tuple{It}} where It"><code>Peek</code></a> for a way to view <code>rows</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; (a = [1, 2], b = [1.0, 2.0]) |&gt; rows |&gt; Peek
-|  :a |  :b |
-| ---:| ---:|
-|   1 | 1.0 |
-|   2 | 2.0 |</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/LightQuery.jl#L26-L41">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.spread-Tuple{Any,Any}" href="#LightQuery.spread-Tuple{Any,Any}"><code>LightQuery.spread</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">spread(it::NamedTuple, name)</code></pre><p>Unnest nested it in <code>name</code>. Inverse of <a href="#LightQuery.gather-Tuple{Any,Any,Vararg{Any,N} where N}"><code>gather</code></a>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; using Test: @inferred
-
-julia&gt; test(x) = spread(x, :d);
-
-julia&gt; @inferred test((b = 1.0, d = (a = 1, c = 1//1)))
-(b = 1.0, a = 1, c = 1//1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L87-L102">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.transform-Tuple{Any}" href="#LightQuery.transform-Tuple{Any}"><code>LightQuery.transform</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">transform(it; assignments...)</code></pre><p>Merge <code>assignments</code> into <code>it</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; using Test: @inferred
-
-julia&gt; @inferred transform((a = 1,), b = 1.0)
-(a = 1, b = 1.0)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/named_tuples.jl#L46-L59">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.unzip-Tuple{Any,Any}" href="#LightQuery.unzip-Tuple{Any,Any}"><code>LightQuery.unzip</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">unzip(it, n)</code></pre><p>Unzip an iterator <code>it</code> which returns tuples of length <code>n</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; using Test: @inferred
-
-julia&gt; f(x) = (x, x + 0.0);
-
-julia&gt; test(x) = unzip(x, 2);
-
-julia&gt; test(over([1, missing], f))
-(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])
-
-julia&gt; @inferred test(zip([1], [1.0]))
-([1], [1.0])
-
-julia&gt; @inferred test([(1, 1.0)])
-([1], [1.0])
-
-julia&gt; test(over(when([1, missing], x -&gt; true), f))
-(Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])
-
-julia&gt; zip([1], [1, 2])
-ERROR: ArgumentError: All arrays passed to zip must have the same size</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/Unzip.jl#L55-L84">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.when-Tuple{Any,Any}" href="#LightQuery.when-Tuple{Any,Any}"><code>LightQuery.when</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-none">when(it, call)</code></pre><p>Lazy version of filter, with the reverse argument order.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; when([1, 2], x -&gt; x &gt; 1) |&gt; collect
-1-element Array{Int64,1}:
- 2</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/iterators.jl#L212-L224">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@&gt;-Tuple{Any}" href="#LightQuery.@&gt;-Tuple{Any}"><code>LightQuery.@&gt;</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro &gt;(body)</code></pre><p>If body is in the form <code>body_ |&gt; tail_</code>, call <a href="#LightQuery.@_-Tuple{Any}"><code>@_</code></a> on <code>tail</code>, and recur on <code>body</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+julia&gt; unzip([(1, 1.0), (2, 2.0)], 2)
+([1, 2], [1.0, 2.0])</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/Unzip.jl#L83-L94">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@&gt;-Tuple{Any}" href="#LightQuery.@&gt;-Tuple{Any}"><code>LightQuery.@&gt;</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro &gt;(body)</code></pre><p>If body is in the form <code>body_ |&gt; tail_</code>, call <a href="#LightQuery.@_-Tuple{Any}"><code>@_</code></a> on <code>tail</code>, and recur on <code>body</code>.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; @&gt; 0 |&gt; _ - 1 |&gt; abs
-1</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/Nameless.jl#L65-L76">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@_-Tuple{Any}" href="#LightQuery.@_-Tuple{Any}"><code>LightQuery.@_</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro _(body)</code></pre><p>Terser function syntax. The arguments are inside the body; the first argument is <code>_</code>, the second argument is <code>__</code>, etc.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+1</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/Nameless.jl#L69-L80">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="LightQuery.@_-Tuple{Any}" href="#LightQuery.@_-Tuple{Any}"><code>LightQuery.@_</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">macro _(body)</code></pre><p>Terser function syntax. The arguments are inside the body; the first argument is <code>_</code>, the second argument is <code>__</code>, etc.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
 
 julia&gt; (@_ _ + 1)(1)
 2
 
 julia&gt; map((@_ __ - _), (1, 2), (2, 1))
-(1, -1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/a449c966e52c2d3f03267c6b5704edc2d773b8a3/src/Nameless.jl#L37-L52">source</a></section><h1><a class="nav-anchor" id="Tutorial-1" href="#Tutorial-1">Tutorial</a></h1><p>I started following the tutorial here <a href="https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html">here</a>, but got side-tracked by a data cleaning task. You get to see the results, hooray. I&#39;ve included the flights data in the test folder of this package.</p><p>I&#39;ve reexported CSV from the CSV package for convenient IO. We can process the data as we are reading in the file itself! This is because CSV.File returns an iterator.</p><p>I do a lot of steps here so let&#39;s break them down:</p><p>First, I bring in some dates functions, and make them work with missing data.</p><p>In the <code>CSV.File</code> step, I mark that missing is denoted by &quot;NA&quot; in the file. I also specify that I want strings to come in as categorical data.</p><p>Then I transform each row. First, I convert each row to a named tuple. Then, I combine the scheduled arrival and departure times into a single date-time. The bit at the end about <code>divrem</code> basically means that in a number like <code>530</code>, hours are in the hundreds place and minutes are in the rest (e.g. 5:30). Then I rename to get rid of abbreviations (you&#39;ll figure out if you haven&#39;t already that I&#39;m a big fan of whole words). Then, I select just the columns we want. I&#39;ve taken the liberty of ignoring calculated data, that is, data that we can calculate later on. Also, mapping a <code>Names</code> object with <code>over</code> helps Julia out. Julia can&#39;t infer the names of the rows without this step. This is the because we have two or more type-unstable columns (e.g. departure delay and arrival delay both might be missing).</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
-
-julia&gt; using Dates: DateTime
-
-julia&gt; import Dates: Minute
-
-julia&gt; Minute(::Missing) = missing;
-
-julia&gt; using Unitful: mi
-
-julia&gt; flight_columns =
-            @&gt; CSV.File(&quot;flights.csv&quot;, missingstring = &quot;NA&quot;, categorical = true) |&gt;
-            over(_, @_ @&gt; named_tuple(_) |&gt;
-                transform(_,
-                    departure_time = DateTime(_.year, _.month, _.day,
-                        divrem(_.sched_dep_time, 100)...),
-                    departure_delay = Minute(_.dep_delay),
-                    arrival_time = DateTime(_.year, _.month, _.day,
-                        divrem(_.sched_arr_time, 100)...),
-                    arrival_delay = Minute(_.arr_delay),
-                    distance = _.distance * mi
-                ) |&gt;
-                rename(_,
-                    tail_number = Name(:tailnum),
-                    destination = Name(:dest)
-                )
-            ) |&gt;
-            over(_, Names(:departure_time, :departure_delay, :arrival_time,
-                :arrival_delay, :carrier, :flight, :tail_number, :origin,
-                :destination, :distance)
-            ) |&gt;
-            make_columns;</code></pre><p>Now that we have our data into Julia, let&#39;s have a look see. We&#39;ll start by converting it back to rows, and then taking a <code>Peek</code>. I&#39;ve taken the liberty of increasing the number of visible columns to 10. The default max <code>Peek</code> size is 7 columns.</p><pre><code class="language-julia-repl">julia&gt; flights = rows(flight_columns);
-
-julia&gt; Peek(flights, max_columns = 10)
-Showing 4 of 336776 rows
-|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance |
-| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:|
-| 2013-01-01T05:15:00 |        2 minutes | 2013-01-01T08:19:00 |     11 minutes |       UA |    1545 |       N14228 |     EWR |          IAH |   1400 mi |
-| 2013-01-01T05:29:00 |        4 minutes | 2013-01-01T08:30:00 |     20 minutes |       UA |    1714 |       N24211 |     LGA |          IAH |   1416 mi |
-| 2013-01-01T05:40:00 |        2 minutes | 2013-01-01T08:50:00 |     33 minutes |       AA |    1141 |       N619AA |     JFK |          MIA |   1089 mi |
-| 2013-01-01T05:45:00 |        -1 minute | 2013-01-01T10:22:00 |    -18 minutes |       B6 |     725 |       N804JB |     JFK |          BQN |   1576 mi |</code></pre><p>There&#39;s one more cleaning step we can take. Note that distance is a calculated field. That is, the distance between two locations is always going to be the same. How can we get a clean dataset which only contains the distances between two airports?</p><p>Let&#39;s start out by grouping our data by path. Before you group, you <em>MUST</em> sort. Otherwise, you will get incorrect results. Of course, if you have pre-sorted data, no need.</p><pre><code class="language-julia-repl">julia&gt; by_path =
-            @&gt; flights |&gt;
-            order(_, Names(:origin, :destination)) |&gt;
-            Group(By(_, Names(:origin, :destination))) |&gt;
-            collect;</code></pre><p>I encourage you to collect after Grouping. This will not use much additional data, it will only store the keys and locations of the groups. Grouping is a little different from dplyr; each group is a pair from key to sub-data-frame:</p><pre><code class="language-julia-repl">julia&gt; first_group = first(by_path);
-
-julia&gt; first_group.first
-(origin = CategoricalArrays.CategoricalString{UInt32} &quot;EWR&quot;, destination = CategoricalArrays.CategoricalString{UInt32} &quot;ALB&quot;)
-
-julia&gt; Peek(first_group.second, max_columns = 10)
-Showing 4 of 439 rows
-|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance |
-| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:|
-| 2013-01-01T13:17:00 |       -2 minutes | 2013-01-01T14:23:00 |    -10 minutes |       EV |    4112 |       N13538 |     EWR |          ALB |    143 mi |
-| 2013-01-01T16:21:00 |       34 minutes | 2013-01-01T17:24:00 |     40 minutes |       EV |    3260 |       N19554 |     EWR |          ALB |    143 mi |
-| 2013-01-01T20:04:00 |       52 minutes | 2013-01-01T21:12:00 |     44 minutes |       EV |    4170 |       N12540 |     EWR |          ALB |    143 mi |
-| 2013-01-02T13:27:00 |        5 minutes | 2013-01-02T14:33:00 |    -14 minutes |       EV |    4316 |       N14153 |     EWR |          ALB |    143 mi |</code></pre><p>So there are 439 flights between Newark (EWR lol) and Albany. The distances are the same, so we really only need the first one. So here&#39;s what we do: Calling <code>make_columns</code> and then <code>rows</code> will collect our data efficiently.</p><pre><code class="language-julia-repl">julia&gt; paths =
-        @&gt; by_path |&gt;
-        over(_, @_ first(_.second)) |&gt;
-        over(_, Names(:origin, :destination, :distance)) |&gt;
-        make_columns |&gt;
-        rows;
-
-julia&gt; Peek(paths)
-Showing 4 of 224 rows
-| :origin | :destination | :distance |
-| -------:| ------------:| ---------:|
-|     EWR |          ALB |    143 mi |
-|     EWR |          ANC |   3370 mi |
-|     EWR |          ATL |    746 mi |
-|     EWR |          AUS |   1504 mi |</code></pre><p>Ok, now let&#39;s go in reverse, just for fun. How? We need to join back into the original data. Our data that was grouped by path is sorted by the first item, and our path data is sorted by <code>:origin</code> and <code>:destination</code>. Note there are no repeats: we&#39;ve pregrouped our data. This is important for a left join.</p><pre><code class="language-julia-repl">julia&gt; joined = LeftJoin(
-            By(by_path, first),
-            By(paths, Names(:origin, :destination))
-        );</code></pre><p>A join will a row on the left and a row on the right. And the row on the left is a group, so it&#39;s also got a key and a value.</p><pre><code class="language-julia-repl">julia&gt; pair = first(joined);
-
-julia&gt; pair.first.first
-(origin = CategoricalArrays.CategoricalString{UInt32} &quot;EWR&quot;, destination = CategoricalArrays.CategoricalString{UInt32} &quot;ALB&quot;)
-
-julia&gt; Peek(pair.first.second, max_columns = 10)
-Showing 4 of 439 rows
-|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance |
-| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:|
-| 2013-01-01T13:17:00 |       -2 minutes | 2013-01-01T14:23:00 |    -10 minutes |       EV |    4112 |       N13538 |     EWR |          ALB |    143 mi |
-| 2013-01-01T16:21:00 |       34 minutes | 2013-01-01T17:24:00 |     40 minutes |       EV |    3260 |       N19554 |     EWR |          ALB |    143 mi |
-| 2013-01-01T20:04:00 |       52 minutes | 2013-01-01T21:12:00 |     44 minutes |       EV |    4170 |       N12540 |     EWR |          ALB |    143 mi |
-| 2013-01-02T13:27:00 |        5 minutes | 2013-01-02T14:33:00 |    -14 minutes |       EV |    4316 |       N14153 |     EWR |          ALB |    143 mi |
-
-julia&gt; pair.second
-(origin = CategoricalArrays.CategoricalString{UInt32} &quot;EWR&quot;, destination = CategoricalArrays.CategoricalString{UInt32} &quot;ALB&quot;, distance = 143 mi)</code></pre><p>How are we gonna get this all back into a flat data-frame? We need to make use of flatten (which is reexported from Base).</p><pre><code class="language-none">julia&gt; @&gt; joined |&gt;
-        over(_, pair -&gt; over(pair.first.second, @_ transform(_, distance_again = pair.second.distance))) |&gt;
-        flatten |&gt;
-        Peek(_, max_columns = 11)
-
-Showing at most 4 rows
-|     :departure_time | :departure_delay |       :arrival_time | :arrival_delay | :carrier | :flight | :tail_number | :origin | :destination | :distance | :distance_again |
-| -------------------:| ----------------:| -------------------:| --------------:| --------:| -------:| ------------:| -------:| ------------:| ---------:| ---------------:|
-| 2013-01-01T13:17:00 |       -2 minutes | 2013-01-01T14:23:00 |    -10 minutes |       EV |    4112 |       N13538 |     EWR |          ALB |    143 mi |          143 mi |
-| 2013-01-01T16:21:00 |       34 minutes | 2013-01-01T17:24:00 |     40 minutes |       EV |    3260 |       N19554 |     EWR |          ALB |    143 mi |          143 mi |
-| 2013-01-01T20:04:00 |       52 minutes | 2013-01-01T21:12:00 |     44 minutes |       EV |    4170 |       N12540 |     EWR |          ALB |    143 mi |          143 mi |
-| 2013-01-02T13:27:00 |        5 minutes | 2013-01-02T14:33:00 |    -14 minutes |       EV |    4316 |       N14153 |     EWR |          ALB |    143 mi |          143 mi |</code></pre><p>Look! The distances match. Hooray!</p><footer><hr/></footer></article></body></html>
+(1, -1)</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/bramtayl/LightQuery.jl/blob/f2a2d27621332703eda6d02c53b3fdee958b53ef/src/Nameless.jl#L41-L56">source</a></section><footer><hr/></footer></article></body></html>
