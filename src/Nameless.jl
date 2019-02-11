@@ -1,5 +1,7 @@
-substitute_underscores!(dictionary, body) = body
-substitute_underscores!(dictionary, body::Symbol) =
+function substitute_underscores!(dictionary, body)
+    body
+end
+function substitute_underscores!(dictionary, body::Symbol)
     if all(isequal('_'), string(body))
         if !haskey(dictionary, body)
             dictionary[body] = gensym("argument")
@@ -8,32 +10,34 @@ substitute_underscores!(dictionary, body::Symbol) =
     else
         body
     end
-substitute_underscores!(dictionary, body::Expr) =
+end
+function substitute_underscores!(dictionary, body::Expr)
     Expr(body.head, map(
         let dictionary = dictionary
             body -> substitute_underscores!(dictionary, body)
         end,
         body.args
     )...)
-
-unname(body, line, file) = unname(:($body(_)), line, file)
-function unname(body::Expr, line, file)
+end
+anonymous(location, body) = body
+function anonymous(location, body::Expr)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
-    Expr(:->,
-        Expr(:tuple, Generator(
-            pair -> pair.second,
-            sort(
-                lt = (pair1, pair2) ->
-                    isless(length(String(pair1.first)), length(String(pair2.first))),
-                collect(dictionary)
-            )
-        )...),
-        Expr(:block, LineNumberNode(line, file), new_body)
+    arguments = Generator(
+        pair -> pair.second,
+        sort(collect(dictionary))
+    )
+    function_name = gensym("function")
+    Expr(:function,
+        Expr(:call, function_name, arguments...),
+        Expr(:block,
+            Expr(:meta, :inline),
+            location,
+            new_body
+        )
     )
 end
 
-export @_
 """
     macro _(body)
 
@@ -51,17 +55,17 @@ julia> map((@_ __ - _), (1, 2), (2, 1))
 ```
 """
 macro _(body)
-    unname(macroexpand(@__MODULE__, body), @__LINE__, @__FILE__) |> esc
+    anonymous(LineNumberNode(@__LINE__, @__FILE__), macroexpand(@__MODULE__, body)) |> esc
 end
+export @_
 
-chain(body, line, file) =
+function chain(location, body)
     if @capture body head_ |> tail_
-        Expr(:call, unname(tail, line, file), chain(head, line, file))
+        Expr(:call, anonymous(location, tail), chain(location, head))
     else
         body
     end
-
-export @>
+end
 """
     macro >(body)
 
@@ -75,5 +79,6 @@ julia> @> 0 |> _ - 1 |> abs
 ```
 """
 macro >(body)
-    chain(macroexpand(@__MODULE__, body), @__LINE__, @__FILE__) |> esc
+    chain(LineNumberNode(@__LINE__, @__FILE__), macroexpand(@__MODULE__, body)) |> esc
 end
+export @>

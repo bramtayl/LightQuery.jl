@@ -1,16 +1,15 @@
-export By
 """
 	By(it, call)
 
 Marks that `it` has been pre-sorted by the key `call`. For use with
-[`Group`](@ref) or [`LeftJoin`](@ref).
+[`Group`](@ref) or [`FullJoin`](@ref).
 """
 struct By{It, Call}
     it::It
 	call::Call
 end
+export By
 
-export order
 """
 	order(it, call; keywords...)
 	order(it, call, condition; keywords...)
@@ -35,29 +34,29 @@ julia> order([1, 2, missing], identity, !ismissing)
 ```
 """
 order(it, call; keywords...) =
-	view(it, mappedarray(
-		first,
-		sort!(collect(enumerate(Generator(call, it))), by = last; keywords...)
-	))
+	@> Generator(call, it) |>
+	enumerate |>
+	collect |>
+	sort!(_, by = last; keywords...) |>
+	mappedarray(first, _) |>
+	view(it, _)
 order(it, call, condition; keywords...) =
-	view(it, mappedarray(
-		first,
-		sort!(collect(when(
-			enumerate(Generator(call, it)),
-			pair -> condition(pair[2])
-		)), by = last; keywords...)
-	))
+	@> Generator(call, it) |>
+	enumerate |>
+	Filter(pair -> condition(pair[2]), _) |>
+	collect |>
+	sort!(_, by = last; keywords...) |>
+	mappedarray(first, _) |>
+	view(it, _)
+export order
 
 state_to_index(it::AbstractArray, state) = state[2] + 1
 state_to_index(it::Array, state::Int) = state
 state_to_index(it::Generator, state) = state_to_index(it.iter, state)
-
-export Group
 struct Group{It, Call}
 	it::It
 	call::Call
 end
-
 """
     Group(it::By)
 
@@ -72,21 +71,11 @@ julia> Group(By([1, 3, 2, 4], iseven)) |> collect
 2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
  0 => [1, 3]
  1 => [2, 4]
-
-julia> Group(By([1], iseven)) |> collect
-1-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
- 0 => [1]
 ```
 """
-@inline Group(it::By) = Group(it.it, it.call)
-
+Group(it::By) = Group(it.it, it.call)
 IteratorSize(::Type{It}) where It <: Group = SizeUnknown()
-IteratorEltype(::Type{It}) where It <: Group  = EltypeUnknown()
-
-function iterate(it::Group)
-	item, state = @ifsomething iterate(it.it)
-	iterate(it, (state, state_to_index(it.it, state) - 1, it.call(item)))
-end
+IteratorEltype(::Type{It}) where It <: Group = EltypeUnknown()
 iterate(it::Group, ::Nothing) = nothing
 function iterate(it::Group, (state, left_index, last_result))
 	item_state = iterate(it.it, state)
@@ -96,7 +85,6 @@ function iterate(it::Group, (state, left_index, last_result))
 		item, state = item_state
 		result = it.call(item)
 		while isequal(result, last_result)
-			# manual inlining of iterate to avoid stackoverflow detector
 			item_state = iterate(it.it, state)
 			if item_state === nothing
 				return last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
@@ -109,124 +97,135 @@ function iterate(it::Group, (state, left_index, last_result))
 		last_result => (@inbounds view(it.it, left_index:right_index - 1)), (state, right_index, result)
 	end
 end
+function iterate(it::Group)
+	item, state = @ifsomething iterate(it.it)
+	iterate(it, (state, state_to_index(it.it, state) - 1, it.call(item)))
+end
+export Group
 
 struct History{State, Item, Result}
 	state::State
 	item::Item
 	result::Result
 end
-
-History(it::By, ::Nothing) = nothing
 History(it::By, (item, state)) = History(state, item, it.call(item))
-
+History(it::By, ::Nothing) = nothing
+next_history(it::By, history::History) =
+	History(it, iterate(it.it, history.state))
 next_history(it::By) = History(it, iterate(it.it))
-next_history(it::By, history::History) = History(it, iterate(it.it, history.state))
-isless(history1::History, history2::History) = isless(history1.result, history2.result)
-
-export LeftJoin
+isless(history1::History, history2::History) =
+	isless(history1.result, history2.result)
 """
-	LeftJoin(left::By, right::By)
+	FullJoin(left::By, right::By)
 
-For each value in `left`, look for a value with the same key in `right`.
-Requires both to be presorted (see [`By`](@ref)).
+Find all pairs where `isequal(left.call(left.it), right.call(right.it))`.
+Assumes `left` and `right` are both strictly sorted (no repeats). If there are
+repeats, [`Group`](@ref) first. For other join flavors, combine with `Filter`.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> joined = LeftJoin(
+julia> FullJoin(
             By([1, 2, 5, 6], identity),
             By([1, 3, 4, 6], identity)
-       );
+       ) |> collect
+6-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
+       1 => 1
+       2 => missing
+ missing => 3
+ missing => 4
+       5 => missing
+       6 => 6
 
-julia> size(joined)
-(4,)
+julia> @> [1, 1, 2, 2] |>
+			Group(By(_, identity)) |>
+			By(_, first) |>
+			FullJoin(_, By([1, 2], identity)) |>
+			collect
+2-element Array{Pair{Pair{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},Int64},1}:
+ (1=>[1, 1]) => 1
+ (2=>[2, 2]) => 2
 
-julia> length(joined)
-4
-
-julia> collect(joined)
-4-element Array{Pair{Int64,Union{Missing, Int64}},1}:
+julia> @> FullJoin(
+            By([1, 2, 5, 6], identity),
+            By([1, 3, 4, 6], identity)
+		) |>
+		Filter((@_ !ismissing(_.first)), _) |>
+		collect
+4-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
  1 => 1
  2 => missing
  5 => missing
  6 => 6
 ```
 """
-struct LeftJoin{Left <: By, Right <: By}
+struct FullJoin{Left <: By, Right <: By}
 	left::Left
 	right::Right
 end
-
 combine_iterator_eltype(::HasEltype, ::HasEltype) = HasEltype()
 combine_iterator_eltype(x, y) = EltypeUnknown()
-IteratorEltype(::Type{LeftJoin{By{It1, Call1}, By{It2, Call2}}}) where {It1, Call1, It2, Call2} =
+IteratorEltype(::Type{FullJoin{By{It1, Call1}, By{It2, Call2}}}) where {It1, Call1, It2, Call2} =
 	combine_iterator_eltype(IteratorEltype(It1), IteratorEltype(It2))
-eltype(::Type{LeftJoin{By{It1, Call1}, By{It2, Call2}}}) where {It1, Call1, It2, Call2} =
-	Pair{eltype(It1), Union{Missing, eltype(It2)}}
-
-IteratorSize(::Type{LeftJoin{By{It1, Call1}, Right}}) where {It1, Call1, Right} =
-	IteratorSize(It1)
-length(it::LeftJoin) = length(it.left.it)
-size(it::LeftJoin) = size(it.left.it)
-axes(it::LeftJoin) = axes(it.left.it)
-function iterate(it::LeftJoin)
-	left_match = @ifsomething next_history(it.left)
-	seek_right_match(it, left_match, next_history(it.right))
-end
-function iterate(it::LeftJoin, (left_history, right_history))
-	left_history = @ifsomething next_history(it.left, left_history)
-    seek_right_match(it, left_history, right_history)
-end
-function seek_right_match(it, left_history, right_history)
-	while isless(right_history, left_history)
-		right_history = next_history(it.right, right_history)
-        if right_history === nothing
-            return (left_history.item => missing), nothing
-        end
-	end
+eltype(::Type{FullJoin{By{It1, Call1}, By{It2, Call2}}}) where {It1, Call1, It2, Call2} =
+	Pair{Union{Missing, eltype(It1)}, Union{Missing, eltype(It2)}}
+IteratorSize(::Type{F}) where {F <: FullJoin} = SizeUnknown()
+full_dispatch(it, ::Nothing, ::Nothing) = nothing
+full_dispatch(it, ::Nothing, right_history) =
+	(missing => right_history.item), nothing
+full_dispatch(it, left_history, ::Nothing) =
+	(left_history.item => missing), nothing
+full_dispatch(it, left_history, right_history) =
 	if isless(left_history, right_history)
-		(left_history.item => missing), (left_history, right_history)
+		(left_history.item => missing), (left_history, right_history, true, false)
+	elseif isless(right_history, left_history)
+		(missing => right_history.item, (left_history, right_history, false, true))
 	else
-		(left_history.item => right_history.item), (left_history, right_history)
+		(left_history.item => right_history.item), (left_history, right_history, true, true)
 	end
+iterate(it::FullJoin, ::Nothing) = nothing
+function iterate(it::FullJoin)
+	left_history = next_history(it.left)
+	right_history = next_history(it.right)
+	full_dispatch(it, left_history, right_history)
 end
+function iterate(it::FullJoin, (left_history, right_history, next_left, next_right))
+	if next_left
+		left_history = next_history(it.left, left_history)
+	end
+	if next_right
+		right_history = next_history(it.right, right_history)
+	end
+	full_dispatch(it, left_history, right_history)
+end
+export FullJoin
 
-export over
 """
-	over(it, call)
+	Length(it, length)
 
-Lazy version of map, with the reverse argument order.
+Allow optimizations based on length. Especially useful before
+[`make_columns`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> over([1, 2], x -> x + 0.0) |> collect
-2-element Array{Float64,1}:
- 1.0
- 2.0
-```
-"""
-over(it, call) = Generator(call, it)
-
-export when
-"""
-	when(it, call)
-
-Lazy version of filter, with the reverse argument order.
-
-```jldoctest
-julia> using LightQuery
-
-julia> when([1, 2], x -> x > 1) |> collect
-1-element Array{Int64,1}:
+julia> @> Filter(iseven, 1:4) |> Length(_, 2) |> collect
+2-element Array{Int64,1}:
  2
+ 4
 ```
 """
-when(it, call) = Filter(call, it)
+struct Length{It}
+	it::It
+	length::Int
+end
+IteratorEltype(::Type{Length{It}}) where It = IteratorEltype(It)
+eltype(it::Length) = eltype(it.it)
+IteratorLength(::Type{T}) where T <: Length = HasLength()
+length(it::Length) = it.length
+iterate(it::Length) = iterate(it.it)
+iterate(it::Length, state) = iterate(it.it, state)
+export Length
 
 # piracy
 @propagate_inbounds view(it::Generator, index...) = Generator(it.f, view(it.iter, index...))
-@propagate_inbounds view(arrays::ZippedArrays, index...) = zip(map(
-	array -> view(array, index...),
-	arrays.arrays
-)...)

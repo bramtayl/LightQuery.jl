@@ -10,3 +10,63 @@ makedocs(
 deploydocs(
     repo = "github.com/bramtayl/LightQuery.jl.git"
 )
+
+using LightQuery
+using Test
+
+@inline Base.propertynames(p::Pair) = (:first, :second);
+
+test_Name(x) = (x)
+test_spread(x) = spread(x, :d)
+test_remove(x) = remove(x, :b)
+test_rename(x) = rename(x, c = Name(:a))
+
+@testset "named_tuples" begin
+    @test @inferred(Name(:a)((a = 1, b = 1.0))) == 1
+    @test @inferred(Names(:a)((a = 1, b = 1.0))) == (a = 1,)
+    @test @inferred(named_tuple(:a => 1)) == (first = :a, second = 1)
+    @test @inferred(transform((a = 1,), b = 1.0)) == (a = 1, b = 1.0)
+    @test @inferred(test_remove((a = 1, b = 1.0))) == (a = 1,)
+    @test @inferred(test_rename((a = 1, b = 1.0))) == (b = 1.0, c = 1)
+    @test @inferred(gather((a = 1, b = 1.0, c = 1//1), d = Names(:a, :c))) ==
+        (b = 1.0, d = (a = 1, c = 1//1))
+    @test test_spread((b = 1.0, d = (a = 1, c = 1//1))) == (b = 1.0, a = 1, c = 1//1)
+    @test @inferred(in_common((a = 1, b = 1.0), (a = 2, c = 2//2))) == (:a,)
+end
+
+
+f(x) = (x, x + 0.0)
+test(x) = unzip(x, 2)
+
+@testset "Unzip" begin
+    @test isequal(
+        test(Generator(f, [1, missing])),
+        (Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])
+    )
+    @test_throws ErrorException test(Generator(x -> error(), 1:1))
+    @test (@inferred test(zip([1], [1.0]))) == ([1], [1.0])
+    @test (@inferred test([(1, 1.0)])) == ([1], [1.0])
+    @test isequal(
+         test(Generator(f, Filter(x -> true, [1, missing]))),
+         ([1, missing], Union{Missing, Float64}[1.0, missing])
+    )
+    @test_throws ArgumentError zip([1], [1, 2])
+end
+
+joined = LeftJoin(
+    By([1, 2, 5, 6], identity),
+    By([1, 3, 4, 6], identity)
+)
+
+@testset "iterators" begin
+    @test Group(By([1], iseven)) |> collect == [false => [1]]
+    @test size(joined) == (4,)
+    @test length(joined) == 4
+end
+
+@testset "LightQuery" begin
+    @test @inferred(collect(rows((a = [1, 2], b = [1.0, 2.0])))) == [(a = 1, b = 1.0), (a = 2, b = 2.0)]
+    @test @inferred(columns(rows((a = [1, 2], b = [1.0, 2.0])))) == (a = [1, 2], b = [1.0, 2.0])
+    @test @inferred(make_columns([(a = 1, b = 1.0), (a = 2, b = 2.0)])) == ([1, 2], [1.0, 2.0])
+    @test_throws ErrorException Generator(x -> error(), 1:2) |> make_columns
+end
