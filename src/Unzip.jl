@@ -44,6 +44,11 @@ function sizehint!(arrays::ZippedArrays, index...)
     inner_sizehint!(arrays.arrays)
     arrays
 end
+function similar(arrays::ZippedArrays, ::Type, dimensions::Dims)
+	@inline inner_similar(index) =
+        Array{Any}(undef, dimensions...)
+	@inbounds zip(ntuple(inner_similar, length(arrays.arrays))...)
+end
 function similar(arrays::ZippedArrays, ::Type{Items}, dimensions::Dims) where {Items <: Tuple}
 	@inline inner_similar(index) =
         Array{fieldtype(Items, index)}(undef, dimensions...)
@@ -98,4 +103,5 @@ julia> unzip([(1, 1.0), (2, 2.0)], 2)
     IteratorEltype(it),
     IteratorSize(it)
 ).arrays
+
 export unzip

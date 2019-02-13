@@ -31,7 +31,6 @@ test_rename(x) = rename(x, c = Name(:a))
     @test @inferred(gather((a = 1, b = 1.0, c = 1//1), d = Names(:a, :c))) ==
         (b = 1.0, d = (a = 1, c = 1//1))
     @test @inferred(test_spread((b = 1.0, d = (a = 1, c = 1//1)))) == (b = 1.0, a = 1, c = 1//1)
-    @test @inferred(in_common((a = 1, b = 1.0), (a = 2, c = 2//2))) == (:a,)
 end
 
 
@@ -55,6 +54,9 @@ end
 
 @testset "iterators" begin
     @test Group(By([1], iseven)) |> collect == [false => [1]]
+    @test (Length(1:2, 2) |> collect == [1, 2])
+    @test isequal(collect(Join(By([1], identity), By([], identity))), [1 => missing])
+    @test isequal(collect(Join(By([], identity), By([1], identity))), [missing => 1])
 end
 
 @testset "LightQuery" begin
