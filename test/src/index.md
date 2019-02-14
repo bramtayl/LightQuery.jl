@@ -36,11 +36,9 @@ Showing 4 of 336776 rows
 
 ### Filter rows
 
-`Filter` is re-exported from `Base.Iterators`.
-
 ```jldoctest dplyr
 julia> @> flights |>
-        Filter((@_ _.month == 1 && _.day == 1), _) |>
+        when(_, @_ _.month == 1 && _.day == 1) |>
         Peek
 Showing at most 4 rows
 | :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour |
@@ -51,7 +49,7 @@ Showing at most 4 rows
 |  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |   N804JB |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |
 ```
 
-In some cases, a columnwise filter might be more efficient.
+In some cases, a column-wise filter might be more efficient.
 
 ```jldoctest dplyr
 julia> @> flights |>
@@ -169,10 +167,9 @@ Showing 4 of 336776 rows
 
 ## Grouped operations
 
-You can only group sorted data. Each group is a pair, from key (first) to
-sub-table (second).
+You can only group sorted data. Each group is a pair, from `key` to
+`value` (sub-table).
 
-Generator is reexported from Base.
 
 ```jldoctest dplyr
 julia> using Statistics: mean
@@ -180,11 +177,11 @@ julia> using Statistics: mean
 julia> @> flights |>
         order(_, Names(:tailnum), (@_ !ismissing(_.tailnum))) |>
         Group(By(_, Names(:tailnum))) |>
-        Generator((@_ transform(_.first,
-            count = length(_.second),
-            dist = (@> _.second |> columns |> _.distance |> skipmissing |> mean),
-            delay =(@> _.second |> columns |> _.arr_delay |> skipmissing |> mean)
-        )), _) |>
+        over(_, @_ transform(key(_),
+            count = length(value(_)),
+            dist = (@> columns(value(_)).distance |> skipmissing |> mean),
+            delay = (@> columns(value(_)).arr_delay |> skipmissing |> mean)
+        )) |>
         Peek
 Showing at most 4 rows
 | :tailnum | :count |             :dist |             :delay |
@@ -228,9 +225,9 @@ Showing 4 of 16 rows
 julia> @> flights2 |>
         order(_, Names(:carrier)) |>
         Group(By(_, Names(:carrier))) |>
-        By(_, first) |>
+        By(_, key) |>
         Join(_, By(airlines, Names(:carrier))) |>
-        Generator(pair -> Generator((@_ merge(_, pair.second)), pair.first.second), _) |>
+        over(_, pair -> over(value(pair.first), @_ merge(_, pair.second))) |>
         flatten |>
         Peek
 Showing at most 4 rows
@@ -242,7 +239,7 @@ Showing at most 4 rows
 |  2013 |      1 |    1 |    15 |     JFK |   SYR |   N8409N |       9E | Endeavor Air Inc. |
 ```
 
-`Join` is full by default; use `Filter` to mimic other kinds of joins.
+`Join` is full by default; use `when` to mimic other kinds of joins.
 
 ```jldoctest dplyr
 julia> weather =
@@ -265,10 +262,10 @@ julia> const selector = Names(:origin, :year, :month, :day, :hour);
 julia> @> flights2 |>
         order(_, selector) |>
         Group(By(_, selector)) |>
-        By(_, first) |>
+        By(_, key) |>
         Join(_, By(weather, selector)) |>
-        Filter((@_ !ismissing(_.first)), _) |>
-        Generator(pair -> Generator((@_ merge(_, pair.second)), pair.first.second), _) |>
+        when(_, @_ !ismissing(_.first)) |>
+        over(_, pair -> over(value(pair.first), @_ merge(_, pair.second))) |>
         flatten |>
         Peek
 Showing at most 4 rows
@@ -298,12 +295,12 @@ Showing 4 of 3322 rows
 julia> @> flights2 |>
             order(_, Names(:tailnum), (@_ !ismissing(_.tailnum))) |>
             Group(By(_, Names(:tailnum))) |>
-            By(_, first) |>
+            By(_, key) |>
             Join(_, By(planes, Names(:tailnum))) |>
-            Filter((@_ ismissing(_.second)), _) |>
-            Generator((@_ transform(_.first.first,
-                n = length(_.first.second)
-            )), _) |>
+            when(_, @_ ismissing(_.second)) |>
+            over(_, @_ transform(key(_.first),
+                n = length(value(_.first))
+            )) |>
             make_columns |>
             rows |>
             order(_, Names(:n), rev = true) |>
@@ -342,9 +339,9 @@ julia> players =
         Group(By(_, Names(:playerID)));
 
 julia> @> players |>
-        Generator((@_ @> order(_.second, Names(:H)) |> view(_, 1:2)), _) |>
+        over(_, @_ @> order(value(_), Names(:H)) |> view(_, 1:2)) |>
         flatten |>
-        Filter((@_ _.H > 0), _) |>
+        when(_, @_ _.H > 0) |>
         Peek
 Showing at most 4 rows
 | :playerID | :yearID | :teamID |  :G | :AB |  :R |  :H |
@@ -357,10 +354,10 @@ Showing at most 4 rows
 julia> using StatsBase: ordinalrank
 
 julia> @> players |>
-        Generator((@_ @> columns(_.second) |>
+        over(_, @_ @> columns(value(_)) |>
             transform(_, G_rank = ordinalrank(_.G)) |>
             rows
-        ), _) |>
+        ) |>
         flatten |>
         Peek
 Showing at most 4 rows
@@ -400,9 +397,9 @@ julia> my_summarize_(df, group_var) =
         @> df |>
         order(_, group_var) |>
         Group(By(_, group_var)) |>
-        Generator((@_ transform(_.first,
-            a = sum(columns(_.second).a)
-        )), _) |>
+        over(_, @_ transform(key(_),
+            a = sum(columns(value(_)).a)
+        )) |>
         make_columns |>
         rows;
 

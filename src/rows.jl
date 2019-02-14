@@ -249,6 +249,38 @@ iterate(it::Length) = iterate(it.it)
 iterate(it::Length, state) = iterate(it.it, state)
 export Length
 
+"""
+    key(p::Pair)
+
+`p.first`
+"""
+key(p::Pair) = p.first
+export key
+
+"""
+    value(p::Pair)
+
+`p.second`
+"""
+value(p::Pair) = p.second
+export value
+
+"""
+    over(it, f)
+
+`Base.Generator` with argument order reversed.
+"""
+over(it, f) = Generator(f, it)
+export over
+
+"""
+    when(it, f)
+
+`Base.Filter` with argument order reversed.
+"""
+when(it, f) = Filter(f, it)
+export when
+
 # piracy
 @propagate_inbounds view(it::Generator, index...) = Generator(it.f, view(it.iter, index...))
 merge(it::NamedTuple, ::Missing) = it
