@@ -33,11 +33,6 @@ end
     inner_setindex!.(arrays.arrays, values)
 end
 push!(arrays::ZippedArrays, values) = push!.(arrays.arrays, values)
-function sizehint!(arrays::ZippedArrays, index...)
-    @propagate_inbounds inner_sizehint!(array) = sizehint!(array, index...)
-    inner_sizehint!(arrays.arrays)
-    arrays
-end
 function similar(arrays::ZippedArrays, ::Type, dimensions::Dims)
 	@inline inner_similar(index) =
         Array{Any}(undef, dimensions...)
@@ -50,10 +45,6 @@ function similar(arrays::ZippedArrays, ::Type{Items}, dimensions::Dims) where {I
 end
 empty(array::ZippedArrays{OldItems}, ::Type{NewItems} = OldItems) where {OldItems, NewItems} =
     similar(array, NewItems)
-function copyto!(dest::ZippedArrays{T}, doffs::Integer, src::ZippedArrays{T}, soffs::Integer, n::Integer) where T
-    copyto!.(dest.arrays, doffs, src.arrays, soffs, n)
-    dest
-end
 maybe_setindex_widen_up_to(array::AbstractArray{Item}, item, index) where Item =
     if isa(item, Item)
         @inbounds array[index] = item

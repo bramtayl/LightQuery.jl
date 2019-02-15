@@ -39,6 +39,7 @@ test(x) = unzip(x, 2)
 f2(x) = iseven(x) ? (x, x + 0.0) : (x, missing)
 
 @testset "Unzip" begin
+    @test collect(zip([1, 2], [1.0, 2.0])) == [(1, 1.0), (2, 2.0)]
     @test isequal(
         test(Generator(f, [1, missing])),
         (Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])
