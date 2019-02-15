@@ -1,20 +1,14 @@
-macro _boundscheck_meta()
-    esc(Expr(:boundscheck))
-end
-
 struct ZippedArrays{Items, Dimensions, Arrays} <: AbstractArray{Items, Dimensions}
     arrays::Arrays
 end
 @propagate_inbounds function ZippedArrays(model, rest...)
-    if @_boundscheck_meta
-        foreach(
-            array ->
-                if axes(array) != axes(model)
-                    throw(ArgumentError("All arrays passed to zip must have the same size"))
-                end,
-            rest
-        )
-    end
+    @boundscheck foreach(
+        array ->
+            if axes(array) != axes(model)
+                throw(ArgumentError("All arrays passed to zip must have the same size"))
+            end,
+        rest
+    )
     arrays = (model, rest...)
     ZippedArrays{
         Tuple{eltype.(arrays)...},

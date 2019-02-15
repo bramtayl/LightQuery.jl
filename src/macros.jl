@@ -4,7 +4,7 @@ end
 function substitute_underscores!(dictionary, body::Symbol)
     if all(isequal('_'), string(body))
         if !haskey(dictionary, body)
-            dictionary[body] = gensym("argument")
+            dictionary[body] = gensym("`_`")
         end
         dictionary[body]
     else
@@ -27,7 +27,7 @@ function anonymous(location, body::Expr)
         pair -> pair.second,
         sort(collect(dictionary))
     )
-    function_name = gensym("function")
+    function_name = gensym(string('`', body, '`'))
     Expr(:function,
         Expr(:call, function_name, arguments...),
         Expr(:block,

@@ -34,9 +34,6 @@ missing
 (::Name{name})(it) where name = getproperty_default(it, name)
 export Name
 
-
-getproperty_default((a = 1,), :b)
-
 struct Names{the_names} end
 (::Names{the_names})(it::NamedTuple) where the_names =
     @> map((@_ getproperty_default(it, _)), the_names) |>
