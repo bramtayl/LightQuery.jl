@@ -6,26 +6,26 @@
         missing
     end
 getproperty_default(::Missing, something) = missing
-
 struct Name{name} end
 """
     Name(name)
 
-Force into the type domain. Can also be used as a function to `getproperty`
-with a defualt to missing.
+Create a typed name. Can be used as a function to `getproperty`,
+with a default to `missing`. For multiple names, see [`Names`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> @> (a = 1,) |>
-        Name(:a)(_)
+julia> (a = 1,) |>
+        Name(:a)
 1
 
-julia> @> (a = 1,) |>
-        Name(:b)(_)
+julia> (a = 1,) |>
+        Name(:b)
 missing
 
-julia> @> Name(:a)(missing)
+julia> missing |>
+        Name(:a)
 missing
 ```
 """
@@ -35,32 +35,36 @@ missing
 export Name
 
 struct Names{the_names} end
-(::Names{the_names})(it::NamedTuple) where the_names =
-    @> map((@_ getproperty_default(it, _)), the_names) |>
-        NamedTuple{the_names}(_)
+function (::Names{the_names})(it::NamedTuple) where the_names
+    @inline from_it(name) = getproperty_default(it, name)
+    NamedTuple{the_names}(map(from_it, the_names))
+end
 (::Names{the_names})(::Missing) where the_names =
-    @> map(x -> missing, the_names) |>
-        NamedTuple{the_names}(_)
-(::Names{the_names})(it::Tuple) where the_names =
-    NamedTuple{the_names}(it)
+    NamedTuple{the_names}(map(name -> missing, the_names))
+(::Names{the_names})(it::Tuple) where the_names = NamedTuple{the_names}(it)
 """
     Names(the_names...)
 
-Force into the type domain. Can be used to as a function to select columns,
-with a default to missing.
+Create typed names. Can be used to as a function to assign or select names, with
+a default to `missing`. For just one name, see [`Name`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> @> (a = 1, b = 1.0) |>
-        Names(:a)(_)
+julia> (1, 1.0) |>
+        Names(:a, :b)
+(a = 1, b = 1.0)
+
+julia> (a = 1, b = 1.0) |>
+        Names(:a)
 (a = 1,)
 
-julia> @> (a = 1,) |>
-        Names(:a, :b)(_)
+julia> (a = 1,) |>
+        Names(:a, :b)
 (a = 1, b = missing)
 
-julia> Names(:a)(missing)
+julia> missing |>
+        Names(:a)
 (a = missing,)
 ```
 """
@@ -71,7 +75,7 @@ export Names
     named_tuple(it)
 
 Coerce to a `named_tuple`. For performance with working with arbitrary structs,
-requires `propertynames` to constant propagate.
+define and `@inline` propertynames.
 
 ```jldoctest
 julia> using LightQuery
@@ -84,20 +88,21 @@ julia> named_tuple(:a => 1)
 """
 function named_tuple(it)
     the_names = Tuple(propertynames(it))
-    @> map((@_ getproperty(it, _)), the_names) |>
-        Names(the_names...)(_)
+    @inline from_it(name) = getproperty_default(it, name)
+    Names(the_names...)(map(from_it, the_names))
 end
 export named_tuple
 
 """
     transform(it; assignments...)
 
-Merge `assignments` into `it`.
+Merge `assignments` into `it`. Inverse of [`remove`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> transform((a = 1,), b = 1.0)
+julia> @> (a = 1,) |>
+        transform(_, b = 1.0)
 (a = 1, b = 1.0)
 ```
 """
@@ -118,15 +123,14 @@ julia> @> (a = 1, b = 1.0) |>
 ```
 """
 @inline remove(it, the_names...) =
-    @> propertynames(it) |>
-    diff_names(_, the_names) |>
-    Names(_...)(it)
+    Names(diff_names(propertynames(it), the_names)...)(it)
 export remove
 
 """
     rename(it; renames...)
 
-Rename `it`.
+Rename `it`. Because constants do not constant propagate through key-word
+arguments, wrap with [`Name`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -161,15 +165,11 @@ julia> @> (a = 1, b = 1.0, c = 1//1) |>
 ```
 """
 @inline function gather(it; assignments...)
-    @inline inner_gather(names) = names(it)
-    separate = map(inner_gather, assignments.data)
-    @> separate |>
-        Tuple |>
-        merge(_...) |>
-        propertynames |>
-        remove(it, _...) |>
-        merge(_, separate)
+    @inline from_it(names) = names(it)
+    separate = map(from_it, assignments.data)
+    merge(remove(it, propertynames(merge(Tuple(separate)...))...), separate)
 end
+
 export gather
 
 """
@@ -186,10 +186,7 @@ julia> @> (b = 1.0, d = (a = 1, c = 1//1)) |>
 ```
 """
 @inline function spread(it, the_names...)
-    @inline inner_getproperty(name) = getproperty(it, name)
-    merge(
-        remove(it, the_names...),
-        inner_getproperty.(the_names)...
-    )
+    @inline from_it(name) = getproperty(it, name)
+    merge(remove(it, the_names...), from_it.(the_names)...)
 end
 export spread

@@ -4,8 +4,8 @@ import Base: axes, copyto!, eltype, empty, getindex, getproperty, IndexStyle,
     IteratorEltype, IteratorSize, isless, length, iterate, merge, _nt_names,
     push!, push_widen, size, setindex!, setindex_widen_up_to, show, similar,
     view, zip
-using Base: _collect, @default_eltype, diff_names, EltypeUnknown, Generator, HasEltype,
-    HasLength, HasShape, @propagate_inbounds, SizeUnknown, sym_in
+using Base: _collect, @default_eltype, diff_names, EltypeUnknown, Generator,
+    HasEltype, HasLength, HasShape, @propagate_inbounds, SizeUnknown, sym_in
 using Base.Iterators: Filter, flatten, product, take, Zip, _zip_iterator_eltype,
     _zip_iterator_size
 using Base.Meta: quot
@@ -24,8 +24,8 @@ include("columns.jl")
 """
     rows(it)
 
-Iterator over `rows` of a `NamedTuple` of arrays. Inverse of
-[`columns`](@ref). See [`Peek`](@ref) for a way to view `rows`.
+Iterator over `rows` of a `NamedTuple` of arrays. Inverse of [`columns`](@ref).
+See [`Peek`](@ref) for a way to view `rows`.
 
 ```jldoctest
 julia> using LightQuery
@@ -40,18 +40,15 @@ julia> (a = [1, 2], b = [1.0, 2.0]) |>
 """
 function rows(it)
     names = Names(propertynames(it)...)
-    @> it |>
-        names |>
-        Tuple |>
-        zip(_...) |>
-        Generator(names, _)
+    Generator(names, zip(Tuple(names(it))...))
 end
 export rows
 
 """
     columns(it)
 
-Inverse of [`rows`](@ref).
+Inverse of [`rows`](@ref). Always lazy, see [`make_columns`](@ref) for eager
+version.
 
 ```jldoctest
 julia> using LightQuery
@@ -62,20 +59,18 @@ julia> (a = [1], b = [1.0]) |>
 (a = [1], b = [1.0])
 ```
 """
-columns(g::Generator{It, Names{names}}) where {It <: ZippedArrays, names} =
-    g.f(g.iter.arrays)
-@inline auto_columns(it::Generator{It, Names{names}}) where {It, names} = names
-@inline auto_columns(it::Filter) = auto_columns(it.itr)
-@inline auto_columns(it) = _auto_columns(it, IteratorEltype(it))
-@inline _auto_columns(it, ::HasEltype) =
-    first_fallback(it, eltype(it)) |>
-    _nt_names
-@inline _auto_columns(it, ::EltypeUnknown) =
-    first_fallback(it, @default_eltype(it)) |>
-    _nt_names
-first_fallback(it, ::Type{NamedTuple}) = typeof(first(it))
-first_fallback(it, ::Type{Any}) = typeof(first(it))
-first_fallback(it, something) = something
+columns(it::Generator{It, Names{names}}) where {It <: ZippedArrays, names} =
+    it.f(it.iter.arrays)
+@inline eltype_names(it::Generator{It, Names{names}}) where {It, names} = names
+@inline eltype_names(it::Filter) = eltype_names(it.itr)
+@inline eltype_names(it) = eltype_names_dispatch(it, IteratorEltype(it))
+@inline eltype_names_dispatch(it, ::HasEltype) = first_fallback(it, eltype(it))
+@inline eltype_names_dispatch(it, ::EltypeUnknown) =
+    first_fallback(it, @default_eltype(it))
+first_fallback(it, ::Type{NamedTuple{names}}) where {names} = names
+first_fallback(it, ::Type{NamedTuple{names, types}}) where {names, types} =
+    names
+first_fallback(it, something) = _nt_names(first(it))
 first_fallback(it, ::Type{Union{}}) =
     error("Can't infer names due to inner function error")
 export columns
@@ -84,25 +79,38 @@ export make_columns
 """
     make_columns(it)
 
-Collect into columns. See also [`columns`](@ref). If inference cannot detect
-names, it will use the names of the first item. Use a `Generator` of `Names` to
-be more explicit if necessary.
+Collect into columns. Always eager, see [`columns`](@ref) lazy version.
 
-```jldoctest
+```jldoctest make_columns
 julia> using LightQuery
 
 julia> [(a = 1, b = 1.0), (a = 2, b = 2.0)] |>
         make_columns
 (a = [1, 2], b = [1.0, 2.0])
+```
+
+If inference cannot detect names, it will use the names of the first item. Map
+[`Names`](@ref) [`over`](@ref) `it` to override this behavior.
+
+```jldoctest make_columns
+julia> [(a = 1,), (a = 2, b = 2.0)] |>
+        Peek
+|  :a |
+| ---:|
+|   1 |
+|   2 |
 
 julia> @> [(a = 1,), (a = 2, b = 2.0)] |>
-        Generator(Names(:a, :b), _) |>
-        make_columns
-(a = [1, 2], b = Union{Missing, Float64}[missing, 2.0])
+        over(_, Names(:a, :b)) |>
+        Peek
+|  :a |      :b |
+| ---:| -------:|
+|   1 | missing |
+|   2 |     2.0 |
 ```
 """
 function make_columns(it)
-    the_names = auto_columns(it)
+    the_names = eltype_names(it)
     selector = Names(the_names...)
     @inline unwrap(row) = Tuple(selector(row))
     selector(unzip(Generator(unwrap, it), Val(length(the_names))))
@@ -117,67 +125,61 @@ export Peek
 """
     Peek(it; max_rows = 4)
 
-Get a peek of an iterator which returns named tuples. If inference cannot detect
-names, it will use the names of the first item.
+Get a peek of an iterator which returns named tuples. Will show no more than
+`max_rows`.
 
-```jldoctest
+```jldoctest Peek
 julia> using LightQuery
 
-julia> [(a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8)] |>
-        Peek
-|  :a |  :b |  :c |  :d |  :e |  :f |  :g |  :h |
-| ---:| ---:| ---:| ---:| ---:| ---:| ---:| ---:|
-|   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |
-
-julia> (a = 1:6,) |>
+julia> (a = 1:5, b = 5:-1:1) |>
         rows |>
         Peek
-Showing 4 of 6 rows
+Showing 4 of 5 rows
+|  :a |  :b |
+| ---:| ---:|
+|   1 |   5 |
+|   2 |   4 |
+|   3 |   3 |
+|   4 |   2 |
+```
+
+If inference cannot detect names, it will use the names of the first item. Map
+[`Names`](@ref) [`over`](@ref) `it` to override this behavior.
+
+```jldoctest Peek
+julia> [(a = 1,), (a = 2, b = 2.0)] |>
+        Peek
 |  :a |
 | ---:|
 |   1 |
 |   2 |
-|   3 |
-|   4 |
 
-
-julia> @> (a = 1:2,) |>
-        rows |>
-        Filter((@_ _.a > 1), _) |>
+julia> @> [(a = 1,), (a = 2, b = 2.0)] |>
+        over(_, Names(:a, :b)) |>
         Peek
-Showing at most 4 rows
-|  :a |
-| ---:|
-|   2 |
+|  :a |      :b |
+| ---:| -------:|
+|   1 | missing |
+|   2 |     2.0 |
 ```
 """
-Peek(it::It; max_rows = 4) where It =
-    Peek{auto_columns(it), It}(it, max_rows)
-
-function show(io::IO, p::Peek{the_names}) where {the_names}
-    if isa(IteratorSize(p.it), Union{HasLength, HasShape})
-        if length(p.it) > p.max_rows
-            println(io, "Showing $(p.max_rows) of $(length(p.it)) rows")
+Peek(it::It; max_rows = 4) where It = Peek{eltype_names(it), It}(it, max_rows)
+function show(io::IO, peek::Peek{the_names}) where {the_names}
+    if isa(IteratorSize(peek.it), Union{HasLength, HasShape})
+        if length(peek.it) > peek.max_rows
+            println(io, "Showing $(peek.max_rows) of $(length(peek.it)) rows")
         end
     else
-        println(io, "Showing at most $(p.max_rows) rows")
+        println(io, "Showing at most $(peek.max_rows) rows")
     end
     flat(row) = Any[Names(the_names...)(row)...]
-    less_rows =
-        @> Generator(flat, p.it) |>
-        take(_, p.max_rows) |>
-        collect
+    less_rows = collect(take(Generator(flat, peek.it), peek.max_rows))
     pushfirst!(less_rows, Any[the_names...])
-    @> the_names |>
-        map(x -> :r, _) |>
-        [_...] |>
-        Table(less_rows, _) |>
-        MD |>
-        show(io, _)
+    show(io, MD(Table(less_rows, [map(x -> :r, the_names)...])))
 end
 
 """
-    row_type(f::CSV.File)
+    row_type(file::CSV.File)
 
 Find the type of a row of a `CSV.File` if it was converted to a
 [`named_tuple`](@ref). Useful to make type annotations to ensure stability.
@@ -191,7 +193,8 @@ julia> @> "test.csv" |>
 NamedTuple{(:a, :b),T} where T<:Tuple{Int64,Float64}
 ```
 """
-@noinline row_type(f::CSV.File) = NamedTuple{(f.names...,), T} where T <: Tuple{f.types...}
+@noinline row_type(file::CSV.File) =
+    NamedTuple{(file.names...,), T} where T <: Tuple{file.types...}
 export row_type
 
 end

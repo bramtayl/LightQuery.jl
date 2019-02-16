@@ -16,8 +16,6 @@ end
         typeof(arrays)
     }(arrays)
 end
-@propagate_inbounds zip(model::AbstractArray, rest::AbstractArray...) =
-    ZippedArrays(model, rest...)
 IteratorEltype(::Type{ZippedArrays{Items, Dimensions, Arrays}}) where {Items, Dimensions, Arrays} =
     _zip_iterator_eltype(Arrays)
 IteratorSize(::Type{ZippedArrays{Items, Dimensions, Arrays}}) where {Items, Dimensions, Arrays} =
@@ -73,12 +71,16 @@ push_widen(arrays::ZippedArrays, items) =
 """
     unzip(it, n)
 
-Unzip an iterator `it` which returns tuples of length `n`.
+Unzip an iterator `it` which returns tuples of length `n`. Use `Val(n)` to
+guarantee type stability.
 
 ```jldoctest
 julia> using LightQuery
 
 julia> unzip([(1, 1.0), (2, 2.0)], 2)
+([1, 2], [1.0, 2.0])
+
+julia> unzip([(1, 1.0), (2, 2.0)], Val(2))
 ([1, 2], [1.0, 2.0])
 ```
 """
@@ -90,3 +92,7 @@ julia> unzip([(1, 1.0), (2, 2.0)], 2)
 ).arrays
 
 export unzip
+
+# piracy
+@propagate_inbounds zip(model::AbstractArray, rest::AbstractArray...) =
+    ZippedArrays(model, rest...)

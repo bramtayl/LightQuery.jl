@@ -1,31 +1,19 @@
-struct Unsorted <: Exception
-end
-
 """
     By(it, call)
 
-Check whether `it` has been pre-sorted by the key `call`. For use with
-[`Group`](@ref) or [`Join`](@ref).
+Mark that `it` has been pre-sorted by `call`. For use with [`Group`](@ref) or
+[`Join`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
 julia> By([1, 2], identity)
 By{Array{Int64,1},typeof(identity)}([1, 2], identity)
-
-julia> By([2, 1], identity)
-ERROR: LightQuery.Unsorted()
 ```
 """
 struct By{It, Call}
     it::It
     call::Call
-    By(it::It, call::Call) where {It, Call} =
-        if issorted(it, by = call)
-            new{It, Call}(it, call)
-        else
-            throw(Unsorted())
-        end
 end
 export By
 
@@ -53,20 +41,16 @@ julia> order([2, 1, missing], identity, !ismissing)
 ```
 """
 order(it, call; keywords...) =
-    @> Generator(call, it) |>
-    enumerate |>
-    collect |>
-    sort!(_, by = last; keywords...) |>
-    mappedarray(first, _) |>
-    view(it, _)
+    view(it, mappedarray(first,
+        sort!(collect(enumerate(Generator(call, it))), by = last; keywords...)
+    ))
 order(it, call, condition; keywords...) =
-    @> Generator(call, it) |>
-    enumerate |>
-    Filter(pair -> condition(pair[2]), _) |>
-    collect |>
-    sort!(_, by = last; keywords...) |>
-    mappedarray(first, _) |>
-    view(it, _)
+    view(it, mappedarray(first,
+        sort!(collect(Filter(
+            pair -> condition(pair[2]),
+            enumerate(Generator(call, it))
+        )), by = last; keywords...)
+    ))
 export order
 
 state_to_index(it::AbstractArray, state) = state[2] + 1
@@ -99,21 +83,21 @@ iterate(it::Group, ::Nothing) = nothing
 function iterate(it::Group, (state, left_index, last_result))
     item_state = iterate(it.it, state)
     if item_state === nothing
-    last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
+        last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
     else
-    item, state = item_state
-    result = it.call(item)
-    while isequal(result, last_result)
-    item_state = iterate(it.it, state)
-    if item_state === nothing
-    return last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
-    else
-    item, state = item_state
-    result = it.call(item)
-    end
-    end
-    right_index = state_to_index(it.it, state) - 1
-    last_result => (@inbounds view(it.it, left_index:right_index - 1)), (state, right_index, result)
+        item, state = item_state
+        result = it.call(item)
+        while isequal(result, last_result)
+            item_state = iterate(it.it, state)
+            if item_state === nothing
+                return last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
+            else
+                item, state = item_state
+                result = it.call(item)
+            end
+        end
+        right_index = state_to_index(it.it, state) - 1
+        last_result => (@inbounds view(it.it, left_index:right_index - 1)), (state, right_index, result)
     end
 end
 function iterate(it::Group)
@@ -138,10 +122,8 @@ isless(history1::History, history2::History) =
     Join(left::By, right::By)
 
 Find all pairs where `isequal(left.call(left.it), right.call(right.it))`.
-Assumes `left` and `right` are both strictly sorted (no repeats). If there are
-repeats, [`Group`](@ref) first. For other join flavors, combine with `Filter`.
 
-```jldoctest
+```jldoctest Join
 julia> using LightQuery
 
 julia> Join(
@@ -156,7 +138,12 @@ julia> Join(
  missing => 4
        5 => missing
        6 => 6
+```
 
+Assumes `left` and `right` are both strictly sorted (no repeats). If there are
+repeats, [`Group`](@ref) first.
+
+```jldoctest Join
 julia> @> [1, 1, 2, 2] |>
         Group(By(_, identity)) |>
         By(_, first) |>
@@ -165,12 +152,16 @@ julia> @> [1, 1, 2, 2] |>
 2-element Array{Pair{Pair{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},Int64},1}:
  (1=>[1, 1]) => 1
  (2=>[2, 2]) => 2
+```
 
+ For other join flavors, combine with [`when`](@ref).
+
+ ```jldoctest Join
 julia> @> Join(
             By([1, 2, 5, 6], identity),
             By([1, 3, 4, 6], identity)
         ) |>
-        Filter((@_ !ismissing(_.first)), _) |>
+        when(_, @_ !ismissing(_.first)) |>
         collect
 4-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
  1 => 1
@@ -211,10 +202,10 @@ function iterate(it::Join)
 end
 function iterate(it::Join, (left_history, right_history, next_left, next_right))
     if next_left
-    left_history = next_history(it.left, left_history)
+        left_history = next_history(it.left, left_history)
     end
     if next_right
-    right_history = next_history(it.right, right_history)
+        right_history = next_history(it.right, right_history)
     end
     full_dispatch(it, left_history, right_history)
 end
@@ -250,38 +241,39 @@ iterate(it::Length, state) = iterate(it.it, state)
 export Length
 
 """
-    key(p::Pair)
+    key(it)
 
-`p.first`
+The `key` in a `key => value` pair.
 """
-key(p::Pair) = p.first
+key(it::Pair) = it.first
 export key
 
 """
-    value(p::Pair)
+    value(it)
 
-`p.second`
+The `value` in a `key => value` pair.
 """
-value(p::Pair) = p.second
+value(it::Pair) = it.second
 export value
 
 """
-    over(it, f)
+    over(it, call)
 
-`Base.Generator` with argument order reversed.
+Lazy `map` with argument order reversed.
 """
-over(it, f) = Generator(f, it)
+over(it, call) = Generator(call, it)
 export over
 
 """
-    when(it, f)
+    when(it, call)
 
-`Base.Filter` with argument order reversed.
+Lazy `filter` with argument order reversed.
 """
-when(it, f) = Filter(f, it)
+when(it, call) = Filter(call, it)
 export when
 
 # piracy
-@propagate_inbounds view(it::Generator, index...) = Generator(it.f, view(it.iter, index...))
+@propagate_inbounds view(it::Generator, index...) =
+    Generator(it.f, view(it.iter, index...))
 merge(it::NamedTuple, ::Missing) = it
 merge(::Missing, it::NamedTuple) = it

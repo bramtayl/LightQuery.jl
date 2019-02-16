@@ -1,7 +1,5 @@
-function substitute_underscores!(dictionary, body)
-    body
-end
-function substitute_underscores!(dictionary, body::Symbol)
+substitute_underscores!(dictionary, body) = body
+substitute_underscores!(dictionary, body::Symbol) =
     if all(isequal('_'), string(body))
         if !haskey(dictionary, body)
             dictionary[body] = gensym("`_`")
@@ -10,15 +8,13 @@ function substitute_underscores!(dictionary, body::Symbol)
     else
         body
     end
-end
-function substitute_underscores!(dictionary, body::Expr)
+substitute_underscores!(dictionary, body::Expr) =
     Expr(body.head, map(
         let dictionary = dictionary
             body -> substitute_underscores!(dictionary, body)
         end,
         body.args
     )...)
-end
 anonymous(location, body) = body
 function anonymous(location, body::Expr)
     dictionary = Dict{Symbol, Symbol}()
@@ -37,12 +33,11 @@ function anonymous(location, body::Expr)
         )
     )
 end
-
 """
     macro _(body)
 
 Terser function syntax. The arguments are inside the body; the first
-argument is `_`, the second argument is `__`, etc.
+argument is `_`, the second argument is `__`, etc. Will always `@inline`.
 
 ```jldoctest
 julia> using LightQuery
@@ -69,7 +64,8 @@ end
 """
     macro >(body)
 
-If body is in the form `body_ |> tail_`, call [`@_`](@ref) on `tail`, and recur on `body`.
+If body is in the form `body_ |> tail_`, call [`@_`](@ref) on `tail`, and recur
+on `body`.
 
 ```jldoctest
 julia> using LightQuery

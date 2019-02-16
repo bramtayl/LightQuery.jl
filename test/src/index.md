@@ -2,8 +2,9 @@
 
 # Introduction to LightQuery
 
-Follows the tutorial [here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html).
-I'll make heavy use of the chaining macro `@>` and lazy calling macro `@_` included
+Follows the tutorial
+[here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). I'll
+make heavy use of the chaining macro `@>` and lazy calling macro `@_` included
 in this package. The syntax here is in most cases more verbose but also more
 flexible than dplyr. Fortunately, programming with LightQuery is much easier, so
 define shortcuts.
@@ -167,8 +168,8 @@ Showing 4 of 336776 rows
 
 ## Grouped operations
 
-You can only group sorted data. Each group is a pair, from `key` to
-`value` (sub-table).
+You can only group sorted data. Each group is a pair, from `key` to `value`
+(sub-table).
 
 
 ```jldoctest dplyr
@@ -194,7 +195,8 @@ Showing at most 4 rows
 
 # Two table verbs
 
-Follows the tutorial [here](https://cran.r-project.org/web/packages/dplyr/vignettes/two-table.html).
+Follows the tutorial
+[here](https://cran.r-project.org/web/packages/dplyr/vignettes/two-table.html).
 
 You can only `Join` presorted data. A join will return pairs from an item on the
 left (first) to an item on the right (second). `Group` data with repeats.
@@ -316,7 +318,8 @@ Showing 4 of 721 rows
 
 # Window functions
 
-Follows the tutorial [here](https://cran.r-project.org/web/packages/dplyr/vignettes/window-functions.html).
+Follows the tutorial
+[here](https://cran.r-project.org/web/packages/dplyr/vignettes/window-functions.html).
 
 ```jldoctest dplyr
 julia> batting =
