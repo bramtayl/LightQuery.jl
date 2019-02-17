@@ -66,7 +66,6 @@ push_widen(arrays::ZippedArrays, items) =
     @propagate_inbounds inner_view(array) = view(array, index...)
     zip(map(inner_view, arrays.arrays)...)
 end
-
 """
     unzip(it, n)
 
@@ -89,7 +88,6 @@ julia> unzip([(1, 1.0), (2, 2.0)], Val(2))
     IteratorEltype(it),
     IteratorSize(it)
 ).arrays
-
 export unzip
 
 # piracy

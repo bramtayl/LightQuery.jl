@@ -1,3 +1,4 @@
 Documenter
-Statistics
-StatsBase
+Dates
+TimeZones
+Unitful

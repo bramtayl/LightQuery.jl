@@ -1,17 +1,15 @@
-import LightQuery
+using LightQuery
 import Documenter: makedocs, deploydocs
 
 makedocs(
-    modules = [LightQuery],
     sitename = "LightQuery.jl",
-    strict = true,
+    strict = true
 )
 
 deploydocs(
     repo = "github.com/bramtayl/LightQuery.jl.git"
 )
 
-using LightQuery
 using Test
 
 @inline Base.propertynames(p::Pair) = (:first, :second);
