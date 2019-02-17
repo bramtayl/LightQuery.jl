@@ -17,7 +17,7 @@ using Markdown: MD, Table
 export CSV, File, Generator, Filter, flatten
 
 include("macros.jl")
-include("unzip.jl")
+include("Unzip.jl")
 include("rows.jl")
 include("columns.jl")
 include("pivot.jl")
