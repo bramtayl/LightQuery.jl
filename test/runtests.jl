@@ -36,8 +36,8 @@ end
 
 f(x) = (x, x + 0.0)
 test(x) = unzip(x, 2)
-f2(x) = iseven(x) ? (x, x + 0.0) : (x, missing)
-
+f2(x) = x < 3 ? (x, x + 0.0) : (x, missing)
+using Test
 @testset "Unzip" begin
     @test collect(zip([1, 2], [1.0, 2.0])) == [(1, 1.0), (2, 2.0)]
     @test isequal(
@@ -48,12 +48,12 @@ f2(x) = iseven(x) ? (x, x + 0.0) : (x, missing)
     @test (@inferred test(zip([1], [1.0]))) == ([1], [1.0])
     @test (@inferred test([(1, 1.0)])) == ([1], [1.0])
     @test isequal(
-         test(Generator(f2, Filter(x -> true, [1, 2, 3]))),
-         ([1, 2, 3], Union{Missing, Float64}[missing, 2.0, missing])
+         test(Generator(f2, [1, 2, 3])),
+         ([1, 2, 3], Union{Missing, Float64}[1.0, 2.0, missing])
     )
     @test isequal(
-         test(Generator(f2, [1, 2, 3])),
-         ([1, 2, 3], Union{Missing, Float64}[missing, 2.0, missing])
+         test(Generator(f2, Filter(x -> true, [1, 2, 3]))),
+         ([1, 2, 3], Union{Missing, Float64}[1.0, 2.0, missing])
     )
     @test_throws ArgumentError zip([1], [1, 2])
 end
