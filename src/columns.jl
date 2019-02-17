@@ -1,3 +1,25 @@
+"""
+    named_tuple(it)
+
+Coerce to a `named_tuple`. For performance with working with arbitrary structs,
+define and `@inline` propertynames.
+
+```jldoctest
+julia> using LightQuery
+
+julia> @inline Base.propertynames(p::Pair) = (:first, :second)
+
+julia> named_tuple(:a => 1)
+(first = :a, second = 1)
+```
+"""
+function named_tuple(it)
+    the_names = Tuple(propertynames(it))
+    @inline from_it(name) = getproperty_default(it, name)
+    Names(the_names...)(map(from_it, the_names))
+end
+export named_tuple
+
 @inline getproperty_default(it, name) = getproperty(it, name)
 @inline getproperty_default(it::NamedTuple{the_names}, name) where {the_names} =
     if sym_in(name, the_names)
@@ -35,7 +57,7 @@ missing
 export Name
 
 struct Names{the_names} end
-function (::Names{the_names})(it::NamedTuple) where {the_names}
+function (::Names{the_names})(it) where {the_names}
     @inline from_it(name) = getproperty_default(it, name)
     NamedTuple{the_names}(map(from_it, the_names))
 end
@@ -72,26 +94,28 @@ julia> missing |>
 export Names
 
 """
-    named_tuple(it)
+    rename(it; renames...)
 
-Coerce to a `named_tuple`. For performance with working with arbitrary structs,
-define and `@inline` propertynames.
+Rename `it`. Because constants do not constant propagate through key-word
+arguments, wrap with [`Name`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> @inline Base.propertynames(p::Pair) = (:first, :second);
-
-julia> named_tuple(:a => 1)
-(first = :a, second = 1)
+julia> @> (a = 1, b = 1.0) |>
+        rename(_, c = Name(:a))
+(b = 1.0, c = 1)
 ```
 """
-function named_tuple(it)
-    the_names = Tuple(propertynames(it))
-    @inline from_it(name) = getproperty_default(it, name)
-    Names(the_names...)(map(from_it, the_names))
+@inline function rename(it; renames...)
+    old_names = inner_name.(Tuple(renames.data))
+    new_names = propertynames(renames.data)
+    merge(
+        remove(it, old_names...),
+        Names(new_names...)(Tuple(Names(old_names...)(it)))
+    )
 end
-export named_tuple
+export rename
 
 """
     transform(it; assignments...)
@@ -125,30 +149,6 @@ julia> @> (a = 1, b = 1.0) |>
 @inline remove(it, the_names...) =
     Names(diff_names(propertynames(it), the_names)...)(it)
 export remove
-
-"""
-    rename(it; renames...)
-
-Rename `it`. Because constants do not constant propagate through key-word
-arguments, wrap with [`Name`](@ref).
-
-```jldoctest
-julia> using LightQuery
-
-julia> @> (a = 1, b = 1.0) |>
-        rename(_, c = Name(:a))
-(b = 1.0, c = 1)
-```
-"""
-@inline function rename(it; renames...)
-    old_names = inner_name.(Tuple(renames.data))
-    new_names = propertynames(renames.data)
-    merge(
-        remove(it, old_names...),
-        Names(new_names...)(Tuple(Names(old_names...)(it)))
-    )
-end
-export rename
 
 """
     gather(it; assignments...)
@@ -189,3 +189,7 @@ julia> @> (b = 1.0, d = (a = 1, c = 1//1)) |>
     merge(remove(it, the_names...), from_it.(the_names)...)
 end
 export spread
+
+# piracy
+merge(it::NamedTuple, ::Missing) = it
+merge(::Missing, it::NamedTuple) = it

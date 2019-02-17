@@ -1,21 +1,18 @@
 """
-    By(it, call)
+    over(it, call)
 
-Mark that `it` has been pre-sorted by `call`. For use with [`Group`](@ref) or
-[`Join`](@ref).
-
-```jldoctest
-julia> using LightQuery
-
-julia> By([1, 2], identity)
-By{Array{Int64,1},typeof(identity)}([1, 2], identity)
-```
+Lazy `map` with argument order reversed.
 """
-struct By{It, Call}
-    it::It
-    call::Call
-end
-export By
+over(it, call) = Generator(call, it)
+export over
+
+"""
+    when(it, call)
+
+Lazy `filter` with argument order reversed.
+"""
+when(it, call) = Filter(call, it)
+export when
 
 """
     order(it, call; keywords...)
@@ -52,6 +49,25 @@ order(it, call, condition; keywords...) =
         )), by = last; keywords...)
     ))
 export order
+
+"""
+    By(it, call)
+
+Mark that `it` has been pre-sorted by `call`. For use with [`Group`](@ref) or
+[`Join`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> By([1, 2], identity)
+By{Array{Int64,1},typeof(identity)}([1, 2], identity)
+```
+"""
+struct By{It, Call}
+    it::It
+    call::Call
+end
+export By
 
 state_to_index(it::AbstractArray, state) = state[2] + 1
 state_to_index(it::Array, state::Int) = state
@@ -106,6 +122,22 @@ function iterate(it::Group)
 end
 export Group
 
+"""
+    key(it)
+
+The `key` in a `key => value` pair.
+"""
+key(it::Pair) = it.first
+export key
+
+"""
+    value(it)
+
+The `value` in a `key => value` pair.
+"""
+value(it::Pair) = it.second
+export value
+
 struct History{State, Item, Result}
     state::State
     item::Item
@@ -154,7 +186,8 @@ julia> @> [1, 1, 2, 2] |>
  (2 => [2, 2]) => 2
 ```
 
- For other join flavors, combine with [`when`](@ref).
+ For other join flavors, combine with [`when`](@ref). Make sure to annotate with
+ [`Length`](@ref) if you know it.
 
  ```jldoctest Join
 julia> @> Join(
@@ -162,6 +195,7 @@ julia> @> Join(
             By([1, 3, 4, 6], identity)
         ) |>
         when(_, @_ !ismissing(_.first)) |>
+        Length(_, 4) |>
         collect
 4-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
  1 => 1
@@ -214,8 +248,8 @@ export Join
 """
     Length(it, length)
 
-Allow optimizations based on length. Especially useful before
-[`make_columns`](@ref).
+Allow optimizations based on length. Especially useful after [`Join`](@ref) and
+before [`make_columns`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -240,40 +274,6 @@ iterate(it::Length) = iterate(it.it)
 iterate(it::Length, state) = iterate(it.it, state)
 export Length
 
-"""
-    key(it)
-
-The `key` in a `key => value` pair.
-"""
-key(it::Pair) = it.first
-export key
-
-"""
-    value(it)
-
-The `value` in a `key => value` pair.
-"""
-value(it::Pair) = it.second
-export value
-
-"""
-    over(it, call)
-
-Lazy `map` with argument order reversed.
-"""
-over(it, call) = Generator(call, it)
-export over
-
-"""
-    when(it, call)
-
-Lazy `filter` with argument order reversed.
-"""
-when(it, call) = Filter(call, it)
-export when
-
 # piracy
 @propagate_inbounds view(it::Generator, index...) =
     Generator(it.f, view(it.iter, index...))
-merge(it::NamedTuple, ::Missing) = it
-merge(::Missing, it::NamedTuple) = it

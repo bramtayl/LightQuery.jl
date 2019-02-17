@@ -1,440 +1,494 @@
-# LightQuery.jl
+# Tutorial
 
-# Introduction to LightQuery
-
-Follows the tutorial
-[here](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). I'll
-make heavy use of the chaining macro `@>` and lazy calling macro `@_` included
-in this package. The syntax here is in most cases more verbose but also more
-flexible than dplyr. Fortunately, programming with LightQuery is much easier, so
-define shortcuts.
-
-## Data
-
-Use `Peek` to view iterators of `NamedTuple`s. The data is stored column-wise;
-`rows` is a lazy view.
+I'm going to use the flights data from the
+[dplyr tutorial](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html).
+This data is in the test folder of this package. I re-export `CSV` for
+input-output.
 
 ```jldoctest dplyr
 julia> using LightQuery
 
-julia> flights =
-        @> "flights.csv" |>
-        CSV.read(_, allowmissing = :auto) |>
-        named_tuple |>
-        rows;
-
-julia> Peek(flights)
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| --------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |             819 |         11 |       UA |    1545 |   N14228 |     EWR |   IAH |       227 |      1400 |     5 |      15 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |             830 |         20 |       UA |    1714 |   N24211 |     LGA |   IAH |       227 |      1416 |     5 |      29 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |             850 |         33 |       AA |    1141 |   N619AA |     JFK |   MIA |       160 |      1089 |     5 |      40 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |   N804JB |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |
+julia> airports_file = CSV.File("airports.csv", allowmissing = :auto)
+CSV.File("airports.csv", rows=1458):
+Tables.Schema:
+ :faa    String
+ :name   String
+ :lat    Float64
+ :lon    Float64
+ :alt    Int64
+ :tz     Int64
+ :dst    String
+ :tzone  String
 ```
 
-## Single table verbs
+`allowmissing = :auto` tells CSV to guess whether columns might contain misisng
+data.
 
-### Filter rows
+Let's take a look at the first row. Use [`named_tuple`](@ref) to coerce a
+`CSV.Row` to a `NamedTuple`. I'm going to make heavy use of the chaining macro
+[`@>`](@ref) and lazy call macro [`@_`](@ref).
 
 ```jldoctest dplyr
-julia> @> flights |>
-        when(_, @_ _.month == 1 && _.day == 1) |>
-        Peek
-Showing at most 4 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| --------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |             819 |         11 |       UA |    1545 |   N14228 |     EWR |   IAH |       227 |      1400 |     5 |      15 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |             830 |         20 |       UA |    1714 |   N24211 |     LGA |   IAH |       227 |      1416 |     5 |      29 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |             850 |         33 |       AA |    1141 |   N619AA |     JFK |   MIA |       160 |      1089 |     5 |      40 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |   N804JB |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |
+julia> airport =
+        @> airports_file |>
+        first |>
+        named_tuple
+(faa = "04G", name = "Lansdowne Airport", lat = 41.1304722, lon = -80.6195833, alt = 1044, tz = -5, dst = "A", tzone = "America/New_York")
 ```
 
-In some cases, a column-wise filter might be more efficient.
+As a start, I want to rename so that I understand what the columns mean. When
+you [`rename`](@ref), names need to be wrapped with [`Name`](@ref).
 
 ```jldoctest dplyr
-julia> @> flights |>
-        columns |>
-        (_.month .== 1 .& _.day .== 1) |>
-        view(flights, _) |>
-        Peek
-Showing 4 of 13936 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| --------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |             819 |         11 |       UA |    1545 |   N14228 |     EWR |   IAH |       227 |      1400 |     5 |      15 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |             830 |         20 |       UA |    1714 |   N24211 |     LGA |   IAH |       227 |      1416 |     5 |      29 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |             850 |         33 |       AA |    1141 |   N619AA |     JFK |   MIA |       160 |      1089 |     5 |      40 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |   N804JB |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |
+julia> airport =
+        @> airport |>
+        rename(_,
+            airport_code = Name(:faa),
+            latitude = Name(:lat),
+            longitude = Name(:lon),
+            altitude = Name(:alt),
+            time_zone_offset = Name(:tz),
+            daylight_savings = Name(:dst),
+            time_zone = Name(:tzone)
+        )
+(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone_offset = -5, daylight_savings = "A", time_zone = "America/New_York")
 ```
 
-### Order rows
+Let's create a proper `TimeZone`, and add units to our variables.
 
 ```jldoctest dplyr
-julia> @> flights |>
-        order(_, Names(:year, :month, :day)) |>
-        Peek
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| --------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |             819 |         11 |       UA |    1545 |   N14228 |     EWR |   IAH |       227 |      1400 |     5 |      15 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |             830 |         20 |       UA |    1714 |   N24211 |     LGA |   IAH |       227 |      1416 |     5 |      29 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |             850 |         33 |       AA |    1141 |   N619AA |     JFK |   MIA |       160 |      1089 |     5 |      40 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |   N804JB |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |
-```
+julia> using TimeZones: VariableTimeZone, TimeZone
 
-For performance, filter out instabilities.
+julia> using Unitful: °, ft
 
-```jldoctest dplyr
-julia> @> flights |>
-        order(_, Names(:arr_delay), (@_ !ismissing(_.arr_delay)), rev = true) |>
-        Peek
-Showing 4 of 327346 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| --------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:|
-|  2013 |      1 |    9 |       641 |             900 |       1301 |      1242 |            1530 |       1272 |       HA |      51 |   N384HA |     JFK |   HNL |       640 |      4983 |     9 |       0 | 2013-01-09 09:00:00 |
-|  2013 |      6 |   15 |      1432 |            1935 |       1137 |      1607 |            2120 |       1127 |       MQ |    3535 |   N504MQ |     JFK |   CMH |        74 |       483 |    19 |      35 | 2013-06-15 19:00:00 |
-|  2013 |      1 |   10 |      1121 |            1635 |       1126 |      1239 |            1810 |       1109 |       MQ |    3695 |   N517MQ |     EWR |   ORD |       111 |       719 |    16 |      35 | 2013-01-10 16:00:00 |
-|  2013 |      9 |   20 |      1139 |            1845 |       1014 |      1457 |            2210 |       1007 |       AA |     177 |   N338AA |     JFK |   SFO |       354 |      2586 |    18 |      45 | 2013-09-20 18:00:00 |
-```
-
-### Select columns
-
-Lazily convert to `columns` then back to `rows` for columnwise operations.
-
-```jldoctest dplyr
-julia> @> flights |>
-        columns |>
-        Names(:year, :month, :day)(_) |>
-        rows |>
-        Peek
-Showing 4 of 336776 rows
-| :year | :month | :day |
-| -----:| ------:| ----:|
-|  2013 |      1 |    1 |
-|  2013 |      1 |    1 |
-|  2013 |      1 |    1 |
-|  2013 |      1 |    1 |
-```
-
-```jldoctest dplyr
-julia> @> flights |>
-        columns |>
-        remove(_, :year, :month, :day) |>
-        rows |>
-        Peek
-Showing 4 of 336776 rows
-| :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour |
-| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| --------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:|
-|       517 |             515 |          2 |       830 |             819 |         11 |       UA |    1545 |   N14228 |     EWR |   IAH |       227 |      1400 |     5 |      15 | 2013-01-01 05:00:00 |
-|       533 |             529 |          4 |       850 |             830 |         20 |       UA |    1714 |   N24211 |     LGA |   IAH |       227 |      1416 |     5 |      29 | 2013-01-01 05:00:00 |
-|       542 |             540 |          2 |       923 |             850 |         33 |       AA |    1141 |   N619AA |     JFK |   MIA |       160 |      1089 |     5 |      40 | 2013-01-01 05:00:00 |
-|       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |   N804JB |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |
-```
-
-```jldoctest dplyr
-julia> @> flights |>
-        columns |>
-        rename(_, tail_num = Name(:tailnum)) |>
-        rows |>
-        Peek
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour | :tail_num |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:| ---------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |             819 |         11 |       UA |    1545 |     EWR |   IAH |       227 |      1400 |     5 |      15 | 2013-01-01 05:00:00 |    N14228 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |             830 |         20 |       UA |    1714 |     LGA |   IAH |       227 |      1416 |     5 |      29 | 2013-01-01 05:00:00 |    N24211 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |             850 |         33 |       AA |    1141 |     JFK |   MIA |       160 |      1089 |     5 |      40 | 2013-01-01 05:00:00 |    N619AA |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |    N804JB |
-```
-
-### Add new columns
-
-```jldoctest dplyr
-julia> @> flights |>
-        columns |>
+julia> airport =
+        @> airport |>
         transform(_,
-            gain = _.arr_delay .- _.dep_delay,
-            speed = _.distance ./ _.air_time * 60
+            time_zone = TimeZone(_.time_zone),
+            latitude = _.latitude * °,
+            longitude = _.longitude * °,
+            altitude = _.altitude * ft
+        )
+(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722°, longitude = -80.6195833°, altitude = 1044 ft, time_zone_offset = -5, daylight_savings = "A", time_zone = America/New_York (UTC-5/UTC-4))
+```
+
+Now that we have a true timezone, we can remove all data that is
+contingent on timezone.
+
+```jldoctest dplyr
+julia> airport =
+        @> airport |>
+        remove(_,
+            :time_zone_offset,
+            :daylight_savings
+        )
+(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722°, longitude = -80.6195833°, altitude = 1044 ft, time_zone = America/New_York (UTC-5/UTC-4))
+```
+
+Notice that we know that there will be one entry for each airport code. This
+signals that this data might be best stored as a `Dict`. Let's put everything
+together:
+
+```jldoctest dplyr
+julia> const airports = Dict(
+            airport.airport_code => remove(airport, :airport_code)
+        )
+Dict{String,NamedTuple{(:name, :latitude, :longitude, :altitude, :time_zone),Tuple{String,Unitful.Quantity{Float64,NoDims,Unitful.FreeUnits{(°,),NoDims,nothing}},Unitful.Quantity{Float64,NoDims,Unitful.FreeUnits{(°,),NoDims,nothing}},Unitful.Quantity{Int64,𝐋,Unitful.FreeUnits{(ft,),𝐋,nothing}},VariableTimeZone}}} with 1 entry:
+  "04G" => (name = "Lansdowne Airport", latitude = 41.1305°, longitude = -80.61…
+
+julia> function process_airport(airport_row)
+            airport =
+                @> named_tuple(airport_row) |>
+                rename(_,
+                    airport_code = Name(:faa),
+                    latitude = Name(:lat),
+                    longitude = Name(:lon),
+                    altitude = Name(:alt),
+                    time_zone_offset = Name(:tz),
+                    daylight_savings = Name(:dst),
+                    time_zone = Name(:tzone)
+                ) |>
+                transform(_,
+                    time_zone = TimeZone(_.time_zone),
+                    latitude = _.latitude * °,
+                    longitude = _.longitude * °,
+                    altitude = _.altitude * ft
+                ) |>
+                remove(_,
+                    :time_zone_offset,
+                    :daylight_savings
+                )
+            airports[airport.airport_code] = remove(airport, :airport_code)
+        end
+process_airport (generic function with 1 method)
+
+julia> foreach(process_airport, airports_file)
+ERROR: ArgumentError: Unknown time zone "Asia/Chongqing"
+```
+
+Uh oh. A bit of googling shows that "Asia/Chongqing" is an alias for
+"Asia/Shanghai". Try again.
+
+```jldoctest dplyr
+julia> function process_airport(airport_row)
+            airport =
+                @> named_tuple(airport_row) |>
+                rename(_,
+                    airport_code = Name(:faa),
+                    latitude = Name(:lat),
+                    longitude = Name(:lon),
+                    altitude = Name(:alt),
+                    time_zone_offset = Name(:tz),
+                    daylight_savings = Name(:dst),
+                    time_zone = Name(:tzone)
+                ) |>
+                transform(_,
+                    time_zone = TimeZone(
+                        if _.time_zone == "Asia/Chongqing"
+                            "Asia/Shanghai"
+                        else
+                            _.time_zone
+                        end
+                    ),
+                    latitude = _.latitude * °,
+                    longitude = _.longitude * °,
+                    altitude = _.altitude * ft
+                ) |>
+                remove(_,
+                    :time_zone_offset,
+                    :daylight_savings
+                )
+            airports[airport.airport_code] = remove(airport, :airport_code)
+            nothing
+        end
+process_airport (generic function with 1 method)
+
+julia> foreach(process_airport, airports_file)
+ERROR: ArgumentError: Unknown time zone "\N"
+```
+
+Hadley, you're killing me. "\\N" is definitely not a timezone. I'm not in the
+mood for playing games; let's just ignore those airports. I use [`when`](@ref)
+to lazily filter aiports.
+
+```jldoctest dplyr
+julia> @> airports_file |>
+        when(_, @_ _.tzone != "\\N") |>
+        foreach(process_airport, _)
+```
+
+We did it! That was just the warm-up. Now let's get started working on the
+flights data.
+
+```jldoctest dplyr
+julia> flights_file = CSV.File("flights.csv", allowmissing = :auto)
+CSV.File("flights.csv", rows=336776):
+Tables.Schema:
+ :year            Int64
+ :month           Int64
+ :day             Int64
+ :dep_time        Union{Missing, Int64}
+ :sched_dep_time  Int64
+ :dep_delay       Union{Missing, Int64}
+ :arr_time        Union{Missing, Int64}
+ :sched_arr_time  Int64
+ :arr_delay       Union{Missing, Int64}
+ :carrier         String
+ :flight          Int64
+ :tailnum         Union{Missing, String}
+ :origin          String
+ :dest            String
+ :air_time        Union{Missing, Int64}
+ :distance        Int64
+ :hour            Int64
+ :minute          Int64
+ :time_hour       String
+
+julia> flight =
+        @> flights_file |>
+        first |>
+        named_tuple(_)
+(year = 2013, month = 1, day = 1, dep_time = 517, sched_dep_time = 515, dep_delay = 2, arr_time = 830, sched_arr_time = 819, arr_delay = 11, carrier = "UA", flight = 1545, tailnum = "N14228", origin = "EWR", dest = "IAH", air_time = 227, distance = 1400, hour = 5, minute = 15, time_hour = "2013-01-01 05:00:00")
+```
+
+Again, some renaming:
+
+```jldoctest dplyr
+julia> flight =
+        @> flight |>
+        rename(_,
+            departure_time = Name(:dep_time),
+            scheduled_departure_time = Name(:sched_dep_time),
+            departure_delay = Name(:dep_delay),
+            arrival_time = Name(:arr_time),
+            scheduled_arrival_time = Name(:sched_arr_time),
+            arrival_delay = Name(:arr_delay),
+            tail_number = Name(:tailnum),
+            destination = Name(:dest)
+        )
+(year = 2013, month = 1, day = 1, carrier = "UA", flight = 1545, origin = "EWR", air_time = 227, distance = 1400, hour = 5, minute = 15, time_hour = "2013-01-01 05:00:00", departure_time = 517, scheduled_departure_time = 515, departure_delay = 2, arrival_time = 830, scheduled_arrival_time = 819, arrival_delay = 11, tail_number = "N14228", destination = "IAH")
+```
+
+We can use our `airports` data to make datetimes with timezones.
+
+```jldoctest dplyr
+julia> using Dates: DateTime
+
+julia> using TimeZones: ZonedDateTime
+
+julia> scheduled_departure_time = ZonedDateTime(
+            DateTime(flight.year, flight.month, flight.day, flight.hour, flight.minute),
+            airports[flight.origin].time_zone
+        )
+2013-01-01T05:15:00-05:00
+```
+
+Note the scheduled arrival time is `818`. This means `8:18`. We can use
+`divrem(_, 100)` to split it up.
+
+```jldoctest dplyr
+julia> scheduled_arrival_time = ZonedDateTime(
+            DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
+            airports[flight.destination].time_zone
+        )
+2013-01-01T08:19:00-06:00
+```
+
+What if it was an over-night flight? We can add a day to the arrival time if
+it wasn't later than the departure time.
+
+```jldoctest dplyr
+julia> using Dates: Day
+
+julia> if !(scheduled_arrival_time > scheduled_departure_time)
+            scheduled_arrival_time = scheduled_arrival_time + Day(1)
+        end
+```
+
+Now let's add the data back into our flight, and remove redundant columns.
+
+```jldoctest dplyr
+julia> flight =
+        @> flight |>
+        transform(_,
+            scheduled_departure_time = scheduled_departure_time,
+            scheduled_arrival_time = scheduled_arrival_time
         ) |>
-        rows |>
-        Peek
-Showing 4 of 336776 rows
-| :year | :month | :day | :dep_time | :sched_dep_time | :dep_delay | :arr_time | :sched_arr_time | :arr_delay | :carrier | :flight | :tailnum | :origin | :dest | :air_time | :distance | :hour | :minute |          :time_hour | :gain |             :speed |
-| -----:| ------:| ----:| ---------:| ---------------:| ----------:| ---------:| ---------------:| ----------:| --------:| -------:| --------:| -------:| -----:| ---------:| ---------:| -----:| -------:| -------------------:| -----:| ------------------:|
-|  2013 |      1 |    1 |       517 |             515 |          2 |       830 |             819 |         11 |       UA |    1545 |   N14228 |     EWR |   IAH |       227 |      1400 |     5 |      15 | 2013-01-01 05:00:00 |     9 | 370.04405286343615 |
-|  2013 |      1 |    1 |       533 |             529 |          4 |       850 |             830 |         20 |       UA |    1714 |   N24211 |     LGA |   IAH |       227 |      1416 |     5 |      29 | 2013-01-01 05:00:00 |    16 |  374.2731277533039 |
-|  2013 |      1 |    1 |       542 |             540 |          2 |       923 |             850 |         33 |       AA |    1141 |   N619AA |     JFK |   MIA |       160 |      1089 |     5 |      40 | 2013-01-01 05:00:00 |    31 |            408.375 |
-|  2013 |      1 |    1 |       544 |             545 |         -1 |      1004 |            1022 |        -18 |       B6 |     725 |   N804JB |     JFK |   BQN |       183 |      1576 |     5 |      45 | 2013-01-01 05:00:00 |   -17 |  516.7213114754098 |
+        remove(_, :year, :month, :day, :hour, :minute, :time_hour,
+            :departure_time, :arrival_time)
+(carrier = "UA", flight = 1545, origin = "EWR", air_time = 227, distance = 1400, scheduled_departure_time = 2013-01-01T05:15:00-05:00, departure_delay = 2, scheduled_arrival_time = 2013-01-01T08:19:00-06:00, arrival_delay = 11, tail_number = "N14228", destination = "IAH")
 ```
 
-## Grouped operations
-
-You can only group sorted data. Each group is a pair, from `key` to `value`
-(sub-table).
-
+Now let's add in some units:
 
 ```jldoctest dplyr
-julia> using Statistics: mean
+julia> using Dates: Minute
 
-julia> @> flights |>
-        order(_, Names(:tailnum), (@_ !ismissing(_.tailnum))) |>
-        Group(By(_, Names(:tailnum))) |>
-        over(_, @_ transform(key(_),
-            count = length(value(_)),
-            dist = (@> columns(value(_)).distance |> skipmissing |> mean),
-            delay = (@> columns(value(_)).arr_delay |> skipmissing |> mean)
-        )) |>
-        Peek
-Showing at most 4 rows
-| :tailnum | :count |             :dist |             :delay |
-| --------:| ------:| -----------------:| ------------------:|
-|   D942DN |      4 |             854.5 |               31.5 |
-|   N0EGMQ |    371 |  676.188679245283 |  9.982954545454545 |
-|   N10156 |    153 | 757.9477124183006 | 12.717241379310344 |
-|   N102UW |     48 |           535.875 |             2.9375 |
+julia> using Unitful: mi
+
+julia> flight =
+        @> flight |>
+        transform(_,
+            air_time = Minute(_.air_time),
+            distance = _.distance * mi,
+            departure_delay = Minute(_.departure_delay),
+            arrival_delay = Minute(_.arrival_delay)
+        )
+(carrier = "UA", flight = 1545, origin = "EWR", air_time = Minute(227), distance = 1400 mi, scheduled_departure_time = 2013-01-01T05:15:00-05:00, departure_delay = Minute(2), scheduled_arrival_time = 2013-01-01T08:19:00-06:00, arrival_delay = Minute(11), tail_number = "N14228", destination = "IAH")
 ```
 
-# Two table verbs
-
-Follows the tutorial
-[here](https://cran.r-project.org/web/packages/dplyr/vignettes/two-table.html).
-
-You can only `Join` presorted data. A join will return pairs from an item on the
-left (first) to an item on the right (second). `Group` data with repeats.
-`flatten` is reexported from Base.
+Put it all together. I'm conducting some mild type piracy to get `Minute` to work
+with missing data. When it comes time to collect, I'm calling
+[`make_columns`](@ref) then [`rows`](@ref). It makes sense to store this data
+column-wise. This is because there are multiple columns that might contain
+missing data. I use [`over`](@ref) to lazily `map`. Note that I'm only
+considering flights with corresponding airport data.
 
 ```jldoctest dplyr
-julia> flights2 =
-        @> flights |>
-        columns |>
-        Names(:year, :month, :day, :hour, :origin, :dest, :tailnum, :carrier)(_) |>
-        rows;
+julia> import Dates: Minute
 
-julia> airlines =
-        @> "airlines.csv" |>
-        CSV.read(_, allowmissing = :auto,) |>
-        named_tuple |>
-        rows;
+julia> Minute(::Missing) = missing
+Minute
 
-julia> Peek(airlines)
-Showing 4 of 16 rows
-| :carrier |                  :name |
-| --------:| ----------------------:|
-|       9E |      Endeavor Air Inc. |
-|       AA | American Airlines Inc. |
-|       AS |   Alaska Airlines Inc. |
-|       B6 |        JetBlue Airways |
+julia> function process_flight(row)
+            flight =
+                @> named_tuple(row) |>
+                rename(_,
+                    departure_time = Name(:dep_time),
+                    scheduled_departure_time = Name(:sched_dep_time),
+                    departure_delay = Name(:dep_delay),
+                    arrival_time = Name(:arr_time),
+                    scheduled_arrival_time = Name(:sched_arr_time),
+                    arrival_delay = Name(:arr_delay),
+                    tail_number = Name(:tailnum),
+                    destination = Name(:dest)
+                )
+            scheduled_departure_time = ZonedDateTime(
+                DateTime(flight.year, flight.month, flight.day, flight.hour, flight.minute),
+                airports[flight.origin].time_zone
+            )
+            scheduled_arrival_time = ZonedDateTime(
+                DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
+                airports[flight.destination].time_zone
+            )
+            if !(scheduled_arrival_time > scheduled_departure_time)
+                scheduled_arrival_time = scheduled_arrival_time + Day(1)
+            end
+            @> flight |>
+                transform(_,
+                    scheduled_departure_time = scheduled_departure_time,
+                    scheduled_arrival_time = scheduled_arrival_time,
+                    air_time = Minute(_.air_time),
+                    distance = _.distance * mi,
+                    departure_delay = Minute(_.departure_delay),
+                    arrival_delay = Minute(_.arrival_delay)
+                ) |>
+                remove(_, :year, :month, :day, :hour, :minute, :time_hour,
+                    :departure_time, :arrival_time)
+        end
+process_flight (generic function with 1 method)
 
-julia> @> flights2 |>
-        order(_, Names(:carrier)) |>
-        Group(By(_, Names(:carrier))) |>
-        By(_, key) |>
-        Join(_, By(airlines, Names(:carrier))) |>
-        over(_, pair -> over(value(pair.first), @_ merge(_, pair.second))) |>
-        flatten |>
-        Peek
-Showing at most 4 rows
-| :year | :month | :day | :hour | :origin | :dest | :tailnum | :carrier |             :name |
-| -----:| ------:| ----:| -----:| -------:| -----:| --------:| --------:| -----------------:|
-|  2013 |      1 |    1 |     8 |     JFK |   MSP |   N915XJ |       9E | Endeavor Air Inc. |
-|  2013 |      1 |    1 |    15 |     JFK |   IAD |   N8444F |       9E | Endeavor Air Inc. |
-|  2013 |      1 |    1 |    14 |     JFK |   BUF |   N920XJ |       9E | Endeavor Air Inc. |
-|  2013 |      1 |    1 |    15 |     JFK |   SYR |   N8409N |       9E | Endeavor Air Inc. |
-```
-
-`Join` is full by default; use `when` to mimic other kinds of joins.
-
-```jldoctest dplyr
-julia> weather =
-        @> "weather.csv" |>
-        CSV.read(_, allowmissing = :auto) |>
-        named_tuple |>
-        rows;
-
-julia> Peek(weather)
-Showing 4 of 26115 rows
-| :origin | :year | :month | :day | :hour | :temp | :dewp | :humid | :wind_dir | :wind_speed | :wind_gust | :precip | :pressure | :visib |          :time_hour |
-| -------:| -----:| ------:| ----:| -----:| -----:| -----:| ------:| ---------:| -----------:| ----------:| -------:| ---------:| ------:| -------------------:|
-|     EWR |  2013 |      1 |    1 |     1 | 39.02 | 26.06 |  59.37 |       270 |    10.35702 |    missing |     0.0 |    1012.0 |   10.0 | 2013-01-01 01:00:00 |
-|     EWR |  2013 |      1 |    1 |     2 | 39.02 | 26.96 |  61.63 |       250 |     8.05546 |    missing |     0.0 |    1012.3 |   10.0 | 2013-01-01 02:00:00 |
-|     EWR |  2013 |      1 |    1 |     3 | 39.02 | 28.04 |  64.43 |       240 |     11.5078 |    missing |     0.0 |    1012.5 |   10.0 | 2013-01-01 03:00:00 |
-|     EWR |  2013 |      1 |    1 |     4 | 39.92 | 28.04 |  62.21 |       250 |    12.65858 |    missing |     0.0 |    1012.2 |   10.0 | 2013-01-01 04:00:00 |
-
-julia> const selector = Names(:origin, :year, :month, :day, :hour);
-
-julia> @> flights2 |>
-        order(_, selector) |>
-        Group(By(_, selector)) |>
-        By(_, key) |>
-        Join(_, By(weather, selector)) |>
-        when(_, @_ !ismissing(_.first)) |>
-        over(_, pair -> over(value(pair.first), @_ merge(_, pair.second))) |>
-        flatten |>
-        Peek
-Showing at most 4 rows
-| :year | :month | :day | :hour | :origin | :dest | :tailnum | :carrier | :temp | :dewp | :humid | :wind_dir | :wind_speed | :wind_gust | :precip | :pressure | :visib |          :time_hour |
-| -----:| ------:| ----:| -----:| -------:| -----:| --------:| --------:| -----:| -----:| ------:| ---------:| -----------:| ----------:| -------:| ---------:| ------:| -------------------:|
-|  2013 |      1 |    1 |     5 |     EWR |   IAH |   N14228 |       UA | 39.02 | 28.04 |  64.43 |       260 |    12.65858 |    missing |     0.0 |    1011.9 |   10.0 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |     5 |     EWR |   ORD |   N39463 |       UA | 39.02 | 28.04 |  64.43 |       260 |    12.65858 |    missing |     0.0 |    1011.9 |   10.0 | 2013-01-01 05:00:00 |
-|  2013 |      1 |    1 |     6 |     EWR |   FLL |   N516JB |       B6 | 37.94 | 28.04 |  67.21 |       240 |     11.5078 |    missing |     0.0 |    1012.4 |   10.0 | 2013-01-01 06:00:00 |
-|  2013 |      1 |    1 |     6 |     EWR |   SFO |   N53441 |       UA | 37.94 | 28.04 |  67.21 |       240 |     11.5078 |    missing |     0.0 |    1012.4 |   10.0 | 2013-01-01 06:00:00 |
-
-julia> planes =
-        @> "planes.csv" |>
-        CSV.read(_, allowmissing = :auto) |>
-        named_tuple |>
-        rename(_, model_year = Name(:year)) |>
-        rows;
-
-julia> Peek(planes)
-Showing 4 of 3322 rows
-| :tailnum |                   :type |    :manufacturer |    :model | :engines | :seats |  :speed |   :engine | :model_year |
-| --------:| -----------------------:| ----------------:| ---------:| --------:| ------:| -------:| ---------:| -----------:|
-|   N10156 | Fixed wing multi engine |          EMBRAER | EMB-145XR |        2 |     55 | missing | Turbo-fan |        2004 |
-|   N102UW | Fixed wing multi engine | AIRBUS INDUSTRIE |  A320-214 |        2 |    182 | missing | Turbo-fan |        1998 |
-|   N103US | Fixed wing multi engine | AIRBUS INDUSTRIE |  A320-214 |        2 |    182 | missing | Turbo-fan |        1999 |
-|   N104UW | Fixed wing multi engine | AIRBUS INDUSTRIE |  A320-214 |        2 |    182 | missing | Turbo-fan |        1999 |
-
-julia> @> flights2 |>
-            order(_, Names(:tailnum), (@_ !ismissing(_.tailnum))) |>
-            Group(By(_, Names(:tailnum))) |>
-            By(_, key) |>
-            Join(_, By(planes, Names(:tailnum))) |>
-            when(_, @_ ismissing(_.second)) |>
-            over(_, @_ transform(key(_.first),
-                n = length(value(_.first))
-            )) |>
-            make_columns |>
-            rows |>
-            order(_, Names(:n), rev = true) |>
-            Peek
-Showing 4 of 721 rows
-| :tailnum |  :n |
-| --------:| ---:|
-|   N725MQ | 575 |
-|   N722MQ | 513 |
-|   N723MQ | 507 |
-|   N713MQ | 483 |
-```
-
-# Window functions
-
-Follows the tutorial
-[here](https://cran.r-project.org/web/packages/dplyr/vignettes/window-functions.html).
-
-```jldoctest dplyr
-julia> batting =
-        @> "batting.csv" |>
-        CSV.read(_, allowmissing = :auto) |>
-        named_tuple |>
-        rows;
-
-julia> Peek(batting)
-Showing 4 of 19404 rows
-| :playerID | :yearID | :teamID |  :G | :AB |  :R |  :H |
-| ---------:| -------:| -------:| ---:| ---:| ---:| ---:|
-| aaronha01 |    1954 |     ML1 | 122 | 468 |  58 | 131 |
-| aaronha01 |    1955 |     ML1 | 153 | 602 | 105 | 189 |
-| aaronha01 |    1956 |     ML1 | 153 | 609 | 106 | 200 |
-| aaronha01 |    1957 |     ML1 | 151 | 615 | 118 | 198 |
-
-julia> players =
-        @> batting |>
-        Group(By(_, Names(:playerID)));
-
-julia> @> players |>
-        over(_, @_ @> order(value(_), Names(:H)) |> view(_, 1:2)) |>
-        flatten |>
-        when(_, @_ _.H > 0) |>
-        Peek
-Showing at most 4 rows
-| :playerID | :yearID | :teamID |  :G | :AB |  :R |  :H |
-| ---------:| -------:| -------:| ---:| ---:| ---:| ---:|
-| aaronha01 |    1976 |     ML4 |  85 | 271 |  22 |  62 |
-| aaronha01 |    1974 |     ATL | 112 | 340 |  47 |  91 |
-| abreubo01 |    1996 |     HOU |  15 |  22 |   1 |   5 |
-| abreubo01 |    2012 |     LAA |   8 |  24 |   1 |   5 |
-
-julia> using StatsBase: ordinalrank
-
-julia> @> players |>
-        over(_, @_ @> columns(value(_)) |>
-            transform(_, G_rank = ordinalrank(_.G)) |>
-            rows
-        ) |>
-        flatten |>
-        Peek
-Showing at most 4 rows
-| :playerID | :yearID | :teamID |  :G | :AB |  :R |  :H | :G_rank |
-| ---------:| -------:| -------:| ---:| ---:| ---:| ---:| -------:|
-| aaronha01 |    1954 |     ML1 | 122 | 468 |  58 | 131 |       4 |
-| aaronha01 |    1955 |     ML1 | 153 | 602 | 105 | 189 |      13 |
-| aaronha01 |    1956 |     ML1 | 153 | 609 | 106 | 200 |      14 |
-| aaronha01 |    1957 |     ML1 | 151 | 615 | 118 | 198 |      12 |
-```
-
-# Programming with LightQuery
-
-Follows the tutorial [here](https://cran.r-project.org/web/packages/dplyr/vignettes/programming.html).
-
-Be sure to `@inline` if you rely on constant propagation.
-
-```jldoctest dplyr
-julia> df = (
-            g1 = [1, 1, 2, 2, 2],
-            g2 = [1, 2, 1, 2, 1],
-            a = 1:5,
-            b = 1:5
-        ) |>
-        rows;
-
-julia> Peek(df)
-Showing 4 of 5 rows
-| :g1 | :g2 |  :a |  :b |
-| ---:| ---:| ---:| ---:|
-|   1 |   1 |   1 |   1 |
-|   1 |   2 |   2 |   2 |
-|   2 |   1 |   3 |   3 |
-|   2 |   2 |   4 |   4 |
-
-julia> my_summarize_(df, group_var) =
-        @> df |>
-        order(_, group_var) |>
-        Group(By(_, group_var)) |>
-        over(_, @_ transform(key(_),
-            a = sum(columns(value(_)).a)
-        )) |>
+julia> flights =
+        @> flights_file |>
+        when(_, @_ haskey(airports, _.origin) && haskey(airports, _.dest)) |>
+        over(_, process_flight) |>
         make_columns |>
         rows;
 
-julia> Peek(my_summarize_(df, Names(:g1)))
-| :g1 |  :a |
-| ---:| ---:|
-|   1 |   3 |
-|   2 |  12 |
-
-julia> Peek(my_summarize_(df, Names(:g2)))
-| :g2 |  :a |
-| ---:| ---:|
-|   1 |   9 |
-|   2 |   6 |
-
-julia> @inline my_summarize(df, group_vars...) =
-        my_summarize_(df, Names(group_vars...));
-
-julia> Peek(my_summarize(df, :g1))
-| :g1 |  :a |
-| ---:| ---:|
-|   1 |   3 |
-|   2 |  12 |
+julia> Peek(flights)
+Showing 4 of 329174 rows
+| :carrier | :flight | :origin |   :air_time | :distance | :scheduled_departure_time | :departure_delay |   :scheduled_arrival_time | :arrival_delay | :tail_number | :destination |
+| --------:| -------:| -------:| -----------:| ---------:| -------------------------:| ----------------:| -------------------------:| --------------:| ------------:| ------------:|
+|       UA |    1545 |     EWR | 227 minutes |   1400 mi | 2013-01-01T05:15:00-05:00 |        2 minutes | 2013-01-01T08:19:00-06:00 |     11 minutes |       N14228 |          IAH |
+|       UA |    1714 |     LGA | 227 minutes |   1416 mi | 2013-01-01T05:29:00-05:00 |        4 minutes | 2013-01-01T08:30:00-06:00 |     20 minutes |       N24211 |          IAH |
+|       AA |    1141 |     JFK | 160 minutes |   1089 mi | 2013-01-01T05:40:00-05:00 |        2 minutes | 2013-01-01T08:50:00-05:00 |     33 minutes |       N619AA |          MIA |
+|       DL |     461 |     LGA | 116 minutes |    762 mi | 2013-01-01T06:00:00-05:00 |       -6 minutes | 2013-01-01T08:37:00-05:00 |    -25 minutes |       N668DN |          ATL |
 ```
 
-# Index
+You might notice that if the origin and the destination are the same, then the
+distance is also the same. We can see this by [`order`](@ref) ing the data.
 
-```@index
+```jldoctest dplyr
+julia> by_path =
+        @> flights |>
+        order(_, Names(:origin, :destination));
+
+julia> Peek(by_path)
+Showing 4 of 329174 rows
+| :carrier | :flight | :origin |  :air_time | :distance | :scheduled_departure_time | :departure_delay |   :scheduled_arrival_time | :arrival_delay | :tail_number | :destination |
+| --------:| -------:| -------:| ----------:| ---------:| -------------------------:| ----------------:| -------------------------:| --------------:| ------------:| ------------:|
+|       EV |    4112 |     EWR | 33 minutes |    143 mi | 2013-01-01T13:17:00-05:00 |       -2 minutes | 2013-01-01T14:23:00-05:00 |    -10 minutes |       N13538 |          ALB |
+|       EV |    3260 |     EWR | 36 minutes |    143 mi | 2013-01-01T16:21:00-05:00 |       34 minutes | 2013-01-01T17:24:00-05:00 |     40 minutes |       N19554 |          ALB |
+|       EV |    4170 |     EWR | 31 minutes |    143 mi | 2013-01-01T20:04:00-05:00 |       52 minutes | 2013-01-01T21:12:00-05:00 |     44 minutes |       N12540 |          ALB |
+|       EV |    4316 |     EWR | 33 minutes |    143 mi | 2013-01-02T13:27:00-05:00 |        5 minutes | 2013-01-02T14:33:00-05:00 |    -14 minutes |       N14153 |          ALB |
 ```
 
-## Autodocs
+How can we remove this redundant information from our dataset? Let's make a
+distances dataset.
 
-```@autodocs
-Modules = [LightQuery]
+```jldoctest dplyr
+julia> const distances = Dict(
+            Names(:origin, :destination)(flight) => flight.distance
+        )
+Dict{NamedTuple{(:origin, :destination),Tuple{String,String}},Unitful.Quantity{Int64,𝐋,Unitful.FreeUnits{(mi,),𝐋,nothing}}} with 1 entry:
+  (origin = "EWR", destination = "IAH") => 1400 mi
+```
+
+Now we can [`Group`](@ref) our flights data [`By`](@ref) the path. Each group
+will be a [`key`](@ref) (the origin and destination) mapped to a [`value`](@ref)
+(a sub-table). We can group the already sorted data.
+
+```jldoctest dplyr
+julia> @> by_path |>
+        Group(By(_, Names(:origin, :destination))) |>
+        foreach((@_ distances[key(_)] = first(value(_)).distance), _)
+```
+
+We can drop the distance variable from flights now. To do this efficiently, we
+use [`columns`](@ref), which is always lazy.
+
+```jldoctest dplyr
+julia> flights =
+        @> flights |>
+        columns |>
+        remove(_, :distance) |>
+        rows;
+```
+
+Let's take a look at all of our beautiful data!
+
+```jldoctest dplyr
+julia> Peek(airports)
+Showing 4 of 1455 rows
+| :first |                                                                                                                                             :second |
+| ------:| ---------------------------------------------------------------------------------------------------------------------------------------------------:|
+|    JES |  (name = "Jesup-Wayne County Airport", latitude = 31.553889°, longitude = -81.8825°, altitude = 107 ft, time_zone = America/New_York (UTC-5/UTC-4)) |
+|    PPV | (name = "Port Protection Seaplane Base", latitude = 56.328889°, longitude = -133.61°, altitude = 0 ft, time_zone = America/Anchorage (UTC-9/UTC-8)) |
+|    DTA | (name = "Delta Municipal Airport", latitude = 39.3806386°, longitude = -112.5077147°, altitude = 4759 ft, time_zone = America/Denver (UTC-7/UTC-6)) |
+|    X21 |         (name = "Arthur Dunn Airpark", latitude = 28.622552°, longitude = -80.83541°, altitude = 30 ft, time_zone = America/New_York (UTC-5/UTC-4)) |
+
+julia> Peek(flights)
+Showing 4 of 329174 rows
+| :carrier | :flight | :origin |   :air_time | :scheduled_departure_time | :departure_delay |   :scheduled_arrival_time | :arrival_delay | :tail_number | :destination |
+| --------:| -------:| -------:| -----------:| -------------------------:| ----------------:| -------------------------:| --------------:| ------------:| ------------:|
+|       UA |    1545 |     EWR | 227 minutes | 2013-01-01T05:15:00-05:00 |        2 minutes | 2013-01-01T08:19:00-06:00 |     11 minutes |       N14228 |          IAH |
+|       UA |    1714 |     LGA | 227 minutes | 2013-01-01T05:29:00-05:00 |        4 minutes | 2013-01-01T08:30:00-06:00 |     20 minutes |       N24211 |          IAH |
+|       AA |    1141 |     JFK | 160 minutes | 2013-01-01T05:40:00-05:00 |        2 minutes | 2013-01-01T08:50:00-05:00 |     33 minutes |       N619AA |          MIA |
+|       DL |     461 |     LGA | 116 minutes | 2013-01-01T06:00:00-05:00 |       -6 minutes | 2013-01-01T08:37:00-05:00 |    -25 minutes |       N668DN |          ATL |
+
+julia> Peek(distances)
+Showing 4 of 217 rows
+|                                :first | :second |
+| -------------------------------------:| -------:|
+| (origin = "LGA", destination = "PHL") |   96 mi |
+| (origin = "JFK", destination = "SAN") | 2446 mi |
+| (origin = "EWR", destination = "MSY") | 1167 mi |
+| (origin = "JFK", destination = "MSY") | 1182 mi |
+```
+
+# Interface
+
+## Macros
+
+```@docs
+@_
+@>
+```
+
+## Columns
+
+```@docs
+named_tuple
+Name
+Names
+rename
+transform
+remove
+gather
+spread
+```
+
+## Rows
+
+```@docs
+unzip
+over
+when
+order
+By
+Group
+key
+value
+Join
+Length
+```
+
+## Pivot
+
+```@docs
+item_names
+rows
+Peek
+columns
+make_columns
 ```
