@@ -1,5 +1,5 @@
 @inline getproperty_default(it, name) = getproperty(it, name)
-@inline getproperty_default(it::NamedTuple{the_names}, name) where the_names =
+@inline getproperty_default(it::NamedTuple{the_names}, name) where {the_names} =
     if sym_in(name, the_names)
         getproperty(it, name)
     else
@@ -30,18 +30,18 @@ missing
 ```
 """
 @inline Name(name) = Name{name}()
-@inline inner_name(::Name{name}) where name = name
-(::Name{name})(it) where name = getproperty_default(it, name)
+@inline inner_name(::Name{name}) where {name} = name
+(::Name{name})(it) where {name} = getproperty_default(it, name)
 export Name
 
 struct Names{the_names} end
-function (::Names{the_names})(it::NamedTuple) where the_names
+function (::Names{the_names})(it::NamedTuple) where {the_names}
     @inline from_it(name) = getproperty_default(it, name)
     NamedTuple{the_names}(map(from_it, the_names))
 end
-(::Names{the_names})(::Missing) where the_names =
+(::Names{the_names})(::Missing) where {the_names} =
     NamedTuple{the_names}(map(name -> missing, the_names))
-(::Names{the_names})(it::Tuple) where the_names = NamedTuple{the_names}(it)
+(::Names{the_names})(it::Tuple) where {the_names} = NamedTuple{the_names}(it)
 """
     Names(the_names...)
 
@@ -169,7 +169,6 @@ julia> @> (a = 1, b = 1.0, c = 1//1) |>
     separate = map(from_it, assignments.data)
     merge(remove(it, propertynames(merge(Tuple(separate)...))...), separate)
 end
-
 export gather
 
 """

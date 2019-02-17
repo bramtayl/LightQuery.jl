@@ -77,8 +77,8 @@ julia> Group(By([1, 3, 2, 4], iseven)) |> collect
 ```
 """
 Group(it::By) = Group(it.it, it.call)
-IteratorSize(::Type{It}) where It <: Group = SizeUnknown()
-IteratorEltype(::Type{It}) where It <: Group = EltypeUnknown()
+IteratorSize(::Type{<: Group})  = SizeUnknown()
+IteratorEltype(::Type{<: Group}) = EltypeUnknown()
 iterate(it::Group, ::Nothing) = nothing
 function iterate(it::Group, (state, left_index, last_result))
     item_state = iterate(it.it, state)
@@ -232,9 +232,9 @@ struct Length{It}
     it::It
     length::Int
 end
-IteratorEltype(::Type{Length{It}}) where It = IteratorEltype(It)
+IteratorEltype(::Type{Length{It}}) where {It} = IteratorEltype(It)
 eltype(it::Length) = eltype(it.it)
-IteratorLength(::Type{T}) where T <: Length = HasLength()
+IteratorLength(::Type{T}) where {T <: Length} = HasLength()
 length(it::Length) = it.length
 iterate(it::Length) = iterate(it.it)
 iterate(it::Length, state) = iterate(it.it, state)

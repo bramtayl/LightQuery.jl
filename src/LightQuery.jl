@@ -59,17 +59,15 @@ julia> (a = [1], b = [1.0]) |>
 (a = [1], b = [1.0])
 ```
 """
-columns(it::Generator{It, Names{names}}) where {It <: ZippedArrays, names} =
-    it.f(it.iter.arrays)
-@inline eltype_names(it::Generator{It, Names{names}}) where {It, names} = names
+columns(it::Generator{<: ZippedArrays, <: Names}) = it.f(it.iter.arrays)
+@inline eltype_names(it::Generator{<: Any, Names{names}}) where {names} = names
 @inline eltype_names(it::Filter) = eltype_names(it.itr)
 @inline eltype_names(it) = eltype_names_dispatch(it, IteratorEltype(it))
 @inline eltype_names_dispatch(it, ::HasEltype) = first_fallback(it, eltype(it))
 @inline eltype_names_dispatch(it, ::EltypeUnknown) =
     first_fallback(it, @default_eltype(it))
 first_fallback(it, ::Type{NamedTuple{names}}) where {names} = names
-first_fallback(it, ::Type{NamedTuple{names, types}}) where {names, types} =
-    names
+first_fallback(it, ::Type{NamedTuple{names, <: Any}}) where {names} = names
 first_fallback(it, something) = _nt_names(first(it))
 first_fallback(it, ::Type{Union{}}) =
     error("Can't infer names due to inner function error")
@@ -163,7 +161,7 @@ julia> @> [(a = 1,), (a = 2, b = 2.0)] |>
 |   2 |     2.0 |
 ```
 """
-Peek(it::It; max_rows = 4) where It = Peek{eltype_names(it), It}(it, max_rows)
+Peek(it::It; max_rows = 4) where {It} = Peek{eltype_names(it), It}(it, max_rows)
 function show(io::IO, peek::Peek{the_names}) where {the_names}
     if isa(IteratorSize(peek.it), Union{HasLength, HasShape})
         if length(peek.it) > peek.max_rows

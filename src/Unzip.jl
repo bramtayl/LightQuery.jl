@@ -32,8 +32,7 @@ end
 end
 push!(arrays::ZippedArrays, values) = push!.(arrays.arrays, values)
 function similar(arrays::ZippedArrays, ::Type, dimensions::Dims)
-	@inline inner_similar(index) =
-        Array{Any}(undef, dimensions...)
+	@inline inner_similar(index) = Array{Any}(undef, dimensions...)
 	@inbounds zip(ntuple(inner_similar, length(arrays.arrays))...)
 end
 function similar(arrays::ZippedArrays, ::Type{Items}, dimensions::Dims) where {Items <: Tuple}
@@ -41,20 +40,20 @@ function similar(arrays::ZippedArrays, ::Type{Items}, dimensions::Dims) where {I
         Array{fieldtype(Items, index)}(undef, dimensions...)
 	@inbounds zip(ntuple(inner_similar, length(arrays.arrays))...)
 end
-empty(array::ZippedArrays{OldItems}, ::Type{NewItems} = OldItems) where {OldItems, NewItems} =
-    similar(array, NewItems)
-maybe_setindex_widen_up_to(array::AbstractArray{Item}, item, index) where Item =
+empty(array::ZippedArrays{Olds}, ::Type{News} = Olds) where {Olds, News} =
+    similar(array, News)
+maybe_setindex_widen_up_to(array::AbstractArray{Item}, item, index) where {Item} =
     if isa(item, Item)
         @inbounds array[index] = item
         array
     else
         setindex_widen_up_to(array, item, index)
     end
-setindex_widen_up_to(arrays::ZippedArrays, items, index...) =
-    @inbounds zip((let index = index
-        (array, item) -> maybe_setindex_widen_up_to(array, item, index...)
-    end).(arrays.arrays, items)...)
-maybe_push_widen(array::AbstractArray{Item}, item) where Item =
+setindex_widen_up_to(arrays::ZippedArrays, items, index...) = @inbounds zip(map(
+    (array, item) -> maybe_setindex_widen_up_to(array, item, index...),
+    arrays.arrays, items
+)...)
+maybe_push_widen(array::AbstractArray{Item}, item) where {Item} =
     if isa(item, Item)
         push!(array, item)
         array
@@ -62,11 +61,11 @@ maybe_push_widen(array::AbstractArray{Item}, item) where Item =
         push_widen(array, item)
     end
 push_widen(arrays::ZippedArrays, items) =
-    @inbounds zip(maybe_push_widen.(arrays.arrays, items)...)
-@propagate_inbounds view(arrays::ZippedArrays, index...) = zip(map(
-	array -> view(array, index...),
-	arrays.arrays
-)...)
+    @inbounds zip(map(maybe_push_widen, arrays.arrays, items)...)
+@propagate_inbounds function view(arrays::ZippedArrays, index...)
+    @propagate_inbounds inner_view(array) = view(array, index...)
+    zip(map(inner_view, arrays.arrays)...)
+end
 
 """
     unzip(it, n)
