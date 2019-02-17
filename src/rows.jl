@@ -150,8 +150,8 @@ julia> @> [1, 1, 2, 2] |>
         Join(_, By([1, 2], identity)) |>
         collect
 2-element Array{Pair{Pair{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},Int64},1}:
- (1=>[1, 1]) => 1
- (2=>[2, 2]) => 2
+ (1 => [1, 1]) => 1
+ (2 => [2, 2]) => 2
 ```
 
  For other join flavors, combine with [`when`](@ref).
