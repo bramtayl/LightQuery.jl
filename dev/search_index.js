@@ -169,7 +169,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#LightQuery.columns-Union{Tuple{Base.Generator{It,LightQuery.Names{names}}}, Tuple{names}, Tuple{It}} where names where It<:LightQuery.ZippedArrays",
+    "location": "#LightQuery.columns-Tuple{Base.Generator{#s23,#s14} where #s14<:LightQuery.Names where #s23<:LightQuery.ZippedArrays}",
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
