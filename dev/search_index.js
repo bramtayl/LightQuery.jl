@@ -117,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.By",
     "category": "type",
-    "text": "By(it, call)\n\nCheck whether it has been pre-sorted by the key call. For use with Group or Join.\n\njulia> using LightQuery\n\njulia> By([1, 2], identity)\nBy{Array{Int64,1},typeof(identity)}([1, 2], identity)\n\njulia> By([2, 1], identity)\nERROR: LightQuery.Unsorted()\n\n\n\n\n\n"
+    "text": "By(it, call)\n\nMark that it has been pre-sorted by call. For use with Group or Join.\n\njulia> using LightQuery\n\njulia> By([1, 2], identity)\nBy{Array{Int64,1},typeof(identity)}([1, 2], identity)\n\n\n\n\n\n"
 },
 
 {
@@ -133,7 +133,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Join",
     "category": "type",
-    "text": "Join(left::By, right::By)\n\nFind all pairs where isequal(left.call(left.it), right.call(right.it)). Assumes left and right are both strictly sorted (no repeats). If there are repeats, Group first. For other join flavors, combine with Filter.\n\njulia> using LightQuery\n\njulia> Join(\n            By([1, 2, 5, 6], identity),\n            By([1, 3, 4, 6], identity)\n        ) |>\n        collect\n6-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:\n       1 => 1\n       2 => missing\n missing => 3\n missing => 4\n       5 => missing\n       6 => 6\n\njulia> @> [1, 1, 2, 2] |>\n        Group(By(_, identity)) |>\n        By(_, first) |>\n        Join(_, By([1, 2], identity)) |>\n        collect\n2-element Array{Pair{Pair{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},Int64},1}:\n (1=>[1, 1]) => 1\n (2=>[2, 2]) => 2\n\njulia> @> Join(\n            By([1, 2, 5, 6], identity),\n            By([1, 3, 4, 6], identity)\n        ) |>\n        Filter((@_ !ismissing(_.first)), _) |>\n        collect\n4-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:\n 1 => 1\n 2 => missing\n 5 => missing\n 6 => 6\n\n\n\n\n\n"
+    "text": "Join(left::By, right::By)\n\nFind all pairs where isequal(left.call(left.it), right.call(right.it)).\n\njulia> using LightQuery\n\njulia> Join(\n            By([1, 2, 5, 6], identity),\n            By([1, 3, 4, 6], identity)\n        ) |>\n        collect\n6-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:\n       1 => 1\n       2 => missing\n missing => 3\n missing => 4\n       5 => missing\n       6 => 6\n\nAssumes left and right are both strictly sorted (no repeats). If there are repeats, Group first.\n\njulia> @> [1, 1, 2, 2] |>\n        Group(By(_, identity)) |>\n        By(_, first) |>\n        Join(_, By([1, 2], identity)) |>\n        collect\n2-element Array{Pair{Pair{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},Int64},1}:\n (1=>[1, 1]) => 1\n (2=>[2, 2]) => 2\n\nFor other join flavors, combine with when.\n\njulia> @> Join(\n            By([1, 2, 5, 6], identity),\n            By([1, 3, 4, 6], identity)\n        ) |>\n        when(_, @_ !ismissing(_.first)) |>\n        collect\n4-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:\n 1 => 1\n 2 => missing\n 5 => missing\n 6 => 6\n\n\n\n\n\n"
 },
 
 {
@@ -149,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Name",
     "category": "method",
-    "text": "Name(name)\n\nForce into the type domain. Can also be used as a function to getproperty with a defualt to missing.\n\njulia> using LightQuery\n\njulia> @> (a = 1,) |>\n        Name(:a)(_)\n1\n\njulia> @> (a = 1,) |>\n        Name(:b)(_)\nmissing\n\njulia> @> Name(:a)(missing)\nmissing\n\n\n\n\n\n"
+    "text": "Name(name)\n\nCreate a typed name. Can be used as a function to getproperty, with a default to missing. For multiple names, see Names.\n\njulia> using LightQuery\n\njulia> (a = 1,) |>\n        Name(:a)\n1\n\njulia> (a = 1,) |>\n        Name(:b)\nmissing\n\njulia> missing |>\n        Name(:a)\nmissing\n\n\n\n\n\n"
 },
 
 {
@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Names",
     "category": "method",
-    "text": "Names(the_names...)\n\nForce into the type domain. Can be used to as a function to select columns, with a default to missing.\n\njulia> using LightQuery\n\njulia> @> (a = 1, b = 1.0) |>\n        Names(:a)(_)\n(a = 1,)\n\njulia> @> (a = 1,) |>\n        Names(:a, :b)(_)\n(a = 1, b = missing)\n\njulia> Names(:a)(missing)\n(a = missing,)\n\n\n\n\n\n"
+    "text": "Names(the_names...)\n\nCreate typed names. Can be used to as a function to assign or select names, with a default to missing. For just one name, see Name.\n\njulia> using LightQuery\n\njulia> (1, 1.0) |>\n        Names(:a, :b)\n(a = 1, b = 1.0)\n\njulia> (a = 1, b = 1.0) |>\n        Names(:a)\n(a = 1,)\n\njulia> (a = 1,) |>\n        Names(:a, :b)\n(a = 1, b = missing)\n\njulia> missing |>\n        Names(:a)\n(a = missing,)\n\n\n\n\n\n"
 },
 
 {
@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.Peek",
     "category": "method",
-    "text": "Peek(it; max_rows = 4)\n\nGet a peek of an iterator which returns named tuples. If inference cannot detect names, it will use the names of the first item.\n\njulia> using LightQuery\n\njulia> [(a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8)] |>\n        Peek\n|  :a |  :b |  :c |  :d |  :e |  :f |  :g |  :h |\n| ---:| ---:| ---:| ---:| ---:| ---:| ---:| ---:|\n|   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |\n\njulia> (a = 1:6,) |>\n        rows |>\n        Peek\nShowing 4 of 6 rows\n|  :a |\n| ---:|\n|   1 |\n|   2 |\n|   3 |\n|   4 |\n\n\njulia> @> (a = 1:2,) |>\n        rows |>\n        Filter((@_ _.a > 1), _) |>\n        Peek\nShowing at most 4 rows\n|  :a |\n| ---:|\n|   2 |\n\n\n\n\n\n"
+    "text": "Peek(it; max_rows = 4)\n\nGet a peek of an iterator which returns named tuples. Will show no more than max_rows.\n\njulia> using LightQuery\n\njulia> (a = 1:5, b = 5:-1:1) |>\n        rows |>\n        Peek\nShowing 4 of 5 rows\n|  :a |  :b |\n| ---:| ---:|\n|   1 |   5 |\n|   2 |   4 |\n|   3 |   3 |\n|   4 |   2 |\n\nIf inference cannot detect names, it will use the names of the first item. Map Names over it to override this behavior.\n\njulia> [(a = 1,), (a = 2, b = 2.0)] |>\n        Peek\n|  :a |\n| ---:|\n|   1 |\n|   2 |\n\njulia> @> [(a = 1,), (a = 2, b = 2.0)] |>\n        over(_, Names(:a, :b)) |>\n        Peek\n|  :a |      :b |\n| ---:| -------:|\n|   1 | missing |\n|   2 |     2.0 |\n\n\n\n\n\n"
 },
 
 {
@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.columns",
     "category": "method",
-    "text": "columns(it)\n\nInverse of rows.\n\njulia> using LightQuery\n\njulia> (a = [1], b = [1.0]) |>\n        rows |>\n        columns\n(a = [1], b = [1.0])\n\n\n\n\n\n"
+    "text": "columns(it)\n\nInverse of rows. Always lazy, see make_columns for eager version.\n\njulia> using LightQuery\n\njulia> (a = [1], b = [1.0]) |>\n        rows |>\n        columns\n(a = [1], b = [1.0])\n\n\n\n\n\n"
 },
 
 {
@@ -189,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.key",
     "category": "method",
-    "text": "key(p::Pair)\n\np.first\n\n\n\n\n\n"
+    "text": "key(it)\n\nThe key in a key => value pair.\n\n\n\n\n\n"
 },
 
 {
@@ -197,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.make_columns",
     "category": "method",
-    "text": "make_columns(it)\n\nCollect into columns. See also columns. If inference cannot detect names, it will use the names of the first item. Use a Generator of Names to be more explicit if necessary.\n\njulia> using LightQuery\n\njulia> [(a = 1, b = 1.0), (a = 2, b = 2.0)] |>\n        make_columns\n(a = [1, 2], b = [1.0, 2.0])\n\njulia> @> [(a = 1,), (a = 2, b = 2.0)] |>\n        Generator(Names(:a, :b), _) |>\n        make_columns\n(a = [1, 2], b = Union{Missing, Float64}[missing, 2.0])\n\n\n\n\n\n"
+    "text": "make_columns(it)\n\nCollect into columns. Always eager, see columns lazy version.\n\njulia> using LightQuery\n\njulia> [(a = 1, b = 1.0), (a = 2, b = 2.0)] |>\n        make_columns\n(a = [1, 2], b = [1.0, 2.0])\n\nIf inference cannot detect names, it will use the names of the first item. Map Names over it to override this behavior.\n\njulia> [(a = 1,), (a = 2, b = 2.0)] |>\n        Peek\n|  :a |\n| ---:|\n|   1 |\n|   2 |\n\njulia> @> [(a = 1,), (a = 2, b = 2.0)] |>\n        over(_, Names(:a, :b)) |>\n        Peek\n|  :a |      :b |\n| ---:| -------:|\n|   1 | missing |\n|   2 |     2.0 |\n\n\n\n\n\n"
 },
 
 {
@@ -205,7 +205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.named_tuple",
     "category": "method",
-    "text": "named_tuple(it)\n\nCoerce to a named_tuple. For performance with working with arbitrary structs, requires propertynames to constant propagate.\n\njulia> using LightQuery\n\njulia> @inline Base.propertynames(p::Pair) = (:first, :second);\n\njulia> named_tuple(:a => 1)\n(first = :a, second = 1)\n\n\n\n\n\n"
+    "text": "named_tuple(it)\n\nCoerce to a named_tuple. For performance with working with arbitrary structs, define and @inline propertynames.\n\njulia> using LightQuery\n\njulia> @inline Base.propertynames(p::Pair) = (:first, :second);\n\njulia> named_tuple(:a => 1)\n(first = :a, second = 1)\n\n\n\n\n\n"
 },
 
 {
@@ -221,7 +221,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.over",
     "category": "method",
-    "text": "over(it, f)\n\nBase.Generator with argument order reversed.\n\n\n\n\n\n"
+    "text": "over(it, call)\n\nLazy map with argument order reversed.\n\n\n\n\n\n"
 },
 
 {
@@ -237,7 +237,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.rename",
     "category": "method",
-    "text": "rename(it; renames...)\n\nRename it.\n\njulia> using LightQuery\n\njulia> @> (a = 1, b = 1.0) |>\n        rename(_, c = Name(:a))\n(b = 1.0, c = 1)\n\n\n\n\n\n"
+    "text": "rename(it; renames...)\n\nRename it. Because constants do not constant propagate through key-word arguments, wrap with Name.\n\njulia> using LightQuery\n\njulia> @> (a = 1, b = 1.0) |>\n        rename(_, c = Name(:a))\n(b = 1.0, c = 1)\n\n\n\n\n\n"
 },
 
 {
@@ -245,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.row_type",
     "category": "method",
-    "text": "row_type(f::CSV.File)\n\nFind the type of a row of a CSV.File if it was converted to a named_tuple. Useful to make type annotations to ensure stability.\n\njulia> using LightQuery\n\njulia> @> \"test.csv\" |>\n        CSV.File(_, allowmissing = :auto) |>\n        row_type\nNamedTuple{(:a, :b),T} where T<:Tuple{Int64,Float64}\n\n\n\n\n\n"
+    "text": "row_type(file::CSV.File)\n\nFind the type of a row of a CSV.File if it was converted to a named_tuple. Useful to make type annotations to ensure stability.\n\njulia> using LightQuery\n\njulia> @> \"test.csv\" |>\n        CSV.File(_, allowmissing = :auto) |>\n        row_type\nNamedTuple{(:a, :b),T} where T<:Tuple{Int64,Float64}\n\n\n\n\n\n"
 },
 
 {
@@ -269,7 +269,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.transform",
     "category": "method",
-    "text": "transform(it; assignments...)\n\nMerge assignments into it.\n\njulia> using LightQuery\n\njulia> transform((a = 1,), b = 1.0)\n(a = 1, b = 1.0)\n\n\n\n\n\n"
+    "text": "transform(it; assignments...)\n\nMerge assignments into it. Inverse of remove.\n\njulia> using LightQuery\n\njulia> @> (a = 1,) |>\n        transform(_, b = 1.0)\n(a = 1, b = 1.0)\n\n\n\n\n\n"
 },
 
 {
@@ -277,7 +277,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.unzip",
     "category": "method",
-    "text": "unzip(it, n)\n\nUnzip an iterator it which returns tuples of length n.\n\njulia> using LightQuery\n\njulia> unzip([(1, 1.0), (2, 2.0)], 2)\n([1, 2], [1.0, 2.0])\n\n\n\n\n\n"
+    "text": "unzip(it, n)\n\nUnzip an iterator it which returns tuples of length n. Use Val(n) to guarantee type stability.\n\njulia> using LightQuery\n\njulia> unzip([(1, 1.0), (2, 2.0)], 2)\n([1, 2], [1.0, 2.0])\n\njulia> unzip([(1, 1.0), (2, 2.0)], Val(2))\n([1, 2], [1.0, 2.0])\n\n\n\n\n\n"
 },
 
 {
@@ -285,7 +285,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.value",
     "category": "method",
-    "text": "value(p::Pair)\n\np.second\n\n\n\n\n\n"
+    "text": "value(it)\n\nThe value in a key => value pair.\n\n\n\n\n\n"
 },
 
 {
@@ -293,7 +293,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.when",
     "category": "method",
-    "text": "when(it, f)\n\nBase.Filter with argument order reversed.\n\n\n\n\n\n"
+    "text": "when(it, call)\n\nLazy filter with argument order reversed.\n\n\n\n\n\n"
 },
 
 {
@@ -309,7 +309,7 @@ var documenterSearchIndex = {"docs": [
     "page": "LightQuery.jl",
     "title": "LightQuery.@_",
     "category": "macro",
-    "text": "macro _(body)\n\nTerser function syntax. The arguments are inside the body; the first argument is _, the second argument is __, etc.\n\njulia> using LightQuery\n\njulia> (@_ _ + 1)(1)\n2\n\njulia> map((@_ __ - _), (1, 2), (2, 1))\n(1, -1)\n\n\n\n\n\n"
+    "text": "macro _(body)\n\nTerser function syntax. The arguments are inside the body; the first argument is _, the second argument is __, etc. Will always @inline.\n\njulia> using LightQuery\n\njulia> (@_ _ + 1)(1)\n2\n\njulia> map((@_ __ - _), (1, 2), (2, 1))\n(1, -1)\n\n\n\n\n\n"
 },
 
 {
