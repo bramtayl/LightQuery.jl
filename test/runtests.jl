@@ -51,6 +51,10 @@ f2(x) = iseven(x) ? (x, x + 0.0) : (x, missing)
          test(Generator(f2, Filter(x -> true, [1, 2, 3]))),
          ([1, 2, 3], Union{Missing, Float64}[missing, 2.0, missing])
     )
+    @test isequal(
+         test(Generator(f2, [1, 2, 3])),
+         ([1, 2, 3], Union{Missing, Float64}[missing, 2.0, missing])
+    )
     @test_throws ArgumentError zip([1], [1, 2])
 end
 
