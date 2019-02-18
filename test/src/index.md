@@ -367,6 +367,7 @@ Showing 4 of 329174 rows
 
 You might notice that if the origin and the destination are the same, then the
 distance is also the same. We can see this by [`order`](@ref) ing the data.
+Note that [`Names`](@ref) can be used as a function to select columns.
 
 ```jldoctest dplyr
 julia> by_path =
