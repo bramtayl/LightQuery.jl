@@ -108,7 +108,7 @@ julia> @> (a = 1, b = 1.0) |>
 ```
 """
 @inline function rename(it; renames...)
-    old_names = inner_name.(Tuple(renames.data))
+    old_names = map(inner_name, Tuple(renames.data))
     new_names = propertynames(renames.data)
     merge(
         remove(it, old_names...),
@@ -186,7 +186,7 @@ julia> @> (b = 1.0, d = (a = 1, c = 1//1)) |>
 """
 @inline function spread(it, the_names...)
     @inline from_it(name) = getproperty(it, name)
-    merge(remove(it, the_names...), from_it.(the_names)...)
+    merge(remove(it, the_names...), map(from_it, the_names)...)
 end
 export spread
 

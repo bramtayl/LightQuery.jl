@@ -146,6 +146,6 @@ function make_columns(it)
     the_names = item_names(it)
     selector = Names(the_names...)
     @inline unwrap(row) = Tuple(selector(row))
-    selector(unzip(Generator(unwrap, it), Val(length(the_names))))
+    selector(unzip(Generator(unwrap, it), length(the_names)))
 end
 export make_columns

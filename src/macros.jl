@@ -33,6 +33,7 @@ function anonymous(location, body::Expr)
         )
     )
 end
+
 """
     macro _(body)
 
@@ -50,7 +51,10 @@ julia> map((@_ __ - _), (1, 2), (2, 1))
 ```
 """
 macro _(body)
-    anonymous(LineNumberNode(@__LINE__, @__FILE__), macroexpand(@__MODULE__, body)) |> esc
+    anonymous(
+        LineNumberNode(@__LINE__, Symbol(@__FILE__)),
+        macroexpand(@__MODULE__, body)
+    ) |> esc
 end
 export @_
 
@@ -75,6 +79,9 @@ julia> @> 0 |> _ - 1 |> abs
 ```
 """
 macro >(body)
-    chain(LineNumberNode(@__LINE__, @__FILE__), macroexpand(@__MODULE__, body)) |> esc
+    chain(
+        LineNumberNode(@__LINE__, Symbol(@__FILE__)),
+        macroexpand(@__MODULE__, body)
+    ) |> esc
 end
 export @>
