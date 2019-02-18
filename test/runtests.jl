@@ -53,7 +53,6 @@ using Test
          test(Generator(f2, Filter(x -> true, [1, 2, 3]))),
          ([1, 2, 3], Union{Missing, Float64}[1.0, 2.0, missing])
     )
-    @test_throws ArgumentError zip([1], [1, 2])
 end
 
 @testset "iterators" begin
