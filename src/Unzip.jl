@@ -1,14 +1,7 @@
 struct ZippedArrays{Items, Dimensions, Arrays} <: AbstractArray{Items, Dimensions}
     arrays::Arrays
 end
-@propagate_inbounds function ZippedArrays(model, rest...)
-    @boundscheck foreach(
-        array ->
-            if axes(array) != axes(model)
-                throw(ArgumentError("All arrays passed to zip must have the same size"))
-            end,
-        rest
-    )
+function ZippedArrays(model, rest...)
     arrays = (model, rest...)
     ZippedArrays{
         Tuple{eltype.(arrays)...},
@@ -33,12 +26,12 @@ end
 push!(arrays::ZippedArrays, values) = push!.(arrays.arrays, values)
 function similar(arrays::ZippedArrays, ::Type, dimensions::Dims)
 	@inline inner_similar(index) = Array{Any}(undef, dimensions...)
-	@inbounds zip(ntuple(inner_similar, length(arrays.arrays))...)
+	zip(ntuple(inner_similar, length(arrays.arrays))...)
 end
 function similar(arrays::ZippedArrays, ::Type{Items}, dimensions::Dims) where {Items <: Tuple}
 	@inline inner_similar(index) =
         Array{fieldtype(Items, index)}(undef, dimensions...)
-	@inbounds zip(ntuple(inner_similar, length(arrays.arrays))...)
+	zip(ntuple(inner_similar, length(arrays.arrays))...)
 end
 empty(array::ZippedArrays{Olds}, ::Type{News} = Olds) where {Olds, News} =
     similar(array, News)
@@ -49,8 +42,8 @@ maybe_setindex_widen_up_to(array::AbstractArray{Item}, item, index) where {Item}
     else
         setindex_widen_up_to(array, item, index)
     end
-setindex_widen_up_to(arrays::ZippedArrays, items, index...) = @inbounds zip(map(
-    (array, item) -> maybe_setindex_widen_up_to(array, item, index...),
+setindex_widen_up_to(arrays::ZippedArrays, items, index) = zip(map(
+    (array, item) -> maybe_setindex_widen_up_to(array, item, index),
     arrays.arrays, items
 )...)
 maybe_push_widen(array::AbstractArray{Item}, item) where {Item} =
@@ -61,11 +54,9 @@ maybe_push_widen(array::AbstractArray{Item}, item) where {Item} =
         push_widen(array, item)
     end
 push_widen(arrays::ZippedArrays, items) =
-    @inbounds zip(map(maybe_push_widen, arrays.arrays, items)...)
-@propagate_inbounds function view(arrays::ZippedArrays, index...)
-    @propagate_inbounds inner_view(array) = view(array, index...)
-    zip(map(inner_view, arrays.arrays)...)
-end
+    zip(map(maybe_push_widen, arrays.arrays, items)...)
+view(arrays::ZippedArrays, index...) =
+    zip(map(array -> view(array, index...), arrays.arrays)...)
 """
     unzip(it, n)
 
@@ -91,5 +82,4 @@ julia> unzip([(1, 1.0), (2, 2.0)], Val(2))
 export unzip
 
 # piracy
-@propagate_inbounds zip(model::AbstractArray, rest::AbstractArray...) =
-    ZippedArrays(model, rest...)
+zip(model::AbstractArray, rest::AbstractArray...) = ZippedArrays(model, rest...)
