@@ -2,8 +2,8 @@
 
 I'm going to use the flights data from the
 [dplyr tutorial](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html).
-This data is in the test folder of this package. I re-export `CSV` for
-input-output.
+This data is in the test folder of this package. I re-export
+[`CSV`](http://juliadata.github.io/CSV.jl/stable/) for input-output.
 
 ```jldoctest dplyr
 julia> using LightQuery
