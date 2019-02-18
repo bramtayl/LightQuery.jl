@@ -52,7 +52,7 @@ julia> map((@_ __ - _), (1, 2), (2, 1))
 """
 macro _(body)
     anonymous(
-        LineNumberNode(@__LINE__, Symbol(@__FILE__)),
+        __source__,
         macroexpand(@__MODULE__, body)
     ) |> esc
 end
@@ -80,7 +80,7 @@ julia> @> 0 |> _ - 1 |> abs
 """
 macro >(body)
     chain(
-        LineNumberNode(@__LINE__, Symbol(@__FILE__)),
+        __source__,
         macroexpand(@__MODULE__, body)
     ) |> esc
 end
