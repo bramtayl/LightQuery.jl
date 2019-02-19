@@ -2,28 +2,38 @@ substitute_underscores!(dictionary, body) = body
 substitute_underscores!(dictionary, body::Symbol) =
     if all(isequal('_'), string(body))
         if !haskey(dictionary, body)
-            dictionary[body] = gensym("`_`")
+            dictionary[body] = gensym(body)
         end
         dictionary[body]
     else
         body
     end
-substitute_underscores!(dictionary, body::Expr) =
+function substitute_underscores!(dictionary, body::Expr)
+    # have to do this the old fashioned way, _ has a special meaning in MacroTools
+    if body.head === :macrocall && length(body.args) === 3
+        name, location, inner_body = body.args
+        if name === Symbol("@_")
+            body = anonymous(location, inner_body)
+        elseif name === Symbol("@>")
+            body = chain(location, inner_body)
+        end
+    end
     Expr(body.head, map(
         let dictionary = dictionary
             body -> substitute_underscores!(dictionary, body)
         end,
         body.args
     )...)
+end
 anonymous(location, body) = body
 function anonymous(location, body::Expr)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
     arguments = Generator(
         pair -> pair.second,
-        sort(collect(dictionary))
+        sort!(collect(dictionary), by = first)
     )
-    function_name = gensym(string('`', body, '`'))
+    function_name = Symbol(string("(@_ ", body, ")"))
     Expr(:function,
         Expr(:call, function_name, arguments...),
         Expr(:block,
@@ -33,7 +43,6 @@ function anonymous(location, body::Expr)
         )
     )
 end
-
 """
     macro _(body)
 
@@ -51,10 +60,7 @@ julia> map((@_ __ - _), (1, 2), (2, 1))
 ```
 """
 macro _(body)
-    anonymous(
-        __source__,
-        macroexpand(@__MODULE__, body)
-    ) |> esc
+    anonymous(__source__, body) |> esc
 end
 export @_
 
@@ -79,9 +85,6 @@ julia> @> 0 |> _ - 1 |> abs
 ```
 """
 macro >(body)
-    chain(
-        __source__,
-        macroexpand(@__MODULE__, body)
-    ) |> esc
+    chain(__source__, body) |> esc
 end
 export @>
