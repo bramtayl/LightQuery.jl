@@ -149,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Tutorial",
     "title": "LightQuery.order",
     "category": "function",
-    "text": "order(it, call; keywords...)\norder(it, call, condition; keywords...)\n\nGeneralized sort. keywords will be passed to sort!; see the documentation there for options. See By for a way to explicitly mark that an object has been sorted. Most performant if call is type stable, if not, consider using a condition to filter.\n\njulia> using LightQuery\n\njulia> order([2, 1], identity)\n2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:\n 1\n 2\n\njulia> order([2, 1, missing], identity, !ismissing)\n2-element view(::Array{Union{Missing, Int64},1}, [2, 1]) with eltype Union{Missing, Int64}:\n 1\n 2\n\n\n\n\n\n"
+    "text": "order(it, call; keywords...)\n\nGeneralized sort. keywords will be passed to sort!; see the documentation there for options. See By for a way to explicitly mark that an object has been sorted.\n\njulia> using LightQuery\n\njulia> order([2, 1], identity)\n2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:\n 1\n 2\n\n\n\n\n\n    order(it, call, condition; keywords...)\n\nIf `call` is not type stable, consider adding a `condition` to filter.\n\n\njldoctest order julia> using LightQuery\n\njulia> order([2, 1, missing], identity, !ismissing) 2-element view(::Array{Union{Missing, Int64},1}, [2, 1]) with eltype Union{Missing, Int64}:  1  2 ```\n\n\n\n\n\n"
 },
 
 {
