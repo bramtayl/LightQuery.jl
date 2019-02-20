@@ -16,12 +16,10 @@ export when
 
 """
     order(it, call; keywords...)
-    order(it, call, condition; keywords...)
 
 Generalized sort. `keywords` will be passed to `sort!`; see the documentation
 there for options. See [`By`](@ref) for a way to explicitly mark that an object
-has been sorted. Most performant if `call` is type stable, if not, consider
-using a `condition` to filter.
+has been sorted.
 
 ```jldoctest
 julia> using LightQuery
@@ -30,6 +28,21 @@ julia> order([2, 1], identity)
 2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
  1
  2
+```
+"""
+order(it, call; keywords...) =
+    view(it, mappedarray(first,
+        sort!(collect(enumerate(Generator(call, it))), by = last; keywords...)
+    ))
+
+"""
+```
+    order(it, call, condition; keywords...)
+
+If `call` is not type stable, consider adding a `condition` to filter.
+
+```jldoctest order
+julia> using LightQuery
 
 julia> order([2, 1, missing], identity, !ismissing)
 2-element view(::Array{Union{Missing, Int64},1}, [2, 1]) with eltype Union{Missing, Int64}:
@@ -37,10 +50,6 @@ julia> order([2, 1, missing], identity, !ismissing)
  2
 ```
 """
-order(it, call; keywords...) =
-    view(it, mappedarray(first,
-        sort!(collect(enumerate(Generator(call, it))), by = last; keywords...)
-    ))
 order(it, call, condition; keywords...) =
     view(it, mappedarray(first,
         sort!(collect(Filter(
