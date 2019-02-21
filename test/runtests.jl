@@ -14,7 +14,6 @@ using Test
 
 @inline Base.propertynames(p::Pair) = (:first, :second);
 
-test_Name(x) = (x)
 test_spread(x) = spread(x, :d)
 test_remove(x) = remove(x, :b)
 test_rename(x) = rename(x, c = Name(:a))
@@ -31,11 +30,10 @@ test_rename(x) = rename(x, c = Name(:a))
     @test @inferred(test_spread((b = 1.0, d = (a = 1, c = 1//1)))) == (b = 1.0, a = 1, c = 1//1)
 end
 
-
 f(x) = (x, x + 0.0)
 test(x) = unzip(x, 2)
 f2(x) = x < 3 ? (x, x + 0.0) : (x, missing)
-using Test
+
 @testset "Unzip" begin
     @test collect(zip([1, 2], [1.0, 2.0])) == [(1, 1.0), (2, 2.0)]
     @test isequal(

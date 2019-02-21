@@ -19,9 +19,7 @@ function substitute_underscores!(dictionary, body::Expr)
         end
     end
     Expr(body.head, map(
-        let dictionary = dictionary
-            body -> substitute_underscores!(dictionary, body)
-        end,
+        body -> substitute_underscores!(dictionary, body),
         body.args
     )...)
 end
@@ -29,20 +27,15 @@ anonymous(location, body) = body
 function anonymous(location, body::Expr)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
-    arguments = Generator(
-        pair -> pair.second,
-        sort!(collect(dictionary), by = first)
-    )
-    function_name = Symbol(string("(@_ ", body, ")"))
     Expr(:function,
-        Expr(:call, function_name, arguments...),
-        Expr(:block,
-            Expr(:meta, :inline),
-            location,
-            new_body
-        )
+        Expr(:call, Symbol(string("(@_ ", body, ")")), Generator(
+            pair -> pair.second,
+            sort!(collect(dictionary), by = first)
+        )...),
+        Expr(:block, Expr(:meta, :inline), location, new_body)
     )
 end
+
 """
     macro _(body)
 
