@@ -8,8 +8,7 @@ This data is in the test folder of this package. I re-export
 ```jldoctest dplyr
 julia> using LightQuery
 
-julia> fname_airports = joinpath(dirname(pathof(LightQuery)), "../test/airports.csv");
-julia> airports_file = CSV.File(fname_airports, allowmissing = :auto)
+julia> airports_file = CSV.File("airports.csv", allowmissing = :auto)
 CSV.File("airports.csv", rows=1458):
 Tables.Schema:
  :faa    String
@@ -182,8 +181,7 @@ We did it! That was just the warm-up. Now let's get started working on the
 flights data.
 
 ```jldoctest dplyr
-julia> fname_flights = joinpath(dirname(pathof(LightQuery)), "../test/flights.csv");
-julia> flights_file = CSV.File(fname_flights, allowmissing = :auto)
+julia> flights_file = CSV.File("flights.csv", allowmissing = :auto)
 CSV.File("flights.csv", rows=336776):
 Tables.Schema:
  :year            Int64
