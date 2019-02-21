@@ -21,7 +21,7 @@ Tables.Schema:
  :tzone  String
 ```
 
-`allowmissing = :auto` tells CSV to guess whether columns might contain misisng
+`allowmissing = :auto` tells CSV to guess whether columns might contain missing
 data.
 
 Let's take a look at the first row. Use [`named_tuple`](@ref) to coerce a
