@@ -36,7 +36,6 @@ order(it, call; keywords...) =
     ))
 
 """
-```
     order(it, call, condition; keywords...)
 
 If `call` is not type stable, consider adding a `condition` to filter.
