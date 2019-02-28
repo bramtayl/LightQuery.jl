@@ -18,6 +18,10 @@ test_spread(x) = spread(x, :d)
 test_remove(x) = remove(x, :b)
 test_rename(x) = rename(x, c = Name(:a))
 
+@testset "macros" begin
+    @test (@> 1 |> (@> _ |> _ + 1)) == 2
+end
+
 @testset "named_tuples" begin
     @test @inferred(Name(:a)((a = 1, b = 1.0))) == 1
     @test @inferred(Names(:a)((a = 1, b = 1.0))) == (a = 1,)
