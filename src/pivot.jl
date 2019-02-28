@@ -20,8 +20,7 @@ julia> [(a = 1, b = 1.0), (a = 2, b = 2.0)] |>
 (:a, :b)
 ```
 
-If inference cannot detect names, it will use `propertynames` of the first item.
-Map [`Names`](@ref) [`over`](@ref) `it` to override this behavior.
+If inference cannot detect names, it will use `propertynames` of the first item. Map [`Names`](@ref) [`over`](@ref) `it` to override this behavior.
 
 ```jldoctest item_names
 julia> [(a = 1,), (a = 2, b = 2.0)] |>
@@ -48,8 +47,7 @@ export item_names
 """
     rows(it)
 
-Iterator over `rows` of a `NamedTuple` of arrays. Always lazy. Inverse of
-[`columns`](@ref). See [`Peek`](@ref) for a way to view.
+Iterator over `rows` of a `NamedTuple` of arrays. Always lazy. Inverse of [`columns`](@ref). See [`Peek`](@ref) for a way to view.
 
 ```jldoctest
 julia> using LightQuery
@@ -76,8 +74,7 @@ export Peek
 """
     Peek(it; max_rows = 4)
 
-Get a peek of an iterator which returns named tuples. Will show no more than
-`max_rows`. Relies on [`item_names`](@ref).
+Get a peek of an iterator which returns items with `propertynames`. Will show no more than `max_rows`. Relies on [`item_names`](@ref).
 
 ```jldoctest Peek
 julia> using LightQuery
@@ -131,8 +128,7 @@ export columns
 """
     make_columns(it)
 
-Collect into columns. Always eager, see [`columns`](@ref) for lazy version.
-Relies on [`item_names`](@ref).
+Collect into columns. Always eager, see [`columns`](@ref) for lazy version. Relies on [`item_names`](@ref).
 
 ```jldoctest make_columns
 julia> using LightQuery

@@ -14,49 +14,142 @@ Lazy `filter` with argument order reversed.
 when(it, call) = Filter(call, it)
 export when
 
-"""
-    order(it, call; keywords...)
 
-Generalized sort. `keywords` will be passed to `sort!`; see the documentation
-there for options. See [`By`](@ref) for a way to explicitly mark that an object
-has been sorted.
+state_to_index(it::AbstractArray, state) = state[2]
+state_to_index(it::Array, state::Int) = state - 1
+state_to_index(it::Filter, state) = state_to_index(it.itr, state)
+state_to_index(it::Generator, state) = state_to_index(it.iter, state)
+"""
+    Enumerated{It}
+
+Relies on the fact that iteration states can be converted to indices; thus, you might have to define `LightQuery.state_to_index` for unrecognized types. Ignores some iterators like `Filter`.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> order([2, 1], identity)
-2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
- 1
- 2
+julia> when([4, 3, 2, 1], iseven) |> Enumerated |> collect
+2-element Array{Tuple{Int64,Int64},1}:
+ (1, 4)
+ (3, 2)
+```
+"""
+struct Enumerated{It}
+    it::It
+end
+IteratorEltype(::Type{Enumerated{It}}) where {It} = IteratorEltype(It)
+eltype(::Type{Enumerated{It}}) where {It} = Tuple{Int, eltype(It)}
+IteratorSize(::Type{Enumerated{It}}) where {It} = IteratorSize(It)
+length(it::Enumerated) = length(it.it)
+size(it::Enumerated) = size(it.it)
+axes(it::Enumerated) = axes(it.it)
+function iterate(it::Enumerated)
+    item, state = @ifsomething iterate(it.it)
+    (state_to_index(it.it, state), item), state
+end
+function iterate(it::Enumerated, state)
+    item, state = @ifsomething iterate(it.it, state)
+    (state_to_index(it.it, state), item), state
+end
+export Enumerated
+
+"""
+    order(it, call; keywords...)
+
+Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. See [`By`](@ref) for a way to explicitly mark that an object has been sorted. Relies on [`Enumerated`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> order([
+            (item = "b", index = 2),
+            (item = "a", index = 1)
+        ], Names(:index))
+2-element view(::Array{NamedTuple{(:item, :index),Tuple{String,Int64}},1}, [2, 1]) with eltype NamedTuple{(:item, :index),Tuple{String,Int64}}:
+ (item = "a", index = 1)
+ (item = "b", index = 2)
 ```
 """
 order(it, call; keywords...) =
     view(it, mappedarray(first,
-        sort!(collect(enumerate(Generator(call, it))), by = last; keywords...)
-    ))
-
-"""
-    order(it, call, condition; keywords...)
-
-If `call` is not type stable, consider adding a `condition` to filter.
-
-```jldoctest order
-julia> using LightQuery
-
-julia> order([2, 1, missing], identity, !ismissing)
-2-element view(::Array{Union{Missing, Int64},1}, [2, 1]) with eltype Union{Missing, Int64}:
- 1
- 2
-```
-"""
-order(it, call, condition; keywords...) =
-    view(it, mappedarray(first,
-        sort!(collect(Filter(
-            pair -> condition(pair[2]),
-            enumerate(Generator(call, it))
-        )), by = last; keywords...)
+        sort!(collect(Enumerated(Generator(call, it))), by = last; keywords...)
     ))
 export order
+
+function similar(old::Dict, ::Type{Pair{Key, Value}}) where {Key, Value}
+    Dict{Key, Value}(old)
+end
+function copyto!(dictionary::Dict{Key, Value}, array::AbstractVector{Pair{Key, Value}}) where {Key, Value}
+    for item in array
+        dictionary[item.first] = item.second
+    end
+    dictionary
+end
+
+struct Indexed{It, Indices}
+    it::It
+    indices::Indices
+end
+@propagate_inbounds function getindex(it::Indexed, index)
+    inner_index = get(it.indices, index, missing)
+    if inner_index === missing
+        missing
+    else
+        it.it[inner_index]
+    end
+end
+function iterate(it::Indexed)
+    item, state = @ifsomething iterate(it.indices)
+    (item.first => it.it[item.second]), state
+end
+function iterate(it::Indexed, state)
+    item, state = @ifsomething iterate(it.indices, state)
+    (item.first => it.it[item.second]), state
+end
+IteratorSize(::Type{Indexed{It, Indices}}) where {It, Indices} =
+    IteratorSize(Indices)
+length(it::Indexed) = length(it.indices)
+size(it::Indexed) = size(it.indices)
+axes(it::Indexed) = axes(it.indices)
+IteratorEltype(::Type{Indexed{It, Indices}}) where {It, Indices} =
+    combine_iterator_eltype(IteratorEltype(It), IteratorEltype(Indices))
+eltype(::Type{Indexed{It, Indices}}) where {It, Indices} =
+    Pair{keytype(Indices), Union{Missing, eltype(It)}}
+"""
+    indexed(it, call)
+
+Index `it` by the results of `call`, with a default to `missing`. Relies on
+[`Enumerated`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> result = indexed(
+            [
+                (item = "b", index = 2),
+                (item = "a", index = 1)
+            ],
+            Name(:index)
+        );
+
+julia> result[1]
+(item = "a", index = 1)
+
+julia> result[3]
+missing
+"""
+function indexed(it, call)
+    Indexed(it, collect_similar(
+        Dict{Union{}, Union{}}(),
+        Generator(
+            index_item -> begin
+                index, item = index_item
+                call(item) => index
+            end,
+            Enumerated(it)
+        )
+    ))
+end
+export indexed
 
 """
     By(it, call)
@@ -67,8 +160,10 @@ Mark that `it` has been pre-sorted by `call`. For use with [`Group`](@ref) or
 ```jldoctest
 julia> using LightQuery
 
-julia> By([1, 2], identity)
-By{Array{Int64,1},typeof(identity)}([1, 2], identity)
+julia> By([
+            (item = "a", index = 1),
+            (item = "b", index = 2)
+        ], Names(:index));
 ```
 """
 struct By{It, Call}
@@ -77,9 +172,7 @@ struct By{It, Call}
 end
 export By
 
-state_to_index(it::AbstractArray, state) = state[2] + 1
-state_to_index(it::Array, state::Int) = state
-state_to_index(it::Generator, state) = state_to_index(it.iter, state)
+
 struct Group{It, Call}
     it::It
     call::Call
@@ -87,17 +180,24 @@ end
 """
     Group(it::By)
 
-Group consecutive keys in `it`. Requires a presorted object (see [`By`](@ref)).
-Relies on the fact that iteration states can be converted to indices; thus,
-you might have to define `LightQuery.state_to_index` for unrecognized types.
+Group consecutive keys in `it`. Requires a presorted object (see [`By`](@ref)). Relies on [`Enumerated`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> Group(By([1, 3, 2, 4], iseven)) |> collect
-2-element Array{Pair{Bool,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
- 0 => [1, 3]
- 1 => [2, 4]
+julia> Group(By(
+            [
+                (item = "a", group = 1),
+                (item = "b", group = 1),
+                (item = "c", group = 2),
+                (item = "d", group = 2)
+            ],
+            Names(:group)
+        )) |>
+        collect
+2-element Array{Pair{NamedTuple{(:group,),Tuple{Int64}},SubArray{NamedTuple{(:item, :group),Tuple{String,Int64}},1,Array{NamedTuple{(:item, :group),Tuple{String,Int64}},1},Tuple{UnitRange{Int64}},true}},1}:
+ (group = 1,) => [(item = "a", group = 1), (item = "b", group = 1)]
+ (group = 2,) => [(item = "c", group = 2), (item = "d", group = 2)]
 ```
 """
 Group(it::By) = Group(it.it, it.call)
@@ -120,13 +220,13 @@ function iterate(it::Group, (state, left_index, last_result))
                 result = it.call(item)
             end
         end
-        right_index = state_to_index(it.it, state) - 1
+        right_index = state_to_index(it.it, state)
         last_result => (@inbounds view(it.it, left_index:right_index - 1)), (state, right_index, result)
     end
 end
 function iterate(it::Group)
     item, state = @ifsomething iterate(it.it)
-    iterate(it, (state, state_to_index(it.it, state) - 1, it.call(item)))
+    iterate(it, (state, state_to_index(it.it, state), it.call(item)))
 end
 export Group
 
@@ -167,50 +267,36 @@ Find all pairs where `isequal(left.call(left.it), right.call(right.it))`.
 julia> using LightQuery
 
 julia> Join(
-            By([1, 2, 5, 6], identity),
-            By([1, 3, 4, 6], identity)
+            By(
+                [
+                    (left = "a", index = 1),
+                    (left = "b", index = 2),
+                    (left = "e", index = 5),
+                    (left = "f", index = 6)
+                ],
+                Names(:index)
+            ),
+            By(
+                [
+                    (right = "a", index = 1),
+                    (right = "c", index = 3),
+                    (right = "d", index = 4),
+                    (right = "e", index = 6)
+                ],
+                Names(:index)
+            )
         ) |>
         collect
-6-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
-       1 => 1
-       2 => missing
- missing => 3
- missing => 4
-       5 => missing
-       6 => 6
+6-element Array{Pair{Union{Missing, NamedTuple{(:left, :index),Tuple{String,Int64}}},Union{Missing, NamedTuple{(:right, :index),Tuple{String,Int64}}}},1}:
+ (left = "a", index = 1) => (right = "a", index = 1)
+ (left = "b", index = 2) => missing
+                 missing => (right = "c", index = 3)
+                 missing => (right = "d", index = 4)
+ (left = "e", index = 5) => missing
+ (left = "f", index = 6) => (right = "e", index = 6)
 ```
 
-Assumes `left` and `right` are both strictly sorted (no repeats). If there are
-repeats, [`Group`](@ref) first.
-
-```jldoctest Join
-julia> @> [1, 1, 2, 2] |>
-        Group(By(_, identity)) |>
-        By(_, first) |>
-        Join(_, By([1, 2], identity)) |>
-        collect
-2-element Array{Pair{Pair{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},Int64},1}:
- (1 => [1, 1]) => 1
- (2 => [2, 2]) => 2
-```
-
- For other join flavors, combine with [`when`](@ref). Make sure to annotate with
- [`Length`](@ref) if you know it.
-
- ```jldoctest Join
-julia> @> Join(
-            By([1, 2, 5, 6], identity),
-            By([1, 3, 4, 6], identity)
-        ) |>
-        when(_, @_ !ismissing(_.first)) |>
-        Length(_, 4) |>
-        collect
-4-element Array{Pair{Union{Missing, Int64},Union{Missing, Int64}},1}:
- 1 => 1
- 2 => missing
- 5 => missing
- 6 => 6
-```
+Assumes `left` and `right` are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. For other join flavors, combine with [`when`](@ref). Make sure to annotate with [`Length`](@ref) if you know it.
 """
 struct Join{Left <: By, Right <: By}
     left::Left
@@ -256,8 +342,7 @@ export Join
 """
     Length(it, length)
 
-Allow optimizations based on length. Especially useful after [`Join`](@ref) and
-before [`make_columns`](@ref).
+Allow optimizations based on length. Especially useful after [`Join`](@ref) and before [`make_columns`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -285,3 +370,6 @@ export Length
 # piracy
 @propagate_inbounds view(it::Generator, index...) =
     Generator(it.f, view(it.iter, index...))
+@propagate_inbounds view(it::Filter, index...) = view(it.itr, index...)
+getindex(g::Generator, index...) = g.f(g.iter[index...])
+LinearIndices(g::Generator) = LinearIndices(g.iter)

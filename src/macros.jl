@@ -39,8 +39,7 @@ end
 """
     macro _(body)
 
-Terser function syntax. The arguments are inside the body; the first
-argument is `_`, the second argument is `__`, etc. Will always `@inline`.
+Terser function syntax. The arguments are inside the body; the first argument is `_`, the second argument is `__`, etc. Will always `@inline`.
 
 ```jldoctest
 julia> using LightQuery
@@ -67,8 +66,7 @@ end
 """
     macro >(body)
 
-If body is in the form `body_ |> tail_`, call [`@_`](@ref) on `tail`, and recur
-on `body`.
+If body is in the form `body_ |> tail_`, call [`@_`](@ref) on `tail`, and recur on `body`.
 
 ```jldoctest
 julia> using LightQuery

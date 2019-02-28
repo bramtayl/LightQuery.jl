@@ -1,13 +1,12 @@
 """
     named_tuple(it)
 
-Coerce to a `named_tuple`. For performance with working with arbitrary structs,
-define and `@inline` propertynames.
+Coerce to a `named_tuple`. For performance with working with arbitrary structs, define and `@inline` propertynames.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> @inline Base.propertynames(p::Pair) = (:first, :second)
+julia> @inline Base.propertynames(p::Pair) = (:first, :second);
 
 julia> named_tuple(:a => 1)
 (first = :a, second = 1)
@@ -32,8 +31,7 @@ struct Name{name} end
 """
     Name(name)
 
-Create a typed name. Can be used as a function to `getproperty`,
-with a default to `missing`. For multiple names, see [`Names`](@ref).
+Create a typed name. Can be used as a function to `getproperty`, with a default to `missing`. For multiple names, see [`Names`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -67,8 +65,7 @@ end
 """
     Names(the_names...)
 
-Create typed names. Can be used to as a function to assign or select names, with
-a default to `missing`. For just one name, see [`Name`](@ref).
+Create typed names. Can be used to as a function to assign or select names, with a default to `missing`. For just one name, see [`Name`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -96,8 +93,7 @@ export Names
 """
     rename(it; renames...)
 
-Rename `it`. Because constants do not constant propagate through key-word
-arguments, wrap with [`Name`](@ref).
+Rename `it`. Because constants do not constant propagate through key-word arguments, wrap with [`Name`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -153,8 +149,7 @@ export remove
 """
     gather(it; assignments...)
 
-For each `key => value` pair in assignments, gather the [`Names`](@ref) in
-`value` into a single `key`. Inverse of [`spread`](@ref).
+For each `key => value` pair in assignments, gather the [`Names`](@ref) in `value` into a single `key`. Inverse of [`spread`](@ref).
 
 ```jldoctest
 julia> using LightQuery

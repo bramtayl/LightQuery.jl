@@ -1,11 +1,12 @@
 module LightQuery
 
-import Base: axes, copyto!, eltype, empty, getindex, getproperty, IndexStyle,
-    IteratorEltype, IteratorSize, isless, length, iterate, merge,
-    push!, push_widen, size, setindex!, setindex_widen_up_to, show, similar,
+import Base: axes, collect_similar, copyto!, eltype, empty, getindex, getproperty,
+    IndexStyle, IteratorEltype, IteratorSize, isless, LinearIndices, length, iterate,
+    merge, push!, push_widen, size, setindex!, setindex_widen_up_to, show, similar,
     view, zip
 using Base: _collect, @default_eltype, diff_names, EltypeUnknown, Generator,
-    HasEltype, HasLength, HasShape, @propagate_inbounds, SizeUnknown, sym_in
+    HasEltype, HasLength, HasShape, promote_op, @propagate_inbounds, SizeUnknown,
+    sym_in
 using Base.Iterators: Filter, flatten, product, take, Zip, _zip_iterator_eltype,
     _zip_iterator_size
 using Base.Meta: quot
