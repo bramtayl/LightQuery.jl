@@ -82,7 +82,7 @@ julia> airport =
 (name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone_offset = -5, daylight_savings = "A", time_zone = "America/New_York")
 ```
 
-Let's create a proper `TimeZone`. Note that it could be the case that Julia can't recognize the time-zone string. Thus, I make a `TimeZone_or_missing` function to return missing in that case.
+Let's create a proper `TimeZone`.
 
 ```jldoctest dplyr
 julia> airport =
@@ -248,10 +248,10 @@ julia> scheduled_arrival_time = ZonedDateTime(
             Name(:time_zone)(airports[flight.destination]))
 2013-01-01T08:19:00-06:00
 ```
-What if it was an over-night flight? We can add a day to the arrival time if it wasn't later than the departure time.
+What if it was an overnight flight? We can add a day to the arrival time if it wasn't later than the departure time.
 
 ```jldoctest dplyr
-julia> if !(scheduled_arrival_time > scheduled_departure_time)
+julia> if scheduled_arrival_time !== missing && !(scheduled_arrival_time > scheduled_departure_time)
             scheduled_arrival_time = scheduled_arrival_time + Day(1)
         end
 ```
@@ -280,8 +280,7 @@ julia> function process_flight(row)
                 DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
                 Name(:time_zone)(airports[flight.destination])
             )
-            if scheduled_arrival_time !== missing &&
-                !(scheduled_arrival_time > scheduled_departure_time)
+            if scheduled_arrival_time !== missing && !(scheduled_arrival_time > scheduled_departure_time)
                 scheduled_arrival_time = scheduled_arrival_time + Day(1)
             end
             @> flight |>
@@ -313,7 +312,7 @@ Showing 4 of 336776 rows
 |       B6 |     725 |     JFK | 183 minutes |   1576 mi | 2013-01-01T05:45:00-05:00 |        -1 minute |                   missing |    -18 minutes |       N804JB |          BQN |
 ```
 
-Theortically, notice the distances between two airports is always the same. Let's make sure this is also the case in our data. First, [`order`](@ref) by `origin`, `destination`, and `distance`. Then [`Group`](@ref) [`By`](@ref) the same variables.
+Theoretically, the distances between two airports is always the same. Let's make sure this is also the case in our data. First, [`order`](@ref) by `origin`, `destination`, and `distance`. Then [`Group`](@ref) [`By`](@ref) the same variables.
 
 ```jldoctest dplyr
 julia> paths_grouped =
@@ -380,7 +379,7 @@ Showing at most 4 rows
 |     EWR |          AUS |       1 |
 ```
 
-Let's see [`when`](@ref) there are two different distances for the same path:
+Let's see [`when`](@ref) there are multiple distances for the same path:
 
 ```jldoctest dplyr
 julia> @> distinct_distances |>
