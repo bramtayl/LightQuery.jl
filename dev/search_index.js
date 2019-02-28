@@ -149,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Tutorial",
     "title": "LightQuery.indexed",
     "category": "function",
-    "text": "indexed(it, call)\n\nIndex it by the results of call, with a default to missing. Relies on Enumerated.\n\n```jldoctest julia> using LightQuery\n\njulia> result = indexed(             [                 (item = \"b\", index = 2),                 (item = \"a\", index = 1)             ],             Name(:index)         );\n\njulia> result1\n\njulia> result[3] missing\n\n\n\n\n\n"
+    "text": "indexed(it, call)\n\nIndex it by the results of call, with a default to missing. Relies on Enumerated.\n\njulia> using LightQuery\n\njulia> result = indexed(\n            [\n                (item = \"b\", index = 2),\n                (item = \"a\", index = 1)\n            ],\n            Name(:index)\n        );\n\njulia> result[1]\n(item = \"a\", index = 1)\n\njulia> result[3]\nmissing\n\n\n\n\n\n"
 },
 
 {
