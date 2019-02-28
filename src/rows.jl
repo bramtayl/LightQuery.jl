@@ -136,6 +136,7 @@ julia> result[1]
 
 julia> result[3]
 missing
+```
 """
 function indexed(it, call)
     Indexed(it, collect_similar(
