@@ -9,8 +9,7 @@ write.csv(airports, "airports.csv", na = "", row.names = FALSE)
 write.csv(flights, "flights.csv", na = "", row.names = FALSE)
 ```
 
-Let's import the tools we need. I'm pulling in from tools from `Dates` and
-`TimeZones` and modifying them to work with missing data.
+Let's import the tools we need. I'm pulling in from tools from `Dates`, `TimeZones`, and `Unitful`, and modifying them to work with missing data.
 
 ```jldoctest dplyr
 julia> using LightQuery
