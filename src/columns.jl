@@ -169,7 +169,7 @@ export gather
 """
     spread(it::NamedTuple, the_names...)
 
-Unnest nested it in `name`. Inverse of [`gather`](@ref).
+Unnest nested `name` in `the_names`. Inverse of [`gather`](@ref).
 
 ```jldoctest
 julia> using LightQuery
