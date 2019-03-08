@@ -117,12 +117,12 @@ julia> airport =
 (name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722°, longitude = -80.6195833°, altitude = 1044 ft, time_zone = America/New_York (UTC-5/UTC-4))
 ```
 
-Let's put it all together.
+Let's put it all together. Note I'm adding a `@noinline` annotation to make use
+of the [function barrier trick](https://docs.julialang.org/en/v1/manual/performance-tips/index.html#kernel-functions-1).
 
 ```jldoctest dplyr
-julia> function process_airport(airport_row)
+julia> @noinline function process_airport(airport_row)
             @> airport_row |>
-            named_tuple |>
             rename(_,
                 airport_code = Name(:faa),
                 latitude = Name(:lat),
@@ -150,6 +150,7 @@ I use [`over`](@ref) to lazily `map`.
 ```jldoctest dplyr
 julia> airports =
         @> airports_file |>
+        over(_, named_tuple) |>
         over(_, process_airport);
 ```
 
@@ -244,7 +245,8 @@ Note the scheduled arrival time is `818`. This means `8:18`. We can use `divrem(
 ```jldoctest dplyr
 julia> scheduled_arrival_time = ZonedDateTime(
             DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
-            Name(:time_zone)(airports[flight.destination]))
+            Name(:time_zone)(airports[flight.destination])
+        )
 2013-01-01T08:19:00-06:00
 ```
 What if it was an overnight flight? We can add a day to the arrival time if it wasn't later than the departure time.
@@ -255,12 +257,12 @@ julia> if scheduled_arrival_time !== missing && !(scheduled_arrival_time > sched
         end
 ```
 
-Let's put it all together:
+Let's put it all together.
 
 ```jldoctest dplyr
-julia> function process_flight(row)
+julia> @noinline function process_flight(row)
             flight =
-                @> named_tuple(row) |>
+                @> row |>
                 rename(_,
                     departure_time = Name(:dep_time),
                     scheduled_departure_time = Name(:sched_dep_time),
@@ -297,6 +299,7 @@ julia> function process_flight(row)
 
 julia> flights =
         @> flights_file |>
+        over(_, named_tuple) |>
         over(_, process_flight) |>
         make_columns |>
         rows;

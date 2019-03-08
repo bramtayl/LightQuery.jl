@@ -32,7 +32,7 @@ function anonymous(location, body::Expr)
             pair -> pair.second,
             sort!(collect(dictionary), by = first)
         )...),
-        Expr(:block, Expr(:meta, :inline), location, new_body)
+        Expr(:block, location, new_body)
     )
 end
 
@@ -58,7 +58,7 @@ export @_
 
 function chain(location, body)
     if @capture body head_ |> tail_
-        Expr(:call, anonymous(location, tail), chain(location, head))
+        Expr(:call, :($Base.@inline($(anonymous(location, tail)))), chain(location, head))
     else
         body
     end
