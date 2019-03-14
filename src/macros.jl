@@ -1,3 +1,8 @@
+struct CallAndCode{Call}
+    call::Call
+    code::Expr
+end
+(it::CallAndCode)(args...; kwargs...) = it.call(args...; kwargs...)
 substitute_underscores!(dictionary, body) = body
 substitute_underscores!(dictionary, body::Symbol) =
     if all(isequal('_'), string(body))
@@ -23,19 +28,26 @@ function substitute_underscores!(dictionary, body::Expr)
         body.args
     )...)
 end
-anonymous(location, body) = body
-function anonymous(location, body::Expr)
+anonymous(location, body; inline = false) = body
+function anonymous(location, body::Expr; inline = false)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
-    Expr(:function,
+    code = Expr(:function,
         Expr(:call, Symbol(string("(@_ ", body, ")")), Generator(
             pair -> pair.second,
             sort!(collect(dictionary), by = first)
         )...),
         Expr(:block, location, new_body)
     )
+    if inline
+        pushfirst!(code.args[2].args, Expr(:meta, :inline))
+    end
+    Expr(:call,
+        CallAndCode,
+        code,
+        quot(code)
+    )
 end
-
 """
     macro _(body)
 
@@ -58,7 +70,7 @@ export @_
 
 function chain(location, body)
     if @capture body head_ |> tail_
-        Expr(:call, :($Base.@inline($(anonymous(location, tail)))), chain(location, head))
+        Expr(:call, anonymous(location, tail, inline = true), chain(location, head))
     else
         body
     end
