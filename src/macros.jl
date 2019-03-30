@@ -51,7 +51,7 @@ end
 """
     macro _(body)
 
-Terser function syntax. The arguments are inside the body; the first argument is `_`, the second argument is `__`, etc. Will always `@inline`.
+Terser function syntax. The arguments are inside the body; the first argument is `_`, the second argument is `__`, etc.
 
 ```jldoctest
 julia> using LightQuery
