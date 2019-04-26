@@ -27,7 +27,7 @@ Relies on the fact that iteration states can be converted to indices; thus, you 
 ```jldoctest
 julia> using LightQuery
 
-julia> when([4, 3, 2, 1], iseven) |> Enumerated |> collect
+julia> collect(Enumerated(when([4, 3, 2, 1], iseven)))
 2-element Array{Tuple{Int64,Int64},1}:
  (1, 4)
  (3, 2)
@@ -89,14 +89,8 @@ struct Indexed{It, Indices}
     it::It
     indices::Indices
 end
-@propagate_inbounds function getindex(it::Indexed, index)
-    inner_index = get(it.indices, index, missing)
-    if inner_index === missing
-        missing
-    else
-        it.it[inner_index]
-    end
-end
+@propagate_inbounds getindex(it::Indexed, index) = it.it[it.indices[index]]
+haskey(it::Indexed, index) = haskey(it.indices, index)
 function iterate(it::Indexed)
     item, state = @ifsomething iterate(it.indices)
     (item.first => it.it[item.second]), state
@@ -133,9 +127,6 @@ julia> result = indexed(
 
 julia> result[1]
 (item = "a", index = 1)
-
-julia> result[3]
-missing
 ```
 """
 function indexed(it, call)
@@ -372,5 +363,4 @@ export Length
 @propagate_inbounds view(it::Generator, index...) =
     Generator(it.f, view(it.iter, index...))
 @propagate_inbounds view(it::Filter, index...) = view(it.itr, index...)
-getindex(g::Generator, index...) = g.f(g.iter[index...])
-LinearIndices(g::Generator) = LinearIndices(g.iter)
+@propagate_inbounds getindex(it::Generator, index...) = it.f(it.iter[index...])

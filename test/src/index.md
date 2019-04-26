@@ -9,38 +9,32 @@ write.csv(airports, "airports.csv", na = "", row.names = FALSE)
 write.csv(flights, "flights.csv", na = "", row.names = FALSE)
 ```
 
-Let's import the tools we need. I'm pulling in from tools from `Dates`, `TimeZones`, and `Unitful`, and modifying them to work with missing data.
+Let's import the tools we need. I'm pulling in from tools from `Dates`, `TimeZones`, and `Unitful`.
 
 ```jldoctest dplyr
 julia> using LightQuery
 
-julia> using Dates: DateTime, Day, Minute
+julia> using Dates: DateTime, Day
+
+julia> import Dates: Minute
 
 julia> Minute(::Missing) = missing;
 
 julia> using Unitful: mi, °, ft
 
-julia> using TimeZones: TimeZone, VariableTimeZone, ZonedDateTime
+julia> using TimeZones: ZonedDateTime, Class
 
-julia> TimeZone_or_missing(time_zone) =
-            try
-                TimeZone(time_zone)
-            catch an_error
-                if isa(an_error, ArgumentError)
-                    missing
-                else
-                    rethrow(an_error)
-                end
-            end;
+julia> import TimeZones: TimeZone
 
-julia> ZonedDateTime(::DateTime, ::Missing) = missing;
+julia> TimeZone(::Missing, ::Class) = missing;
 ```
 
 I re-export [`CSV`](http://juliadata.github.io/CSV.jl/stable/) for input-output. See the documentation there for information about [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File).
 
 ```jldoctest dplyr
 julia> airports_file = CSV.File("airports.csv",
-            allowmissing = :auto
+            allowmissing = :auto,
+            missingstrings = ["", "\\N"]
         )
 CSV.File("airports.csv", rows=1458):
 Tables.Schema:
@@ -51,7 +45,7 @@ Tables.Schema:
  :alt    Int64
  :tz     Int64
  :dst    String
- :tzone  String
+ :tzone  Union{Missing, String}
 ```
 
 Let's take a look at the first row. Use [`named_tuple`](@ref) to coerce a `CSV.Row` to a `NamedTuple`.
@@ -81,15 +75,15 @@ julia> airport =
 (name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone_offset = -5, daylight_savings = "A", time_zone = "America/New_York")
 ```
 
-Let's create a proper `TimeZone`.
+Let's create a proper `TimeZone`. Note the data contains some `LEGACY` timezones.
 
 ```jldoctest dplyr
 julia> airport =
         @> airport |>
         transform(_,
-            time_zone = TimeZone_or_missing(_.time_zone)
+            time_zone = TimeZone(_.time_zone, Class(:STANDARD) | Class(:LEGACY))
         )
-(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone_offset = -5, daylight_savings = "A", time_zone = America/New_York (UTC-5/UTC-4))
+(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone_offset = -5, daylight_savings = "A", time_zone = tz"America/New_York")
 ```
 
 Now that we have a true timezone, we can [`remove`](@ref) all data that is contingent on timezone.
@@ -98,10 +92,10 @@ Now that we have a true timezone, we can [`remove`](@ref) all data that is conti
 julia> airport =
         @> airport |>
         remove(_,
-            :time_zone_offset,
-            :daylight_savings
+            Name(:time_zone_offset),
+            Name(:daylight_savings)
         )
-(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone = America/New_York (UTC-5/UTC-4))
+(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone = tz"America/New_York")
 ```
 
 Let's also add proper units to our variables.
@@ -114,15 +108,15 @@ julia> airport =
             longitude = _.longitude * °,
             altitude = _.altitude * ft
         )
-(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722°, longitude = -80.6195833°, altitude = 1044 ft, time_zone = America/New_York (UTC-5/UTC-4))
+(name = "Lansdowne Airport", airport_code = "04G", time_zone = tz"America/New_York", latitude = 41.1304722°, longitude = -80.6195833°, altitude = 1044 ft)
 ```
 
-Let's put it all together. Note I'm adding a `@noinline` annotation to make use
-of the [function barrier trick](https://docs.julialang.org/en/v1/manual/performance-tips/index.html#kernel-functions-1).
+Let's put it all together.
 
 ```jldoctest dplyr
-julia> @noinline function process_airport(airport_row)
-            @> airport_row |>
+julia> function process_airport(airport)
+            @> airport |>
+            named_tuple |>
             rename(_,
                 airport_code = Name(:faa),
                 latitude = Name(:lat),
@@ -133,14 +127,14 @@ julia> @noinline function process_airport(airport_row)
                 time_zone = Name(:tzone)
             ) |>
             transform(_,
-                time_zone = TimeZone_or_missing(_.time_zone),
+                time_zone = TimeZone(_.time_zone, Class(:STANDARD) | Class(:LEGACY)),
                 latitude = _.latitude * °,
                 longitude = _.longitude * °,
                 altitude = _.altitude * ft
             ) |>
             remove(_,
-                :time_zone_offset,
-                :daylight_savings
+                Name(:time_zone_offset),
+                Name(:daylight_savings)
             )
         end;
 ```
@@ -150,7 +144,6 @@ I use [`over`](@ref) to lazily `map`.
 ```jldoctest dplyr
 julia> airports =
         @> airports_file |>
-        over(_, named_tuple) |>
         over(_, process_airport);
 ```
 
@@ -168,23 +161,23 @@ We can use [`Peek`](@ref) to get a look at the data.
 ```jldoctest dplyr
 julia> Peek(airports)
 Showing 4 of 1458 rows
-|                         :name | :airport_code |   :latitude |   :longitude | :altitude |                     :time_zone |
-| -----------------------------:| -------------:| -----------:| ------------:| ---------:| ------------------------------:|
-|             Lansdowne Airport |           04G | 41.1304722° | -80.6195833° |   1044 ft | America/New_York (UTC-5/UTC-4) |
-| Moton Field Municipal Airport |           06A | 32.4605722° | -85.6800278° |    264 ft |  America/Chicago (UTC-6/UTC-5) |
-|           Schaumburg Regional |           06C | 41.9893408° | -88.1012428° |    801 ft |  America/Chicago (UTC-6/UTC-5) |
-|               Randall Airport |           06N |  41.431912° | -74.3915611° |    523 ft | America/New_York (UTC-5/UTC-4) |
+|                          name | airport_code |                      time_zone |    latitude |    longitude | altitude |
+| -----------------------------:| ------------:| ------------------------------:| -----------:| ------------:| --------:|
+|             Lansdowne Airport |          04G | America/New_York (UTC-5/UTC-4) | 41.1304722° | -80.6195833° |  1044 ft |
+| Moton Field Municipal Airport |          06A |  America/Chicago (UTC-6/UTC-5) | 32.4605722° | -85.6800278° |   264 ft |
+|           Schaumburg Regional |          06C |  America/Chicago (UTC-6/UTC-5) | 41.9893408° | -88.1012428° |   801 ft |
+|               Randall Airport |          06N | America/New_York (UTC-5/UTC-4) |  41.431912° | -74.3915611° |   523 ft |
 ```
 
 I'll also make sure the airports are [`indexed`](@ref) by their code so we can access them quickly.
 
 ```jldoctest dplyr
-julia> airports =
+julia> const indexed_airports =
         @> airports |>
         indexed(_, Name(:airport_code));
 
-julia> airports["JFK"]
-(name = "John F Kennedy Intl", airport_code = "JFK", latitude = 40.639751°, longitude = -73.778925°, altitude = 13 ft, time_zone = America/New_York (UTC-5/UTC-4))
+julia> indexed_airports["JFK"]
+(name = "John F Kennedy Intl", airport_code = "JFK", time_zone = tz"America/New_York", latitude = 40.639751°, longitude = -73.778925°, altitude = 13 ft)
 ```
 
 That was just the warm-up. Now let's get started working on the flights data.
@@ -235,34 +228,39 @@ We can use our `airports` data to make datetimes with timezones.
 ```jldoctest dplyr
 julia> scheduled_departure_time = ZonedDateTime(
             DateTime(flight.year, flight.month, flight.day, flight.hour, flight.minute),
-            airports[flight.origin].time_zone
+            indexed_airports[flight.origin].time_zone
         )
 2013-01-01T05:15:00-05:00
 ```
 
-Note the scheduled arrival time is `818`. This means `8:18`. We can use `divrem(_, 100)` to split it up. Note I'm accessing the `time_zone` with [`Name`](@ref) (which will default to `missing`). This is because some of the destinations are not in the `flights` dataset.
+Note the scheduled arrival time is `818`. This means `8:18`. We can use `divrem(_, 100)` to split it up. Not all destinations are not in the `flights` dataset. If it was an overnight flight, add a day to the arrival time.
 
 ```jldoctest dplyr
-julia> scheduled_arrival_time = ZonedDateTime(
-            DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
-            Name(:time_zone)(airports[flight.destination])
-        )
+julia> scheduled_arrival_time =
+            if haskey(indexed_airports, flight.destination)
+                possible_arrival_time =
+                    ZonedDateTime(
+                        DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
+                        indexed_airports[flight.destination].time_zone
+                    )
+                if possible_arrival_time < scheduled_departure_time
+                    possible_arrival_time + Day(1)
+                else
+                    possible_arrival_time
+                end
+            else
+                missing
+            end
 2013-01-01T08:19:00-06:00
-```
-What if it was an overnight flight? We can add a day to the arrival time if it wasn't later than the departure time.
-
-```jldoctest dplyr
-julia> if scheduled_arrival_time !== missing && !(scheduled_arrival_time > scheduled_departure_time)
-            scheduled_arrival_time = scheduled_arrival_time + Day(1)
-        end
 ```
 
 Let's put it all together.
 
 ```jldoctest dplyr
-julia> @noinline function process_flight(row)
+julia> function process_flight(row)
             flight =
                 @> row |>
+                named_tuple |>
                 rename(_,
                     departure_time = Name(:dep_time),
                     scheduled_departure_time = Name(:sched_dep_time),
@@ -275,15 +273,23 @@ julia> @noinline function process_flight(row)
                 )
             scheduled_departure_time = ZonedDateTime(
                 DateTime(flight.year, flight.month, flight.day, flight.hour, flight.minute),
-                airports[flight.origin].time_zone
+                indexed_airports[flight.origin].time_zone
             )
-            scheduled_arrival_time = ZonedDateTime(
-                DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
-                Name(:time_zone)(airports[flight.destination])
-            )
-            if scheduled_arrival_time !== missing && !(scheduled_arrival_time > scheduled_departure_time)
-                scheduled_arrival_time = scheduled_arrival_time + Day(1)
-            end
+            scheduled_arrival_time =
+                if haskey(indexed_airports, flight.destination)
+                    possible_arrival_time =
+                        ZonedDateTime(
+                            DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
+                            indexed_airports[flight.destination].time_zone
+                        )
+                    if possible_arrival_time < scheduled_departure_time
+                        possible_arrival_time + Day(1)
+                    else
+                        possible_arrival_time
+                    end
+                else
+                    missing
+                end
             @> flight |>
                 transform(_,
                     scheduled_departure_time = scheduled_departure_time,
@@ -293,25 +299,26 @@ julia> @noinline function process_flight(row)
                     departure_delay = Minute(_.departure_delay),
                     arrival_delay = Minute(_.arrival_delay)
                 ) |>
-                remove(_, :year, :month, :day, :hour, :minute, :time_hour,
-                    :departure_time, :arrival_time)
+                remove(_, Name(:year), Name(:month), Name(:day), Name(:hour),
+                    Name(:minute), Name(:time_hour), Name(:departure_time),
+                    Name(:arrival_time)
+                )
         end;
 
 julia> flights =
         @> flights_file |>
-        over(_, named_tuple) |>
         over(_, process_flight) |>
         make_columns |>
         rows;
 
 julia> Peek(flights)
 Showing 4 of 336776 rows
-| :carrier | :flight | :origin |   :air_time | :distance | :scheduled_departure_time | :departure_delay |   :scheduled_arrival_time | :arrival_delay | :tail_number | :destination |
-| --------:| -------:| -------:| -----------:| ---------:| -------------------------:| ----------------:| -------------------------:| --------------:| ------------:| ------------:|
-|       UA |    1545 |     EWR | 227 minutes |   1400 mi | 2013-01-01T05:15:00-05:00 |        2 minutes | 2013-01-01T08:19:00-06:00 |     11 minutes |       N14228 |          IAH |
-|       UA |    1714 |     LGA | 227 minutes |   1416 mi | 2013-01-01T05:29:00-05:00 |        4 minutes | 2013-01-01T08:30:00-06:00 |     20 minutes |       N24211 |          IAH |
-|       AA |    1141 |     JFK | 160 minutes |   1089 mi | 2013-01-01T05:40:00-05:00 |        2 minutes | 2013-01-01T08:50:00-05:00 |     33 minutes |       N619AA |          MIA |
-|       B6 |     725 |     JFK | 183 minutes |   1576 mi | 2013-01-01T05:45:00-05:00 |        -1 minute |                   missing |    -18 minutes |       N804JB |          BQN |
+| carrier | flight | origin | tail_number | destination |  scheduled_departure_time |    scheduled_arrival_time |    air_time | distance | departure_delay | arrival_delay |
+| -------:| ------:| ------:| -----------:| -----------:| -------------------------:| -------------------------:| -----------:| --------:| ---------------:| -------------:|
+|      UA |   1545 |    EWR |      N14228 |         IAH | 2013-01-01T05:15:00-05:00 | 2013-01-01T08:19:00-06:00 | 227 minutes |  1400 mi |       2 minutes |    11 minutes |
+|      UA |   1714 |    LGA |      N24211 |         IAH | 2013-01-01T05:29:00-05:00 | 2013-01-01T08:30:00-06:00 | 227 minutes |  1416 mi |       4 minutes |    20 minutes |
+|      AA |   1141 |    JFK |      N619AA |         MIA | 2013-01-01T05:40:00-05:00 | 2013-01-01T08:50:00-05:00 | 160 minutes |  1089 mi |       2 minutes |    33 minutes |
+|      B6 |    725 |    JFK |      N804JB |         BQN | 2013-01-01T05:45:00-05:00 |                   missing | 183 minutes |  1576 mi |       -1 minute |   -18 minutes |
 ```
 
 Theoretically, the distances between two airports is always the same. Let's make sure this is also the case in our data. First, [`order`](@ref) by `origin`, `destination`, and `distance`. Then [`Group`](@ref) [`By`](@ref) the same variables.
@@ -333,12 +340,12 @@ julia> key(path)
 
 julia> value(path) |> Peek
 Showing 4 of 439 rows
-| :carrier | :flight | :origin |  :air_time | :distance | :scheduled_departure_time | :departure_delay |   :scheduled_arrival_time | :arrival_delay | :tail_number | :destination |
-| --------:| -------:| -------:| ----------:| ---------:| -------------------------:| ----------------:| -------------------------:| --------------:| ------------:| ------------:|
-|       EV |    4112 |     EWR | 33 minutes |    143 mi | 2013-01-01T13:17:00-05:00 |       -2 minutes | 2013-01-01T14:23:00-05:00 |    -10 minutes |       N13538 |          ALB |
-|       EV |    3260 |     EWR | 36 minutes |    143 mi | 2013-01-01T16:21:00-05:00 |       34 minutes | 2013-01-01T17:24:00-05:00 |     40 minutes |       N19554 |          ALB |
-|       EV |    4170 |     EWR | 31 minutes |    143 mi | 2013-01-01T20:04:00-05:00 |       52 minutes | 2013-01-01T21:12:00-05:00 |     44 minutes |       N12540 |          ALB |
-|       EV |    4316 |     EWR | 33 minutes |    143 mi | 2013-01-02T13:27:00-05:00 |        5 minutes | 2013-01-02T14:33:00-05:00 |    -14 minutes |       N14153 |          ALB |
+| carrier | flight | origin | tail_number | destination |  scheduled_departure_time |    scheduled_arrival_time |   air_time | distance | departure_delay | arrival_delay |
+| -------:| ------:| ------:| -----------:| -----------:| -------------------------:| -------------------------:| ----------:| --------:| ---------------:| -------------:|
+|      EV |   4112 |    EWR |      N13538 |         ALB | 2013-01-01T13:17:00-05:00 | 2013-01-01T14:23:00-05:00 | 33 minutes |   143 mi |      -2 minutes |   -10 minutes |
+|      EV |   3260 |    EWR |      N19554 |         ALB | 2013-01-01T16:21:00-05:00 | 2013-01-01T17:24:00-05:00 | 36 minutes |   143 mi |      34 minutes |    40 minutes |
+|      EV |   4170 |    EWR |      N12540 |         ALB | 2013-01-01T20:04:00-05:00 | 2013-01-01T21:12:00-05:00 | 31 minutes |   143 mi |      52 minutes |    44 minutes |
+|      EV |   4316 |    EWR |      N14153 |         ALB | 2013-01-02T13:27:00-05:00 | 2013-01-02T14:33:00-05:00 | 33 minutes |   143 mi |       5 minutes |   -14 minutes |
 ```
 
 At this point, we don't need any of the `value` data. All we need is the `key`.
@@ -352,12 +359,12 @@ julia> paths =
 
 julia> Peek(paths)
 Showing 4 of 226 rows
-| :origin | :destination | :distance |
-| -------:| ------------:| ---------:|
-|     EWR |          ALB |    143 mi |
-|     EWR |          ANC |   3370 mi |
-|     EWR |          ATL |    746 mi |
-|     EWR |          AUS |   1504 mi |
+| origin | destination | distance |
+| ------:| -----------:| --------:|
+|    EWR |         ALB |   143 mi |
+|    EWR |         ANC |  3370 mi |
+|    EWR |         ATL |   746 mi |
+|    EWR |         AUS |  1504 mi |
 ```
 
 Notice the data is already sorted by `origin` and `destination`, so that for our
@@ -373,12 +380,12 @@ julia> distinct_distances =
 
 julia> Peek(distinct_distances)
 Showing at most 4 rows
-| :origin | :destination | :number |
-| -------:| ------------:| -------:|
-|     EWR |          ALB |       1 |
-|     EWR |          ANC |       1 |
-|     EWR |          ATL |       1 |
-|     EWR |          AUS |       1 |
+| origin | destination | number |
+| ------:| -----------:| ------:|
+|    EWR |         ALB |      1 |
+|    EWR |         ANC |      1 |
+|    EWR |         ATL |      1 |
+|    EWR |         AUS |      1 |
 ```
 
 Let's see [`when`](@ref) there are multiple distances for the same path:
@@ -388,10 +395,10 @@ julia> @> distinct_distances |>
         when(_, @_ _.number != 1) |>
         Peek
 Showing at most 4 rows
-| :origin | :destination | :number |
-| -------:| ------------:| -------:|
-|     EWR |          EGE |       2 |
-|     JFK |          EGE |       2 |
+| origin | destination | number |
+| ------:| -----------:| ------:|
+|    EWR |         EGE |      2 |
+|    JFK |         EGE |      2 |
 ```
 
 That's strange. What's up with the `EGE` airport? Let's take a [`Peek`](@ref).
@@ -401,12 +408,12 @@ julia> @> flights |>
         when(_, @_ _.destination == "EGE") |>
         Peek
 Showing at most 4 rows
-| :carrier | :flight | :origin |   :air_time | :distance | :scheduled_departure_time | :departure_delay |   :scheduled_arrival_time | :arrival_delay | :tail_number | :destination |
-| --------:| -------:| -------:| -----------:| ---------:| -------------------------:| ----------------:| -------------------------:| --------------:| ------------:| ------------:|
-|       UA |    1597 |     EWR | 287 minutes |   1726 mi | 2013-01-01T09:28:00-05:00 |       -2 minutes | 2013-01-01T12:20:00-07:00 |     13 minutes |       N27733 |          EGE |
-|       AA |     575 |     JFK | 280 minutes |   1747 mi | 2013-01-01T17:00:00-05:00 |       -5 minutes | 2013-01-01T19:50:00-07:00 |      3 minutes |       N5DRAA |          EGE |
-|       UA |    1597 |     EWR | 261 minutes |   1726 mi | 2013-01-02T09:28:00-05:00 |         1 minute | 2013-01-02T12:20:00-07:00 |      3 minutes |       N24702 |          EGE |
-|       AA |     575 |     JFK | 260 minutes |   1747 mi | 2013-01-02T17:00:00-05:00 |        5 minutes | 2013-01-02T19:50:00-07:00 |     16 minutes |       N631AA |          EGE |
+| carrier | flight | origin | tail_number | destination |  scheduled_departure_time |    scheduled_arrival_time |    air_time | distance | departure_delay | arrival_delay |
+| -------:| ------:| ------:| -----------:| -----------:| -------------------------:| -------------------------:| -----------:| --------:| ---------------:| -------------:|
+|      UA |   1597 |    EWR |      N27733 |         EGE | 2013-01-01T09:28:00-05:00 | 2013-01-01T12:20:00-07:00 | 287 minutes |  1726 mi |      -2 minutes |    13 minutes |
+|      AA |    575 |    JFK |      N5DRAA |         EGE | 2013-01-01T17:00:00-05:00 | 2013-01-01T19:50:00-07:00 | 280 minutes |  1747 mi |      -5 minutes |     3 minutes |
+|      UA |   1597 |    EWR |      N24702 |         EGE | 2013-01-02T09:28:00-05:00 | 2013-01-02T12:20:00-07:00 | 261 minutes |  1726 mi |        1 minute |     3 minutes |
+|      AA |    575 |    JFK |      N631AA |         EGE | 2013-01-02T17:00:00-05:00 | 2013-01-02T19:50:00-07:00 | 260 minutes |  1747 mi |       5 minutes |    16 minutes |
 ```
 
 Looks (to me) like two different sources are reporting different info about the

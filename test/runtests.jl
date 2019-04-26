@@ -14,10 +14,6 @@ using Test
 
 @inline Base.propertynames(p::Pair) = (:first, :second);
 
-test_spread(x) = spread(x, :d)
-test_remove(x) = remove(x, :b)
-test_rename(x) = rename(x, c = Name(:a))
-
 @testset "macros" begin
     @test (@> 1 |> (@> _ |> _ + 1)) == 2
 end
@@ -27,11 +23,11 @@ end
     @test @inferred(Names(:a)((a = 1, b = 1.0))) == (a = 1,)
     @test @inferred(named_tuple(:a => 1)) == (first = :a, second = 1)
     @test @inferred(transform((a = 1,), b = 1.0)) == (a = 1, b = 1.0)
-    @test @inferred(test_remove((a = 1, b = 1.0))) == (a = 1,)
-    @test @inferred(test_rename((a = 1, b = 1.0))) == (b = 1.0, c = 1)
+    @test @inferred(remove((a = 1, b = 1.0), Name(:b))) == (a = 1,)
+    @test @inferred(rename((a = 1, b = 1.0), c = Name(:a))) == (b = 1.0, c = 1)
     @test @inferred(gather((a = 1, b = 1.0, c = 1//1), d = Names(:a, :c))) ==
         (b = 1.0, d = (a = 1, c = 1//1))
-    @test @inferred(test_spread((b = 1.0, d = (a = 1, c = 1//1)))) == (b = 1.0, a = 1, c = 1//1)
+    @test @inferred(spread((b = 1.0, d = (a = 1, c = 1//1)), Name(:d))) == (b = 1.0, a = 1, c = 1//1)
 end
 
 f(x) = (x, x + 0.0)

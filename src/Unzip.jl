@@ -4,7 +4,7 @@ end
 function ZippedArrays(model, rest...)
     arrays = (model, rest...)
     ZippedArrays{
-        Tuple{eltype.(arrays)...},
+        Tuple{map(eltype, arrays)...},
         ndims(model),
         typeof(arrays)
     }(arrays)
@@ -17,13 +17,13 @@ axes(arrays::ZippedArrays, args...) = axes(arrays.arrays[1], args...)
 size(arrays::ZippedArrays, args...) = size(arrays.arrays[1], args...)
 @propagate_inbounds function getindex(arrays::ZippedArrays, index...)
     @propagate_inbounds inner_getindex(array) = array[index...]
-    inner_getindex.(arrays.arrays)
+    map(inner_getindex, arrays.arrays)
 end
 @propagate_inbounds function setindex!(arrays::ZippedArrays, values, index...)
     @propagate_inbounds inner_setindex!(array, value) = array[index...] = value
-    inner_setindex!.(arrays.arrays, values)
+    map(inner_setindex!, arrays.arrays, values)
 end
-push!(arrays::ZippedArrays, values) = push!.(arrays.arrays, values)
+push!(arrays::ZippedArrays, values) = map(push!, arrays.arrays, values)
 function similar(arrays::ZippedArrays, ::Type, dimensions::Dims)
 	@inline inner_similar(index) = Array{Any}(undef, dimensions...)
 	zip(ntuple(inner_similar, length(arrays.arrays))...)
