@@ -33,7 +33,7 @@ function anonymous(location, body::Expr; inline = false)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
     code = Expr(:function,
-        Expr(:call, Symbol(string("(@_ ", body, ")")), Generator(
+        Expr(:call, gensym(), Generator(
             pair -> pair.second,
             sort!(collect(dictionary), by = first)
         )...),

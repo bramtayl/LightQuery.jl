@@ -1,191 +1,245 @@
-struct Name{it} end
-"""
-    Name(it)
+const Some{It} = Tuple{It, Vararg{It}}
 
-A typed name. For multiple names, use [`Names`](@ref).
+struct Name{name} end
+
+const Named = Tuple{Name, Any}
+
+@inline Name(name) = Name{name}()
+
+show(io::IO, ::Name{name}) where {name} = print(io, name)
+
+@generated split_names(::Val{some_names}) where {some_names} =
+    map(Name, some_names)
+
+matches(::Tuple{Name{name}, Any}, ::Tuple{Name{name}, Any}) where {name} = true
+matches(::Tuple{Name{name}, Any}, ::Name{name}) where {name} = true
+matches(apple, orange) = false
+
+"""
+    value(named::Tuple{LightQuery.Name,Any})
+
+`named[2]`
+"""
+value(named::Named) = named[2]
+export value
+
+get_pair(named::Tuple{}, name::Name) = error("Cannot find $name")
+function get_pair(named::Some{Named}, name::Name)
+    first_pair = named[1]
+    if matches(first_pair, name)
+        first_pair
+    else
+        get_pair(tail(named), name)
+    end
+end
+
+getindex(named::Some{Named}, name::Name) = value(get_pair(named, name))
+
+(name::Name)(named::Some{Named}) = getindex(named, name)
+(::Name{name})(something) where {name} = getproperty(something, name)
+
+getproperty(named::Some{Named}, name::Symbol) = getindex(named, Name{name}())
+
+getindex(named::Some{Named}, some_names::Some{Name}) =
+    get_pair(named, first(some_names)), getindex(named, tail(some_names))...
+getindex(named::Some{Named}, some_names::Tuple{}) = ()
+getindex(them::Tuple, some_names::Some{Name}) = map(tuple, some_names, them)
+
+(some_names::Some{Name})(named::Some{Named}) = getindex(named, some_names)
+(some_names::Some{Name})(them::Tuple) = map(tuple, some_names, them)
+
+@generated isless(::Name{name1}, ::Name{name2}) where {name1, name2} =
+    isless(name1, name2)
+
+make_names(something) = something
+make_names(symbol::QuoteNode) = Name{symbol.value}()
+make_names(expression::Expr) =
+    if @capture expression data_.name_
+        expression
+    elseif @capture expression name_Symbol = value_
+        :(($(Name{name}()), $(make_names(value))))
+    else
+        Expr(expression.head, map(make_names, expression.args)...)
+    end
+
+"""
+    macro name(something)
+
+Replace raw symbols with typed names, and named tuples with typed named tuples.
+Typed names can be used with `getindex` (and will keep names) or as a function.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> Name(:a)((a = 1, b = 2))
+julia> @name :a
+a
+
+julia> data = @name (a = 1, b = 2, c = 3)
+((a, 1), (b, 2), (c, 3))
+
+julia> @name data[:a]
 1
+
+julia> @name (:a)(data)
+1
+
+julia> data.a
+1
+
+julia> @name data[(:a, :b)]
+((a, 1), (b, 2))
+
+julia> @name (1, 2)[(:a, :b)]
+((a, 1), (b, 2))
+
+julia> @name (:a, :b)(data)
+((a, 1), (b, 2))
+
+julia> @name (:a, :b)((1, 2))
+((a, 1), (b, 2))
 ```
 """
-@inline Name(it) = Name{it}()
-inner(::Name{it}) where {it} = it
-inner(::Type{Name{it}}) where {it} = it
-show(io::IO, ::Name{it}) where {it} = print(io, it)
-show(io::IO, ::Type{Name{it}}) where {it} = it
-(::Name{name})(it) where {name} = getproperty(it, name)
-export Name
+macro name(something)
+    esc(make_names(something))
+end
+export @name
 
-struct Names{them} end
-@inline Names(them...) = Names{them}()
-@generated split_names(::Names{them}) where {them} = map(Name, them)
-split_names(it) = split_names(merge_names(it))
-@generated merge_names(them::Tuple{Vararg{Name}}) =
-    Names{ntuple(it -> inner(fieldtype(them, it)), fieldcount(them))}()
-merge_names(it) = Names{Tuple(propertynames(it))}()
-get_names(it, them::Tuple{Vararg{Name}}) = map(name -> name(it), them)
-(call::Names{them})(it) where {them} =
-    NamedTuple{them}(get_names(it, split_names(call)))
-(::Names{them})(it::Tuple) where {them} = NamedTuple{them}(it)
 """
-    Names(them...)
+    named_tuple(anything)
 
-Typed `Names`. For just one name, use [`Name`](@ref).
+Coerce `anything` to a typed named tuple. For performance with structs, define and `@inline` propertynames.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> Names(:a, :b)((1, 2))
-(a = 1, b = 2)
+julia> data = @name ((a = 1, b = 2))
+((a, 1), (b, 2))
 
-julia> Names(:a, :b)((a = 1, b = 2, c = 3))
-(a = 1, b = 2)
+julia> struct MyType
+            a::Int
+            b::Int
+        end
+
+julia> @inline Base.propertynames(::MyType) = (:a, :b);
+
+julia> named_tuple(MyType(1, 2))
+((a, 1), (b, 2))
 ```
 """
-@inline Names(them...) = Names{them}()
-show(io::IO, it::Names) = show(io, split_names(it))
-show(io::IO, ::Type{Names{them}}) where {them} = show(io, split_names(Names{them}()))
-export Names
-
-"""
-    named_tuple(it)
-
-Coerce to a `named_tuple`. For performance with working with arbitrary structs, define and `@inline` propertynames.
-
-```jldoctest
-julia> using LightQuery
-
-julia> @inline Base.propertynames(p::Pair) = (:first, :second);
-
-julia> named_tuple(:a => 1)
-(first = :a, second = 1)
-```
-"""
-named_tuple(it) = merge_names(it)(it)
+function named_tuple(anything)
+    some_names = split_names(Val{Tuple(propertynames(anything))}())
+    map(name -> (name, name(anything)), some_names)
+end
 export named_tuple
 
-flatten_unrolled(::Tuple{}) = ()
-flatten_unrolled(them) = first(them)..., flatten_unrolled(tail(them))...
-if_not_in(it, them) =
-    if it === first(them)
+@inline flatten_unrolled(::Tuple{}) = ()
+@inline flatten_unrolled(them::Some{Any}) =
+    first(them)..., flatten_unrolled(tail(them))...
+
+@inline if_not_in(it, ::Tuple{}) = (it,)
+@inline if_not_in(it, them::Some{Any}) =
+    if matches(it, first(them))
         ()
     else
         if_not_in(it, tail(them))
     end
-if_not_in(it, ::Tuple{}) = (it,)
-diff_unrolled(::Tuple{}, less) = ()
-diff_unrolled(more, less) =
-    if_not_in(first(more), less)..., diff_unrolled(tail(more), less)...
-union_unrolled(them1, them2) = diff_unrolled(them1, them2)..., them2...
-"""
-    remove(it, them...)
 
-Remove `them`. Inverse of [`transform`](@ref).
+@inline diff_unrolled(::Tuple{}, less) = ()
+@inline diff_unrolled(more::Some{Any}, less) =
+    if_not_in(first(more), less)..., diff_unrolled(tail(more), less)...
+"""
+    remove(data, names...)
+
+Remove `names` from `data`.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> remove((a = 1, b = 2), Name(:b))
-(a = 1,)
+julia> @name remove((a = 1, b = 2, c = 3), :b)
+((a, 1), (c, 3))
 ```
 """
-function remove(it, them...)
-    still = diff_unrolled(split_names(it), them)
-    merge_names(still)(get_names(it, still))
+function remove(data, names...)
+    diff_unrolled(data, names)
 end
 export remove
 
 """
-    transform(it; them...)
+    transform(data, assignments...)
 
-Merge `them` into `it`. Inverse of [`remove`](@ref).
+Merge `assignments` into `data`, overwriting old values.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> transform((a = 1, b = 2), a = 3)
-(b = 2, a = 3)
+julia> @name transform((a = 1, b = 2), a = 3)
+((b, 2), (a, 3))
 ```
 """
-function transform(it; them...)
-    data = them.data
-    new = split_names(data)
-    still = diff_unrolled(split_names(it), new)
-    merge_names((still..., new...))((get_names(it, still)..., Tuple(data)...))
+function transform(data, assignments...)
+    diff_unrolled(data, assignments)..., assignments...
 end
 export transform
 
 """
-    rename(it; them...)
+    rename(data, assignments...)
 
-Rename `it`.
+Rename `data`.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> rename((a = 1, b = 2), c = Name(:a))
-(b = 2, c = 1)
+julia> @name rename((a = 1, b = 2), c = :a)
+((b, 2), (c, 1))
 ```
 """
-@inline function rename(it; them...)
-    data = them.data
-    old = Tuple(data)
-    still = diff_unrolled(split_names(it), old)
-    merge_names((still..., split_names(data)...))(
-        (get_names(it, still)..., get_names(it, old)...)
+function rename(data, assignments...)
+    (
+        diff_unrolled(data, map(value, assignments))...,
+        map(
+            tuple,
+            map(first, assignments),
+            map(value, data[map(value, assignments)])
+        )...
     )
 end
+
 export rename
 
 """
-    gather(it; them...)
+    gather(data; assignments...)
 
-For each `key => value` pair in `them`, gather the [`Names`](@ref) in `value` into a single `key`. Inverse of [`spread`](@ref).
+For each `key => value` pair in `assignments`, gather the names in `value` into a single `key`. Inverse of [`spread`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> gather((a = 1, b = 2, c = 3), d = Names(:a, :c))
-(b = 2, d = (a = 1, c = 3))
+julia> @name gather((a = 1, b = 2, c = 3), d = (:a, :c))
+((b, 2), (d, ((a, 1), (c, 3))))
 ```
 """
-@inline function gather(it; them...)
-    data = them.data
-    split = Tuple(data)
-    still = diff_unrolled(
-        split_names(it),
-        flatten_unrolled(map(split_names, split))
-    )
-    merge_names((still..., split_names(data)...))(
-        (get_names(it, still)..., map(names -> names(it), split)...)
-    )
-end
+gather(data, assignments...) = (
+    diff_unrolled(data, flatten_unrolled(map(value, assignments)))...,
+    map(
+        tuple,
+        map(first, assignments),
+        map(chunk -> data[chunk], map(value, assignments))
+    )...
+)
 export gather
 
 """
-    spread(it, them...)
+    spread(data, names...)
 
-Unnest nested `name` in `them`. Inverse of [`gather`](@ref).
+Unnest nested `name` in `names`. Inverse of [`gather`](@ref).
 
 ```jldoctest
 julia> using LightQuery
 
-julia> spread((b = 2, d = (a = 1, c = 3)), Name(:d))
-(b = 2, a = 1, c = 3)
+julia> @name spread((b = 2, d = (a = 1, c = 3)), :d)
+((b, 2), (a, 1), (c, 3))
 ```
 """
-@inline function spread(it, them...)
-    still = diff_unrolled(split_names(it), them)
-    split = get_names(it, them)
-    merge_names((
-        still...,
-        flatten_unrolled(map(split_names, split))...
-    ))((
-        get_names(it, still)...,
-        flatten_unrolled(map(Tuple, split))...
-    ))
-end
+spread(data, names...) =
+    diff_unrolled(data, names)..., flatten_unrolled(map(value, data[names]))...
 export spread

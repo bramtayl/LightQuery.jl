@@ -22,7 +22,7 @@ julia> Minute(::Missing) = missing;
 
 julia> using Unitful: mi, °, ft
 
-julia> using TimeZones: ZonedDateTime, Class
+julia> using TimeZones: ZonedDateTime, Class, VariableTimeZone
 
 julia> import TimeZones: TimeZone
 
@@ -48,93 +48,106 @@ Tables.Schema:
  :tzone  Union{Missing, String}
 ```
 
-Let's take a look at the first row. Use [`named_tuple`](@ref) to coerce a `CSV.Row` to a `NamedTuple`.
+We use [`row_type`](@ref) to see what type rows this will return:
+
+isconcretetype
+
+```jldoctest dplyr
+julia> const Airport = row_type(airports_file)
+Tuple{Tuple{LightQuery.Name{:faa},String},Tuple{LightQuery.Name{:name},String},Tuple{LightQuery.Name{:lat},Float64},Tuple{LightQuery.Name{:lon},Float64},Tuple{LightQuery.Name{:alt},Int64},Tuple{LightQuery.Name{:tz},Int64},Tuple{LightQuery.Name{:dst},String},Tuple{LightQuery.Name{:tzone},T} where T<:Union{Missing, String}}
+```
+
+Let's take a look at the first row. Use [`named_tuple`](@ref) to coerce a `CSV.Row` to a named tuple. I use the chaining macro [`@>`](@ref) to chain calls together.
 
 ```jldoctest dplyr
 julia> airport =
-        airports_file |>
+        @> airports_file |>
         first |>
-        named_tuple
-(faa = "04G", name = "Lansdowne Airport", lat = 41.1304722, lon = -80.6195833, alt = 1044, tz = -5, dst = "A", tzone = "America/New_York")
+        named_tuple(_)::Airport
+((faa, "04G"), (name, "Lansdowne Airport"), (lat, 41.1304722), (lon, -80.6195833), (alt, 1044), (tz, -5), (dst, "A"), (tzone, "America/New_York"))
 ```
 
-As a start, I want to rename so that I understand what the columns mean. When you [`rename`](@ref), names need to be wrapped with [`Name`](@ref). Here, I use the chaining macro [`@>`](@ref) to chain several calls together.
+You'll probably notice this doesn't look like the NamedTuples you're probably familiar with. I've created a homemade version of NamedTuples.
+
+As a start, I want to rename so that I understand what the columns mean. I use the [`@name`] macro to switch to my version of named tuples.
 
 ```jldoctest dplyr
 julia> airport =
-        @> airport |>
+        @name @> airport |>
         rename(_,
-            airport_code = Name(:faa),
-            latitude = Name(:lat),
-            longitude = Name(:lon),
-            altitude = Name(:alt),
-            time_zone_offset = Name(:tz),
-            daylight_savings = Name(:dst),
-            time_zone = Name(:tzone)
+            airport_code = :faa,
+            latitude = :lat,
+            longitude = :lon,
+            altitude = :alt,
+            time_zone_offset = :tz,
+            daylight_savings = :dst,
+            time_zone = :tzone
         )
-(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone_offset = -5, daylight_savings = "A", time_zone = "America/New_York")
+((name, "Lansdowne Airport"), (airport_code, "04G"), (latitude, 41.1304722), (longitude, -80.6195833), (altitude, 1044), (time_zone_offset, -5), (daylight_savings, "A"), (time_zone, "America/New_York"))
 ```
 
-Let's create a proper `TimeZone`. Note the data contains some `LEGACY` timezones.
+Let's create a proper `TimeZone`. Note the data contains some `LEGACY` timezones. Note the type annotation: `TimeZone` is unstable without it.
 
 ```jldoctest dplyr
+julia> const time_zone_classes = Class(:STANDARD) | Class(:LEGACY);
+
 julia> airport =
-        @> airport |>
+        @name @> airport |>
         transform(_,
-            time_zone = TimeZone(_.time_zone, Class(:STANDARD) | Class(:LEGACY))
+            time_zone = TimeZone(_.time_zone, time_zone_classes)::Union{VariableTimeZone, Missing}
         )
-(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone_offset = -5, daylight_savings = "A", time_zone = tz"America/New_York")
+((name, "Lansdowne Airport"), (airport_code, "04G"), (latitude, 41.1304722), (longitude, -80.6195833), (altitude, 1044), (time_zone_offset, -5), (daylight_savings, "A"), (time_zone, tz"America/New_York"))
 ```
 
 Now that we have a true timezone, we can [`remove`](@ref) all data that is contingent on timezone.
 
 ```jldoctest dplyr
 julia> airport =
-        @> airport |>
+        @name @> airport |>
         remove(_,
-            Name(:time_zone_offset),
-            Name(:daylight_savings)
+            :time_zone_offset,
+            :daylight_savings
         )
-(name = "Lansdowne Airport", airport_code = "04G", latitude = 41.1304722, longitude = -80.6195833, altitude = 1044, time_zone = tz"America/New_York")
+((name, "Lansdowne Airport"), (airport_code, "04G"), (latitude, 41.1304722), (longitude, -80.6195833), (altitude, 1044), (time_zone, tz"America/New_York"))
 ```
 
 Let's also add proper units to our variables.
 
 ```jldoctest dplyr
 julia> airport =
-        @> airport |>
+        @name @> airport |>
         transform(_,
             latitude = _.latitude * °,
             longitude = _.longitude * °,
             altitude = _.altitude * ft
         )
-(name = "Lansdowne Airport", airport_code = "04G", time_zone = tz"America/New_York", latitude = 41.1304722°, longitude = -80.6195833°, altitude = 1044 ft)
+((name, "Lansdowne Airport"), (airport_code, "04G"), (time_zone, tz"America/New_York"), (latitude, 41.1304722°), (longitude, -80.6195833°), (altitude, 1044 ft))
 ```
 
 Let's put it all together.
 
 ```jldoctest dplyr
-julia> function process_airport(airport)
-            @> airport |>
-            named_tuple |>
+julia> function process_airport(row)
+            @name @> row |>
+            named_tuple(_)::Airport |>
             rename(_,
-                airport_code = Name(:faa),
-                latitude = Name(:lat),
-                longitude = Name(:lon),
-                altitude = Name(:alt),
-                time_zone_offset = Name(:tz),
-                daylight_savings = Name(:dst),
-                time_zone = Name(:tzone)
+                airport_code = :faa,
+                latitude = :lat,
+                longitude = :lon,
+                altitude = :alt,
+                time_zone_offset = :tz,
+                daylight_savings = :dst,
+                time_zone = :tzone
             ) |>
             transform(_,
-                time_zone = TimeZone(_.time_zone, Class(:STANDARD) | Class(:LEGACY)),
+                time_zone = TimeZone(_.time_zone, time_zone_classes)::Union{VariableTimeZone, Missing},
                 latitude = _.latitude * °,
                 longitude = _.longitude * °,
                 altitude = _.altitude * ft
             ) |>
             remove(_,
-                Name(:time_zone_offset),
-                Name(:daylight_savings)
+                :time_zone_offset,
+                :daylight_savings
             )
         end;
 ```
@@ -173,11 +186,11 @@ I'll also make sure the airports are [`indexed`](@ref) by their code so we can a
 
 ```jldoctest dplyr
 julia> const indexed_airports =
-        @> airports |>
-        indexed(_, Name(:airport_code));
+        @name @> airports |>
+        indexed(_, :airport_code);
 
 julia> indexed_airports["JFK"]
-(name = "John F Kennedy Intl", airport_code = "JFK", time_zone = tz"America/New_York", latitude = 40.639751°, longitude = -73.778925°, altitude = 13 ft)
+((name, "John F Kennedy Intl"), (airport_code, "JFK"), (time_zone, tz"America/New_York"), (latitude, 40.639751°), (longitude, -73.778925°), (altitude, 13 ft))
 ```
 
 That was just the warm-up. Now let's get started working on the flights data.
@@ -206,21 +219,23 @@ Tables.Schema:
  :minute          Int64
  :time_hour       String
 
+julia> const Flight = row_type(flights_file);
+
 julia> flight =
-        @> flights_file |>
+        @name @> flights_file |>
         first |>
-        named_tuple |>
+        named_tuple(_)::Flight |>
         rename(_,
-            departure_time = Name(:dep_time),
-            scheduled_departure_time = Name(:sched_dep_time),
-            departure_delay = Name(:dep_delay),
-            arrival_time = Name(:arr_time),
-            scheduled_arrival_time = Name(:sched_arr_time),
-            arrival_delay = Name(:arr_delay),
-            tail_number = Name(:tailnum),
-            destination = Name(:dest)
+            departure_time = :dep_time,
+            scheduled_departure_time = :sched_dep_time,
+            departure_delay = :dep_delay,
+            arrival_time = :arr_time,
+            scheduled_arrival_time = :sched_arr_time,
+            arrival_delay = :arr_delay,
+            tail_number = :tailnum,
+            destination = :dest
         )
-(year = 2013, month = 1, day = 1, carrier = "UA", flight = 1545, origin = "EWR", air_time = 227, distance = 1400, hour = 5, minute = 15, time_hour = "2013-01-01 05:00:00", departure_time = 517, scheduled_departure_time = 515, departure_delay = 2, arrival_time = 830, scheduled_arrival_time = 819, arrival_delay = 11, tail_number = "N14228", destination = "IAH")
+((year, 2013), (month, 1), (day, 1), (carrier, "UA"), (flight, 1545), (origin, "EWR"), (air_time, 227), (distance, 1400), (hour, 5), (minute, 15), (time_hour, "2013-01-01 05:00:00"), (departure_time, 517), (scheduled_departure_time, 515), (departure_delay, 2), (arrival_time, 830), (scheduled_arrival_time, 819), (arrival_delay, 11), (tail_number, "N14228"), (destination, "IAH"))
 ```
 
 We can use our `airports` data to make datetimes with timezones.
@@ -236,21 +251,20 @@ julia> scheduled_departure_time = ZonedDateTime(
 Note the scheduled arrival time is `818`. This means `8:18`. We can use `divrem(_, 100)` to split it up. Not all destinations are not in the `flights` dataset. If it was an overnight flight, add a day to the arrival time.
 
 ```jldoctest dplyr
-julia> scheduled_arrival_time =
-            if haskey(indexed_airports, flight.destination)
-                possible_arrival_time =
-                    ZonedDateTime(
-                        DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
-                        indexed_airports[flight.destination].time_zone
-                    )
-                if possible_arrival_time < scheduled_departure_time
-                    possible_arrival_time + Day(1)
+julia> if haskey(indexed_airports, flight.destination)
+            maybe_arrival_time = ZonedDateTime(
+                DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
+                indexed_airports[flight.destination].time_zone
+            )
+            scheduled_arrival_time =
+                if maybe_arrival_time < scheduled_departure_time
+                    maybe_arrival_time + Day(1)
                 else
-                    possible_arrival_time
+                    maybe_arrival_time
                 end
-            else
-                missing
-            end
+        else
+            scheduled_arrival_time = missing
+        end
 2013-01-01T08:19:00-06:00
 ```
 
@@ -259,50 +273,55 @@ Let's put it all together.
 ```jldoctest dplyr
 julia> function process_flight(row)
             flight =
-                @> row |>
-                named_tuple |>
+                @name @> row |>
+                named_tuple(_)::Flight |>
                 rename(_,
-                    departure_time = Name(:dep_time),
-                    scheduled_departure_time = Name(:sched_dep_time),
-                    departure_delay = Name(:dep_delay),
-                    arrival_time = Name(:arr_time),
-                    scheduled_arrival_time = Name(:sched_arr_time),
-                    arrival_delay = Name(:arr_delay),
-                    tail_number = Name(:tailnum),
-                    destination = Name(:dest)
+                    departure_time = :dep_time,
+                    scheduled_departure_time = :sched_dep_time,
+                    departure_delay = :dep_delay,
+                    arrival_time = :arr_time,
+                    scheduled_arrival_time = :sched_arr_time,
+                    arrival_delay = :arr_delay,
+                    tail_number = :tailnum,
+                    destination = :dest
                 )
             scheduled_departure_time = ZonedDateTime(
                 DateTime(flight.year, flight.month, flight.day, flight.hour, flight.minute),
                 indexed_airports[flight.origin].time_zone
             )
-            scheduled_arrival_time =
-                if haskey(indexed_airports, flight.destination)
-                    possible_arrival_time =
-                        ZonedDateTime(
-                            DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
-                            indexed_airports[flight.destination].time_zone
-                        )
-                    if possible_arrival_time < scheduled_departure_time
-                        possible_arrival_time + Day(1)
-                    else
-                        possible_arrival_time
-                    end
-                else
-                    missing
-                end
-            @> flight |>
-                transform(_,
-                    scheduled_departure_time = scheduled_departure_time,
-                    scheduled_arrival_time = scheduled_arrival_time,
-                    air_time = Minute(_.air_time),
-                    distance = _.distance * mi,
-                    departure_delay = Minute(_.departure_delay),
-                    arrival_delay = Minute(_.arrival_delay)
-                ) |>
-                remove(_, Name(:year), Name(:month), Name(:day), Name(:hour),
-                    Name(:minute), Name(:time_hour), Name(:departure_time),
-                    Name(:arrival_time)
+            if haskey(indexed_airports, flight.destination)
+                maybe_arrival_time = ZonedDateTime(
+                    DateTime(flight.year, flight.month, flight.day, divrem(flight.scheduled_arrival_time, 100)...),
+                    indexed_airports[flight.destination].time_zone
                 )
+                scheduled_arrival_time =
+                    if maybe_arrival_time < scheduled_departure_time
+                        maybe_arrival_time + Day(1)
+                    else
+                        maybe_arrival_time
+                    end
+            else
+                scheduled_arrival_time = missing
+            end
+            @name @> flight |>
+            remove(_,
+                :year,
+                :month,
+                :day,
+                :hour,
+                :minute,
+                :time_hour,
+                :departure_time,
+                :arrival_time
+            ) |>
+            transform(_,
+                scheduled_departure_time = scheduled_departure_time,
+                scheduled_arrival_time = scheduled_arrival_time,
+                air_time = Minute(_.air_time),
+                distance = _.distance * mi,
+                departure_delay = Minute(_.departure_delay),
+                arrival_delay = Minute(_.arrival_delay)
+            )
         end;
 
 julia> flights =
@@ -325,9 +344,9 @@ Theoretically, the distances between two airports is always the same. Let's make
 
 ```jldoctest dplyr
 julia> paths_grouped =
-        @> flights |>
-        order(_, Names(:origin, :destination, :distance)) |>
-        Group(By(_, Names(:origin, :destination, :distance)));
+        @name @> flights |>
+        order(_, (:origin, :destination, :distance)) |>
+        Group(By(_, (:origin, :destination, :distance)));
 ```
 
 Each `Group` will contain a [`key`](@ref) and [`value`](@ref)
@@ -336,7 +355,7 @@ Each `Group` will contain a [`key`](@ref) and [`value`](@ref)
 julia> path = first(paths_grouped);
 
 julia> key(path)
-(origin = "EWR", destination = "ALB", distance = 143 mi)
+((origin, "EWR"), (destination, "ALB"), (distance, 143 mi))
 
 julia> value(path) |> Peek
 Showing 4 of 439 rows
@@ -372,8 +391,8 @@ second `Group`, we don't need to `order` first.
 
 ```jldoctest dplyr
 julia> distinct_distances =
-        @> paths |>
-        Group(By(_, Names(:origin, :destination))) |>
+        @name @> paths |>
+        Group(By(_, (:origin, :destination))) |>
         over(_, @_ transform(key(_),
             number = length(value(_))
         ));
@@ -426,19 +445,19 @@ same flight.
 ```@docs
 @_
 @>
+@name
 ```
 
 ## Columns
 
 ```@docs
 named_tuple
-Name
-Names
 rename
 transform
 remove
 gather
 spread
+row_type
 ```
 
 ## Rows
