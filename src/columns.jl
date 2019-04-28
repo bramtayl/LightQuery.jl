@@ -101,7 +101,7 @@ export @name
 """
     named_tuple(anything)
 
-Coerce `anything` to a [`named tuple`](@ref). For performance with structs, define and `@inline` propertynames.
+Coerce `anything` to a `named_tuple`. For performance with structs, define and `@inline` propertynames.
 
 ```jldoctest
 julia> using LightQuery

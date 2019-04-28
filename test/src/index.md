@@ -65,7 +65,7 @@ julia> airport =
 ((faa, "04G"), (name, "Lansdowne Airport"), (lat, 41.1304722), (lon, -80.6195833), (alt, 1044), (tz, -5), (dst, "A"), (tzone, "America/New_York"))
 ```
 
-Notice this doesn't look like the `NamedTuples` you're probably familiar with. I've created a homemade version of `NamedTuples`. Use the [`@name`](@ref) macro to turn NamedTuples into named tuples and symbols into `Name`s.
+Notice this doesn't look like the `NamedTuples` you're probably familiar with. I've created a homemade version of `NamedTuples`. Use the [`@name`](@ref) macro to turn NamedTuples into [`named_tuple`](@ref)s and symbols into `Name`s.
 
 Rename so that we understand what the columns mean.
 
