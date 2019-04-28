@@ -15,13 +15,7 @@ matches(::Tuple{Name{name}, Any}, ::Tuple{Name{name}, Any}) where {name} = true
 matches(::Tuple{Name{name}, Any}, ::Name{name}) where {name} = true
 matches(apple, orange) = false
 
-"""
-    value(named::Tuple{LightQuery.Name,Any})
-
-`named[2]`
-"""
 value(named::Named) = named[2]
-export value
 
 get_pair(named::Tuple{}, name::Name) = error("Cannot find $name")
 function get_pair(named::Some{Named}, name::Name)
@@ -65,8 +59,8 @@ make_names(expression::Expr) =
 """
     macro name(something)
 
-Replace raw symbols with typed names, and named tuples with typed named tuples.
-Typed names can be used with `getindex` (and will keep names) or as a function.
+Replace symbols with `Name`s, and `NamedTuples` with [`named_tuple`](@ref)s.
+`Name`s can be used as indices, functions, or properties.
 
 ```jldoctest
 julia> using LightQuery
@@ -107,7 +101,7 @@ export @name
 """
     named_tuple(anything)
 
-Coerce `anything` to a typed named tuple. For performance with structs, define and `@inline` propertynames.
+Coerce `anything` to a [`named tuple`](@ref). For performance with structs, define and `@inline` propertynames.
 
 ```jldoctest
 julia> using LightQuery
@@ -231,7 +225,7 @@ export gather
 """
     spread(data, names...)
 
-Unnest nested `name` in `names`. Inverse of [`gather`](@ref).
+Unnest nested [`named_tuple`](@ref)s. Inverse of [`gather`](@ref).
 
 ```jldoctest
 julia> using LightQuery

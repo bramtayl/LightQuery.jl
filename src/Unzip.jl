@@ -60,7 +60,7 @@ view(arrays::ZippedArrays, index...) =
 """
     unzip(it, n)
 
-Unzip an iterator `it` which returns tuples of length `n`. Use `Val(n)` to guarantee type stability.
+Unzip an iterator `it` which returns tuples of length `n`.
 
 ```jldoctest
 julia> using LightQuery

@@ -9,7 +9,7 @@ write.csv(airports, "airports.csv", na = "", row.names = FALSE)
 write.csv(flights, "flights.csv", na = "", row.names = FALSE)
 ```
 
-Let's import the tools we need. I'm pulling in from tools from `Dates`, `TimeZones`, and `Unitful`.
+Import the tools we need from `Dates`, `TimeZones`, and `Unitful`.
 
 ```jldoctest dplyr
 julia> using LightQuery
@@ -48,16 +48,14 @@ Tables.Schema:
  :tzone  Union{Missing, String}
 ```
 
-We use [`row_type`](@ref) to see what type rows this will return:
-
-isconcretetype
+Use [`row_type`](@ref) to see the type of the rows:
 
 ```jldoctest dplyr
 julia> const Airport = row_type(airports_file)
 Tuple{Tuple{LightQuery.Name{:faa},String},Tuple{LightQuery.Name{:name},String},Tuple{LightQuery.Name{:lat},Float64},Tuple{LightQuery.Name{:lon},Float64},Tuple{LightQuery.Name{:alt},Int64},Tuple{LightQuery.Name{:tz},Int64},Tuple{LightQuery.Name{:dst},String},Tuple{LightQuery.Name{:tzone},T} where T<:Union{Missing, String}}
 ```
 
-Let's take a look at the first row. Use [`named_tuple`](@ref) to coerce a `CSV.Row` to a named tuple. I use the chaining macro [`@>`](@ref) to chain calls together.
+Look at the first row. Use [`named_tuple`](@ref) to coerce a `CSV.Row` to a named tuple. Use the chaining macro [`@>`](@ref) to chain calls together.
 
 ```jldoctest dplyr
 julia> airport =
@@ -67,9 +65,9 @@ julia> airport =
 ((faa, "04G"), (name, "Lansdowne Airport"), (lat, 41.1304722), (lon, -80.6195833), (alt, 1044), (tz, -5), (dst, "A"), (tzone, "America/New_York"))
 ```
 
-You'll probably notice this doesn't look like the NamedTuples you're probably familiar with. I've created a homemade version of NamedTuples.
+Notice this doesn't look like the `NamedTuples` you're probably familiar with. I've created a homemade version of `NamedTuples`. Use the [`@name`](@ref) macro to turn NamedTuples into named tuples and symbols into `Name`s.
 
-As a start, I want to rename so that I understand what the columns mean. I use the [`@name`] macro to switch to my version of named tuples.
+Rename so that we understand what the columns mean.
 
 ```jldoctest dplyr
 julia> airport =
@@ -86,7 +84,7 @@ julia> airport =
 ((name, "Lansdowne Airport"), (airport_code, "04G"), (latitude, 41.1304722), (longitude, -80.6195833), (altitude, 1044), (time_zone_offset, -5), (daylight_savings, "A"), (time_zone, "America/New_York"))
 ```
 
-Let's create a proper `TimeZone`. Note the data contains some `LEGACY` timezones. Note the type annotation: `TimeZone` is unstable without it.
+Create a proper `TimeZone`. Note the data contains some `LEGACY` timezones. Use a type annotation: `TimeZone` is unstable without it.
 
 ```jldoctest dplyr
 julia> const time_zone_classes = Class(:STANDARD) | Class(:LEGACY);
@@ -99,7 +97,7 @@ julia> airport =
 ((name, "Lansdowne Airport"), (airport_code, "04G"), (latitude, 41.1304722), (longitude, -80.6195833), (altitude, 1044), (time_zone_offset, -5), (daylight_savings, "A"), (time_zone, tz"America/New_York"))
 ```
 
-Now that we have a true timezone, we can [`remove`](@ref) all data that is contingent on timezone.
+[`remove`](@ref) all data that is contingent on timezone.
 
 ```jldoctest dplyr
 julia> airport =
@@ -111,7 +109,7 @@ julia> airport =
 ((name, "Lansdowne Airport"), (airport_code, "04G"), (latitude, 41.1304722), (longitude, -80.6195833), (altitude, 1044), (time_zone, tz"America/New_York"))
 ```
 
-Let's also add proper units to our variables.
+Add proper units to our variables.
 
 ```jldoctest dplyr
 julia> airport =
@@ -124,7 +122,7 @@ julia> airport =
 ((name, "Lansdowne Airport"), (airport_code, "04G"), (time_zone, tz"America/New_York"), (latitude, 41.1304722°), (longitude, -80.6195833°), (altitude, 1044 ft))
 ```
 
-Let's put it all together.
+Put it all together.
 
 ```jldoctest dplyr
 julia> function process_airport(row)
@@ -152,7 +150,7 @@ julia> function process_airport(row)
         end;
 ```
 
-I use [`over`](@ref) to lazily `map`.
+Use [`over`](@ref) to lazily `map`.
 
 ```jldoctest dplyr
 julia> airports =
@@ -160,7 +158,7 @@ julia> airports =
         over(_, process_airport);
 ```
 
-When it comes time to collect, I'm calling [`make_columns`](@ref) then [`rows`](@ref). It makes sense to store this data column-wise. This is because there are multiple columns that might contain missing data.
+Call [`make_columns`](@ref) then [`rows`](@ref) to store the data column-wise.
 
 ```jldoctest dplyr
 julia> airports =
@@ -169,7 +167,7 @@ julia> airports =
         rows;
 ```
 
-We can use [`Peek`](@ref) to get a look at the data.
+Use [`Peek`](@ref) to look at the data.
 
 ```jldoctest dplyr
 julia> Peek(airports)
@@ -182,7 +180,7 @@ Showing 4 of 1458 rows
 |               Randall Airport |          06N | America/New_York (UTC-5/UTC-4) |  41.431912° | -74.3915611° |   523 ft |
 ```
 
-I'll also make sure the airports are [`indexed`](@ref) by their code so we can access them quickly.
+Make sure the airports are [`indexed`](@ref) by their code so we can access them quickly.
 
 ```jldoctest dplyr
 julia> const indexed_airports =
@@ -193,7 +191,7 @@ julia> indexed_airports["JFK"]
 ((name, "John F Kennedy Intl"), (airport_code, "JFK"), (time_zone, tz"America/New_York"), (latitude, 40.639751°), (longitude, -73.778925°), (altitude, 13 ft))
 ```
 
-That was just the warm-up. Now let's get started working on the flights data.
+Set up the flights data.
 
 ```jldoctest dplyr
 julia> flights_file = CSV.File("flights.csv", allowmissing = :auto)
@@ -238,7 +236,7 @@ julia> flight =
 ((year, 2013), (month, 1), (day, 1), (carrier, "UA"), (flight, 1545), (origin, "EWR"), (air_time, 227), (distance, 1400), (hour, 5), (minute, 15), (time_hour, "2013-01-01 05:00:00"), (departure_time, 517), (scheduled_departure_time, 515), (departure_delay, 2), (arrival_time, 830), (scheduled_arrival_time, 819), (arrival_delay, 11), (tail_number, "N14228"), (destination, "IAH"))
 ```
 
-We can use our `airports` data to make datetimes with timezones.
+Use the `indexed_airports` data to make datetimes with timezones.
 
 ```jldoctest dplyr
 julia> scheduled_departure_time = ZonedDateTime(
@@ -248,7 +246,7 @@ julia> scheduled_departure_time = ZonedDateTime(
 2013-01-01T05:15:00-05:00
 ```
 
-Note the scheduled arrival time is `818`. This means `8:18`. We can use `divrem(_, 100)` to split it up. Not all destinations are not in the `flights` dataset. If it was an overnight flight, add a day to the arrival time.
+Note the scheduled arrival time is `818`. This means `8:18`. Use `divrem(_, 100)` to split it up. Not all destinations are not in the `flights` dataset. If it was an overnight flight, add a day to the arrival time.
 
 ```jldoctest dplyr
 julia> if haskey(indexed_airports, flight.destination)
@@ -268,7 +266,7 @@ julia> if haskey(indexed_airports, flight.destination)
 2013-01-01T08:19:00-06:00
 ```
 
-Let's put it all together.
+Put it all together.
 
 ```jldoctest dplyr
 julia> function process_flight(row)
@@ -340,7 +338,7 @@ Showing 4 of 336776 rows
 |      B6 |    725 |    JFK |      N804JB |         BQN | 2013-01-01T05:45:00-05:00 |                   missing | 183 minutes |  1576 mi |       -1 minute |   -18 minutes |
 ```
 
-Theoretically, the distances between two airports is always the same. Let's make sure this is also the case in our data. First, [`order`](@ref) by `origin`, `destination`, and `distance`. Then [`Group`](@ref) [`By`](@ref) the same variables.
+Theoretically, the distances between two airports is always the same. Make sure this is the case in our data. First, [`order`](@ref) by `origin`, `destination`, and `distance`. Then [`Group`](@ref) [`By`](@ref) the same variables.
 
 ```jldoctest dplyr
 julia> paths_grouped =
@@ -367,7 +365,7 @@ Showing 4 of 439 rows
 |      EV |   4316 |    EWR |      N14153 |         ALB | 2013-01-02T13:27:00-05:00 | 2013-01-02T14:33:00-05:00 | 33 minutes |   143 mi |       5 minutes |   -14 minutes |
 ```
 
-At this point, we don't need any of the `value` data. All we need is the `key`.
+All we need is the `key`.
 
 ```jldoctest dplyr
 julia> paths =
@@ -407,7 +405,7 @@ Showing at most 4 rows
 |    EWR |         AUS |      1 |
 ```
 
-Let's see [`when`](@ref) there are multiple distances for the same path:
+See [`when`](@ref) there are multiple distances for the same path:
 
 ```jldoctest dplyr
 julia> @> distinct_distances |>
@@ -420,7 +418,7 @@ Showing at most 4 rows
 |    JFK |         EGE |      2 |
 ```
 
-That's strange. What's up with the `EGE` airport? Let's take a [`Peek`](@ref).
+What's up with the `EGE` airport? Take a [`Peek`](@ref).
 
 ```jldoctest dplyr
 julia> @> flights |>
@@ -435,8 +433,7 @@ Showing at most 4 rows
 |      AA |    575 |    JFK |      N631AA |         EGE | 2013-01-02T17:00:00-05:00 | 2013-01-02T19:50:00-07:00 | 260 minutes |  1747 mi |       5 minutes |    16 minutes |
 ```
 
-Looks (to me) like two different sources are reporting different info about the
-same flight.
+Looks like there are multiple records for the same flights.
 
 # Interface
 

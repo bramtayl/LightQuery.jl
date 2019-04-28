@@ -118,9 +118,9 @@ function pair_type(name, a_type)
 end
 
 """
-    row_type(file::CSV.File)
+    row_type(file)
 
-Get the `row_type` of a CSV `file`.
+Get the `row_type` of a `file`.
 
 ```jldoctest
 julia> using LightQuery

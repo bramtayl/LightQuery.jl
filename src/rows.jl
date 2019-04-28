@@ -22,7 +22,7 @@ state_to_index(it::Generator, state) = state_to_index(it.iter, state)
 """
     Enumerated{It}
 
-Relies on the fact that iteration states can be converted to indices; thus, you might have to define `LightQuery.state_to_index` for unrecognized types. Ignores some iterators like `Filter`.
+Relies on the fact that iteration states can be converted to indices; thus, you might have to define `LightQuery.state_to_index` for unrecognized types. "Sees through" some iterators like `Filter`.
 
 ```jldoctest
 julia> using LightQuery
@@ -111,8 +111,7 @@ eltype(::Type{Indexed{It, Indices}}) where {It, Indices} =
 """
     indexed(it, call)
 
-Index `it` by the results of `call`, with a default to `missing`. Relies on
-[`Enumerated`](@ref).
+Index `it` by the results of `call`. Relies on [`Enumerated`](@ref).
 
 ```jldoctest
 julia> using LightQuery
