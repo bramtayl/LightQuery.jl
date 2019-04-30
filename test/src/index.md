@@ -322,10 +322,6 @@ julia> function process_flight(row)
             )
         end;
 
-it = over(flights_file, process_flight)
-using Juno: @enter
-@enter make_columns(it)
-
 julia> flights =
         @> flights_file |>
         over(_, process_flight) |>
