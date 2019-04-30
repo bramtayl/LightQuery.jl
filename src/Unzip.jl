@@ -26,12 +26,12 @@ end
 push!(arrays::ZippedArrays, values) = map(push!, arrays.arrays, values)
 function similar(arrays::ZippedArrays, ::Type, dimensions::Dims)
 	@inline inner_similar(index) = Array{Any}(undef, dimensions...)
-	zip(ntuple(inner_similar, length(arrays.arrays))...)
+	zip(ntuple(inner_similar, Val{length(arrays.arrays)}())...)
 end
 function similar(arrays::ZippedArrays, ::Type{Items}, dimensions::Dims) where {Items <: Tuple}
 	@inline inner_similar(index) =
-        Array{fieldtype(Items, index)}(undef, dimensions...)
-	zip(ntuple(inner_similar, length(arrays.arrays))...)
+		Array{fieldtype(Items, index)}(undef, dimensions...)
+	zip(ntuple(inner_similar, Val{length(arrays.arrays)}())...)
 end
 empty(array::ZippedArrays{Olds}, ::Type{News} = Olds) where {Olds, News} =
     similar(array, News)
@@ -57,22 +57,35 @@ push_widen(arrays::ZippedArrays, items) =
     zip(map(maybe_push_widen, arrays.arrays, items)...)
 view(arrays::ZippedArrays, index...) =
     zip(map(array -> view(array, index...), arrays.arrays)...)
+
+@generated type_length(::Val{It}) where {It} = Val{fieldcount(It)}()
+
+empty_item_length(it, ::HasEltype) = item_length(Val{eltype(it)}())
+empty_item_length(it, ::EltypeUnknown) = item_length(Val{@default_eltype(it)}())
+
+item_length(it) =
+	if isempty(it)
+		empty_item_length(it, IteratorEltype(it))
+	else
+		Val{length(first(it))}()
+	end
+
 """
-    unzip(it, n)
+    unzip(it, n = item_length(it))
 
 Unzip an iterator `it` which returns tuples of length `n`.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> unzip([(1, 1.0), (2, 2.0)], 2)
+julia> unzip([(1, 1.0), (2, 2.0)])
 ([1, 2], [1.0, 2.0])
 
 julia> unzip([(1, 1.0), (2, 2.0)], Val(2))
 ([1, 2], [1.0, 2.0])
 ```
 """
-@inline unzip(it, n) = _collect(
+@inline unzip(it, n = item_length(it)) = _collect(
     zip(ntuple(x -> 1:1, n)...),
     it,
     IteratorEltype(it),

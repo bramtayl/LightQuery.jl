@@ -106,7 +106,7 @@ Coerce `anything` to a `named_tuple`. For performance with structs, define and `
 ```jldoctest
 julia> using LightQuery
 
-julia> data = @name ((a = 1, b = 2))
+julia> data = named_tuple((a = 1, b = 2))
 ((a, 1), (b, 2))
 
 julia> struct MyType

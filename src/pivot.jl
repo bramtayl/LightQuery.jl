@@ -1,20 +1,17 @@
-@generated type_names(it) =
-    map(pair -> fieldtypes(pair)[1](), fieldtypes(it))
+function type_names(it::Val{It}) where It
+    @inline field(i) = fieldtype(fieldtype(It, i), 1)()
+    ntuple(field, type_length(it))
+end
 
-"""
-    item_names(it)
+empty_item_names(it, ::HasEltype) = type_names(Val{eltype(it)}())
+empty_item_names(it, ::EltypeUnknown) = type_names(Val{@default_eltype(it)}())
 
-Find names of items in `it`. Used in [`Peek`](@ref) and [`make_columns`](@ref).
-
-```jldoctest
-julia> using LightQuery
-
-julia> @name item_names([(a = 1, b = 1.0), (a = 2, b = 2.0)])
-(a, b)
-```
-"""
-item_names(it) = type_names(first(it))
-export item_names
+item_names(it) =
+    if isempty(it)
+        empty_item_names(it, IteratorEltype(it))
+    else
+        map(first, first(it))
+    end
 
 """
     rows(it)
@@ -37,11 +34,12 @@ struct Peek{Names, It}
     it::It
     max_rows::Int
 end
+
 export Peek
 """
-    Peek(it; max_rows = 4)
+    Peek(it, names = item_names(it); max_rows = 4)
 
-Get a peek of an iterator which returns items with `propertynames`. Will show no more than `max_rows`. Relies on [`item_names`](@ref).
+Get a peek of an iterator which returns items with `propertynames`. Will show no more than `max_rows`.
 
 ```jldoctest Peek
 julia> using LightQuery
@@ -56,7 +54,7 @@ Showing 4 of 5 rows
 |   4 |   2 |
 ```
 """
-Peek(it::It; max_rows = 4) where {It} = Peek{item_names(it), It}(it, max_rows)
+Peek(it::It, names = item_names(it); max_rows = 4) where {It} = Peek{names, It}(it, max_rows)
 function show(io::IO, peek::Peek{them}) where {them}
     if isa(IteratorSize(peek.it), Union{HasLength, HasShape})
         if length(peek.it) > peek.max_rows
@@ -90,22 +88,26 @@ columns(it::Generator{<: ZippedArrays, <: Tuple{Name, Vararg{Name}}}) =
 export columns
 
 """
-    make_columns(it)
+    make_columns(it, names = item_names(it))
 
-Collect into columns. Always eager, see [`columns`](@ref) for lazy version. Relies on [`item_names`](@ref).
+Collect into columns with `names`. Always eager, see [`columns`](@ref) for lazy version.
 
 ```jldoctest make_columns
 julia> using LightQuery
 
-julia> @name make_columns([(a = 1, b = 1.0), (a = 2, b = 2.0)])
+julia> it = @name [(a = 1, b = 1.0), (a = 2, b = 2.0)];
+
+julia> make_columns(it)
 ((a, [1, 2]), (b, [1.0, 2.0]))
+
+julia> empty!(it);
+
+julia> make_columns(it)
+((a, Int64[]), (b, Float64[]))
 ```
 """
-function make_columns(it)
-    them = item_names(it)
-    unwrap(row) = map(value, row)
-    them(unzip(Generator(unwrap, it), length(them)))
-end
+make_columns(it, names = item_names(it)) =
+    names(unzip(Generator(row -> map(value, row), it), Val{length(names)}()))
 export make_columns
 
 function pair_type(name, a_type)
