@@ -65,8 +65,8 @@ julia> @name order([
             (item = "a", index = 1)
         ], :index)
 2-element view(::Array{Tuple{Tuple{LightQuery.Name{:item},String},Tuple{LightQuery.Name{:index},Int64}},1}, [2, 1]) with eltype Tuple{Tuple{LightQuery.Name{:item},String},Tuple{LightQuery.Name{:index},Int64}}:
- ((item, "a"), (index, 1))
- ((item, "b"), (index, 2))
+ ((`item`, "a"), (`index`, 1))
+ ((`item`, "b"), (`index`, 2))
 ```
 """
 order(it, call; keywords...) =
@@ -90,6 +90,14 @@ struct Indexed{It, Indices}
     indices::Indices
 end
 @propagate_inbounds getindex(it::Indexed, index) = it.it[it.indices[index]]
+function get(it::Indexed, index, default)
+    inner_index = get(it.indices, index, nothing)
+    if inner_index === nothing
+        default
+    else
+        it.it[inner_index]
+    end
+end
 haskey(it::Indexed, index) = haskey(it.indices, index)
 function iterate(it::Indexed)
     item, state = @ifsomething iterate(it.indices)
@@ -125,7 +133,7 @@ julia> result = @name indexed(
         );
 
 julia> result[1]
-((item, "a"), (index, 1))
+((`item`, "a"), (`index`, 1))
 ```
 """
 function indexed(it, call)
@@ -187,8 +195,8 @@ julia> @name Group(By(
         )) |>
         collect
 2-element Array{Pair{Int64,SubArray{Tuple{Tuple{LightQuery.Name{:item},String},Tuple{LightQuery.Name{:group},Int64}},1,Array{Tuple{Tuple{LightQuery.Name{:item},String},Tuple{LightQuery.Name{:group},Int64}},1},Tuple{UnitRange{Int64}},true}},1}:
- 1 => [((item, "a"), (group, 1)), ((item, "b"), (group, 1))]
- 2 => [((item, "c"), (group, 2)), ((item, "d"), (group, 2))]
+ 1 => [((`item`, "a"), (`group`, 1)), ((`item`, "b"), (`group`, 1))]
+ 2 => [((`item`, "c"), (`group`, 2)), ((`item`, "d"), (`group`, 2))]
 ```
 """
 Group(it::By) = Group(it.it, it.call)
@@ -279,12 +287,12 @@ julia> @name Join(
         ) |>
         collect
 6-element Array{Pair{Union{Missing, Tuple{Tuple{Name{:left},String},Tuple{Name{:index},Int64}}},Union{Missing, Tuple{Tuple{Name{:right},String},Tuple{Name{:index},Int64}}}},1}:
- ((left, "a"), (index, 1)) => ((right, "a"), (index, 1))
- ((left, "b"), (index, 2)) => missing
-                   missing => ((right, "c"), (index, 3))
-                   missing => ((right, "d"), (index, 4))
- ((left, "e"), (index, 5)) => missing
- ((left, "f"), (index, 6)) => ((right, "e"), (index, 6))
+ ((`left`, "a"), (`index`, 1)) => ((`right`, "a"), (`index`, 1))
+ ((`left`, "b"), (`index`, 2)) => missing
+                       missing => ((`right`, "c"), (`index`, 3))
+                       missing => ((`right`, "d"), (`index`, 4))
+ ((`left`, "e"), (`index`, 5)) => missing
+ ((`left`, "f"), (`index`, 6)) => ((`right`, "e"), (`index`, 6))
 ```
 
 Assumes `left` and `right` are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. For other join flavors, combine with [`when`](@ref). Make sure to annotate with [`Length`](@ref) if you know it.

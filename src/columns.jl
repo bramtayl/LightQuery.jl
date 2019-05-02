@@ -1,12 +1,12 @@
 const Some{It} = Tuple{It, Vararg{It}}
 
-struct Name{name} end
+struct Name{x} end
+
+@pure Name(x) = Name{x}()
 
 const Named = Tuple{Name, Any}
 
-@inline Name(name) = Name{name}()
-
-show(io::IO, ::Name{name}) where {name} = print(io, name)
+show(io::IO, ::Name{name}) where {name} = print(io, '`', name, '`')
 
 @generated split_names(::Val{some_names}) where {some_names} =
     map(Name, some_names)
@@ -32,8 +32,6 @@ getindex(named::Some{Named}, name::Name) = value(get_pair(named, name))
 (name::Name)(named::Some{Named}) = getindex(named, name)
 (::Name{name})(something) where {name} = getproperty(something, name)
 
-getproperty(named::Some{Named}, name::Symbol) = getindex(named, Name{name}())
-
 getindex(named::Some{Named}, some_names::Some{Name}) =
     get_pair(named, first(some_names)), getindex(named, tail(some_names))...
 getindex(named::Some{Named}, some_names::Tuple{}) = ()
@@ -45,11 +43,14 @@ getindex(them::Tuple, some_names::Some{Name}) = map(tuple, some_names, them)
 @generated isless(::Name{name1}, ::Name{name2}) where {name1, name2} =
     isless(name1, name2)
 
+get_name(it, ::Name{name}) where {name} = getproperty(it, name)
+get_name(it::Some{Named}, name::Name) = getindex(it, name)
+
 make_names(something) = something
 make_names(symbol::QuoteNode) = Name{symbol.value}()
 make_names(expression::Expr) =
     if @capture expression data_.name_
-        expression
+        :($get_name($(make_names(data)), $(Name{name}())))
     elseif @capture expression name_Symbol = value_
         :(($(Name{name}()), $(make_names(value))))
     else
@@ -66,10 +67,10 @@ Replace symbols with `Name`s, and `NamedTuples` with [`named_tuple`](@ref)s.
 julia> using LightQuery
 
 julia> @name :a
-a
+`a`
 
 julia> data = @name (a = 1, b = 2, c = 3)
-((a, 1), (b, 2), (c, 3))
+((`a`, 1), (`b`, 2), (`c`, 3))
 
 julia> @name data[:a]
 1
@@ -77,20 +78,20 @@ julia> @name data[:a]
 julia> @name (:a)(data)
 1
 
-julia> data.a
+julia> @name data.a
 1
 
 julia> @name data[(:a, :b)]
-((a, 1), (b, 2))
+((`a`, 1), (`b`, 2))
 
 julia> @name (1, 2)[(:a, :b)]
-((a, 1), (b, 2))
+((`a`, 1), (`b`, 2))
 
 julia> @name (:a, :b)(data)
-((a, 1), (b, 2))
+((`a`, 1), (`b`, 2))
 
 julia> @name (:a, :b)((1, 2))
-((a, 1), (b, 2))
+((`a`, 1), (`b`, 2))
 ```
 """
 macro name(something)
@@ -107,7 +108,7 @@ Coerce `anything` to a `named_tuple`. For performance with structs, define and `
 julia> using LightQuery
 
 julia> data = named_tuple((a = 1, b = 2))
-((a, 1), (b, 2))
+((`a`, 1), (`b`, 2))
 
 julia> struct MyType
             a::Int
@@ -117,7 +118,7 @@ julia> struct MyType
 julia> @inline Base.propertynames(::MyType) = (:a, :b);
 
 julia> named_tuple(MyType(1, 2))
-((a, 1), (b, 2))
+((`a`, 1), (`b`, 2))
 ```
 """
 function named_tuple(anything)
@@ -150,7 +151,7 @@ Remove `names` from `data`.
 julia> using LightQuery
 
 julia> @name remove((a = 1, b = 2, c = 3), :b)
-((a, 1), (c, 3))
+((`a`, 1), (`c`, 3))
 ```
 """
 function remove(data, names...)
@@ -167,7 +168,7 @@ Merge `assignments` into `data`, overwriting old values.
 julia> using LightQuery
 
 julia> @name transform((a = 1, b = 2), a = 3)
-((b, 2), (a, 3))
+((`b`, 2), (`a`, 3))
 ```
 """
 function transform(data, assignments...)
@@ -184,7 +185,7 @@ Rename `data`.
 julia> using LightQuery
 
 julia> @name rename((a = 1, b = 2), c = :a)
-((b, 2), (c, 1))
+((`b`, 2), (`c`, 1))
 ```
 """
 function rename(data, assignments...)
@@ -209,7 +210,7 @@ For each `key => value` pair in `assignments`, gather the names in `value` into 
 julia> using LightQuery
 
 julia> @name gather((a = 1, b = 2, c = 3), d = (:a, :c))
-((b, 2), (d, ((a, 1), (c, 3))))
+((`b`, 2), (`d`, ((`a`, 1), (`c`, 3))))
 ```
 """
 gather(data, assignments...) = (
@@ -231,7 +232,7 @@ Unnest nested [`named_tuple`](@ref)s. Inverse of [`gather`](@ref).
 julia> using LightQuery
 
 julia> @name spread((b = 2, d = (a = 1, c = 3)), :d)
-((b, 2), (a, 1), (c, 3))
+((`b`, 2), (`a`, 1), (`c`, 3))
 ```
 """
 spread(data, names...) =

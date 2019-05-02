@@ -23,8 +23,8 @@ julia> using LightQuery
 
 julia> @name collect(rows((a = [1, 2], b = [1.0, 2.0])))
 2-element Array{Tuple{Tuple{LightQuery.Name{:a},Int64},Tuple{LightQuery.Name{:b},Float64}},1}:
- ((a, 1), (b, 1.0))
- ((a, 2), (b, 2.0))
+ ((`a`, 1), (`b`, 1.0))
+ ((`a`, 2), (`b`, 2.0))
 ```
 """
 rows(it) = Generator(map(first, it), zip(map(value, it)...))
@@ -46,7 +46,7 @@ julia> using LightQuery
 
 julia> @name Peek(rows((a = 1:5, b = 5:-1:1)))
 Showing 4 of 5 rows
-|   a |   b |
+| `a` | `b` |
 | ---:| ---:|
 |   1 |   5 |
 |   2 |   4 |
@@ -79,7 +79,7 @@ version.
 julia> using LightQuery
 
 julia> @name columns(rows((a = [1, 2], b = [1.0, 2.0])))
-((a, [1, 2]), (b, [1.0, 2.0]))
+((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 ```
 """
 columns(it::Generator{<: ZippedArrays, <: Tuple{Name, Vararg{Name}}}) =
@@ -98,12 +98,12 @@ julia> using LightQuery
 julia> it = @name [(a = 1, b = 1.0), (a = 2, b = 2.0)];
 
 julia> make_columns(it)
-((a, [1, 2]), (b, [1.0, 2.0]))
+((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 
 julia> empty!(it);
 
 julia> make_columns(it)
-((a, Int64[]), (b, Float64[]))
+((`a`, Int64[]), (`b`, Float64[]))
 ```
 """
 make_columns(it, names = item_names(it)) =

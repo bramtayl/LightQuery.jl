@@ -36,7 +36,7 @@ end
 empty(array::ZippedArrays{Olds}, ::Type{News} = Olds) where {Olds, News} =
     similar(array, News)
 maybe_setindex_widen_up_to(array::AbstractArray{Item}, item, index) where {Item} =
-    if typeof(item) === Item || isa(item, Item)
+    if isa(item, Item)
         @inbounds array[index] = item
         array
     else
@@ -47,7 +47,7 @@ setindex_widen_up_to(arrays::ZippedArrays, items, index) = zip(map(
     arrays.arrays, items
 )...)
 maybe_push_widen(array::AbstractArray{Item}, item) where {Item} =
-    if typeof(item) === Item || isa(item, Item)
+    if isa(item, Item)
         push!(array, item)
         array
     else

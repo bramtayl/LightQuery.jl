@@ -29,7 +29,7 @@ function substitute_underscores!(dictionary, body::Expr)
     )...)
 end
 anonymous(location, body; inline = false) = body
-function anonymous(location, body::Expr; inline = false)
+function anonymous(location, body::Expr)
     dictionary = Dict{Symbol, Symbol}()
     new_body = substitute_underscores!(dictionary, body)
     code = Expr(:function,
@@ -39,9 +39,6 @@ function anonymous(location, body::Expr; inline = false)
         )...),
         Expr(:block, location, new_body)
     )
-    if inline
-        pushfirst!(code.args[2].args, Expr(:meta, :inline))
-    end
     Expr(:call,
         CallAndCode,
         code,
@@ -68,13 +65,42 @@ macro _(body)
 end
 export @_
 
-function chain(location, body)
+function (location, body::Expr)
+    dictionary = Dict{Symbol, Symbol}()
+    new_body = substitute_underscores!(dictionary, body)
+    code = Expr(:function,
+        Expr(:call, gensym(), Generator(
+            pair -> pair.second,
+            sort!(collect(dictionary), by = first)
+        )...),
+        Expr(:block, location, new_body)
+    )
+    Expr(:call,
+        CallAndCode,
+        code,
+        quot(code)
+    )
+end
+
+chain(location, body) =
     if @capture body head_ |> tail_
-        Expr(:call, anonymous(location, tail, inline = true), chain(location, head))
+        if isa(tail, Expr)
+            dictionary = Dict{Symbol, Symbol}()
+            new_body = substitute_underscores!(dictionary, tail)
+            Expr(:let,
+                Expr(:(=), dictionary[:_], chain(location, head)),
+                Expr(:block,
+                    location,
+                    new_body
+                )
+            )
+        else
+            Expr(:call, tail, chain(location, head))
+        end
     else
         body
     end
-end
+
 """
     macro >(body)
 
