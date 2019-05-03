@@ -2,6 +2,7 @@ state_to_index(::AbstractArray, state) = state[2]
 state_to_index(::Array, state) = state - 1
 state_to_index(filtered::Filter, state) = state_to_index(filtered.itr, state)
 state_to_index(mapped::Generator, state) = state_to_index(mapped.iter, state)
+
 """
     Enumerated{Iterator}
 
@@ -107,14 +108,14 @@ IteratorEltype(::Type{Indexed{Iterator, Indices}}) where {Iterator, Indices} =
 eltype(::Type{Indexed{Iterator, Indices}}) where {Iterator, Indices} =
     Pair{keytype(Indices), Union{Missing, eltype(Iterator)}}
 """
-    indexed(iterator, key)
+    index(iterator, key)
 
 Index `iterator` by the results of `key`. Relies on [`Enumerated`](@ref).
 
 ```jldoccall
 julia> using LightQuery
 
-julia> result = @name indexed(
+julia> result = @name index(
             [
                 (item = "b", index = 2),
                 (item = "a", index = 1)
@@ -126,7 +127,7 @@ julia> result[1]
 ((`item`, "a"), (`index`, 1))
 ```
 """
-function indexed(iterator, key)
+function index(iterator, key)
     Indexed(iterator, collect_similar(
         Dict{Union{}, Union{}}(),
         Generator(
@@ -138,7 +139,7 @@ function indexed(iterator, key)
         )
     ))
 end
-export indexed
+export index
 
 """
     By(iterator, key)
