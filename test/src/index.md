@@ -65,7 +65,7 @@ julia> airport =
 ((`faa`, "04G"), (`name`, "Lansdowne Airport"), (`lat`, 41.1304722), (`lon`, -80.6195833), (`alt`, 1044), (`tz`, -5), (`dst`, "A"), (`tzone`, "America/New_York"))
 ```
 
-[`rename`](@ref.
+[`rename`](@ref).
 
 ```jldoctest dplyr
 julia> airport =
@@ -82,7 +82,7 @@ julia> airport =
 ((`name`, "Lansdowne Airport"), (`airport_code`, "04G"), (`latitude`, 41.1304722), (`longitude`, -80.6195833), (`altitude`, 1044), (`time_zone_offset`, -5), (`daylight_savings`, "A"), (`time_zone`, "America/New_York"))
 ```
 
-[`transform`] `time_zone` into a `TimeZone`. Note the data contains some `LEGACY` timezones. Use a type annotation: `TimeZone` is unstable without it.
+[`transform`](@ref) `time_zone` into a `TimeZone`. Note the data contains some `LEGACY` timezones. Use a type annotation: `TimeZone` is unstable without it.
 
 ```jldoctest dplyr
 julia> const time_zone_classes = Class(:STANDARD) | Class(:LEGACY);
@@ -429,7 +429,7 @@ Showing 4 of 226 rows
 |      EWR |           AUS |    1504 mi |
 ```
 
-The data is already sorted by `origin` and `destination`, so that for our second `Group`, we don't need to `order` first. Use [`@_`] to create an anonymous function.
+The data is already sorted by `origin` and `destination`, so that for our second `Group`, we don't need to `order` first. Use [`@_`](@ref) to create an anonymous function.
 
 ```jldoctest dplyr
 julia> distinct_distances =

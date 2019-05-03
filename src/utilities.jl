@@ -31,7 +31,7 @@ partial_map(f, fixed, variables1, variables2) = map(
 """
     over(iterator, call)
 
-Lazy `map` with argument order reversed.
+Lazy `map` with the reverse argument order.
 """
 over(iterator, call) = Generator(call, iterator)
 export over
@@ -39,7 +39,7 @@ export over
 """
     when(iterator, call)
 
-Lazy `filter` with argument order reversed.
+Lazy `filter` with the reverse argument order.
 """
 when(iterator, call) = Filter(call, iterator)
 export when

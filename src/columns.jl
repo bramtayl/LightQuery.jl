@@ -47,8 +47,8 @@ make_names(code::Expr) =
 """
     macro name(code)
 
-Switch to a native representation of named tuples based on typed `Name`s.
-`Name`s can be used as indices, keywords, functions, or properties.
+Switch to named tuples based on typed `Name`s. `Name`s can be used as indices,
+keywords, functions, or properties.
 
 ```jldoctest
 julia> using LightQuery
@@ -114,9 +114,9 @@ remove(row, old_names...) = diff_unrolled(row, old_names)
 export remove
 
 """
-    transform(old_row, new_row...)
+    transform(row, name_values...)
 
-Merge `new_row` into `old_row`, overwriting old values.
+Merge `name_values` into `row`, overwriting old values.
 
 ```jldoctest
 julia> using LightQuery
@@ -125,8 +125,8 @@ julia> @name transform((a = 1, b = 2), a = 3)
 ((`b`, 2), (`a`, 3))
 ```
 """
-transform(old_row, new_row...) =
-    diff_unrolled(old_row, new_row)..., new_row...
+transform(row, name_values...) =
+    diff_unrolled(row, name_values)..., name_values...
 export transform
 
 """
@@ -196,7 +196,7 @@ export spread
 """
     named_schema(table)
 
-Get the `named_schema` of a `it`. Can be used as a function.
+Get the `named_schema` of a `table`. Can be used as a function.
 
 ```jldoctest
 julia> using LightQuery

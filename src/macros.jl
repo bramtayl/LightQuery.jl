@@ -91,7 +91,7 @@ make_chain(location, maybe_chain) =
 """
     macro >(body)
 
-If body is in the form `object_ |> call_`, call [`@_`](@ref) on `tail`, and recur on `head`.
+If body is in the form `object_ |> call_`, call [`@_`](@ref) on `call`, and recur on `object`.
 
 ```jldoctest
 julia> using LightQuery

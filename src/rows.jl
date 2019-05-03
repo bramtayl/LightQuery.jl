@@ -42,7 +42,7 @@ export Enumerated
 """
     order(unordered, key; keywords...)
 
-Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. See [`By`](@ref) for a way to explicitly mark that an object has been sorted. Relies on [`Enumerated`](@ref).
+Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. Relies on [`Enumerated`](@ref).
 
 ```jldoccall
 julia> using LightQuery
@@ -144,7 +144,7 @@ export index
 """
     By(iterator, key)
 
-Mark that `iterator` has been pre-sorted by `key`. For use with [`Group`](@ref) or
+Mark that `iterator` has been pre-sorted by `key`. Use with [`Group`](@ref) or
 [`Join`](@ref).
 
 ```jldoccall
@@ -282,7 +282,7 @@ julia> @name Join(
  ((`left`, "f"), (`index`, 6)) => ((`right`, "e"), (`index`, 6))
 ```
 
-Assumes `left` and `right` are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. For other join flavors, combine with [`when`](@ref). Make sure to annotate with [`Length`](@ref) if you know it.
+Assumes `left` and `right` are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. For other join flavors, combine with [`when`](@ref). Annotate with [`Length`](@ref) if you know it.
 """
 struct Join{Left <: By, Right <: By}
     left::Left
@@ -329,7 +329,7 @@ end
 export Join
 
 """
-    Length(fixed, length)
+    Length(iterator, new_length)
 
 Allow optimizations based on length. Especially useful after [`Join`](@ref) and before [`make_columns`](@ref).
 

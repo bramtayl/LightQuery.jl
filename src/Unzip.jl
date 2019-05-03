@@ -77,7 +77,7 @@ get_number_of_columns(rows) =
 """
     unzip(rows, number_of_columns = number_of_columns(rows))
 
-Unzip an iterator `rows` which returns tuples of length `number_of_columns`.
+Unzip an iterator of `rows` which returns tuples of length `number_of_columns`.
 
 ```jldoctest
 julia> using LightQuery

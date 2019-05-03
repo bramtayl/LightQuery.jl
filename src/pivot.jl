@@ -17,7 +17,7 @@ item_names(rows) =
 """
     to_rows(columns)
 
-Iterator over `rows` of a table. Always lazy. Inverse of [`to_columns`](@ref). See [`Peek`](@ref) for a way to view.
+Iterator over `rows` of a table. Always lazy. Inverse of [`to_columns`](@ref). Use [`Peek`](@ref) to view.
 
 ```jldoctest
 julia> using LightQuery
@@ -40,7 +40,7 @@ export Peek
 """
     Peek(rows, some_names = item_names(rows); maximum_length = 4)
 
-Get a peek of an iterator which returns items with `propertynames`. Will show no more than `maximum_length` rows.
+Peek an iterator which returns named tuples. Will show no more than `maximum_length` rows.
 
 ```jldoctest Peek
 julia> using LightQuery
@@ -75,8 +75,7 @@ end
 """
     to_columns(rows)
 
-Inverse of [`to_rows`](@ref). Always lazy, see [`make_columns`](@ref) for eager
-version.
+Inverse of [`to_rows`](@ref). Always lazy, see [`make_columns`](@ref) for an eager version.
 
 ```jldoctest
 julia> using LightQuery
@@ -92,7 +91,7 @@ export to_columns
 """
     make_columns(rows, some_names = item_names(rows))
 
-Collect into columns with `some_names`. Always eager, see [`to_columns`](@ref) for lazy version.
+Collect into columns with `some_names`. Always eager, see [`to_columns`](@ref) for a lazy version.
 
 ```jldoctest make_columns
 julia> using LightQuery
