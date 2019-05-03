@@ -1,6 +1,6 @@
-function type_names(name_val_s::Val{NameValS}) where NameValS
-    @inline name_at(index) = fieldtype(fieldtype(NameValS, index), 1)()
-    ntuple(name_at, type_length(name_val_s))
+function type_names(name_values_type::Val{NameValues}) where NameValues
+    @inline name_at(index) = fieldtype(fieldtype(NameValues, index), 1)()
+    ntuple(name_at, type_length(name_values_type))
 end
 
 empty_item_names(rows, ::HasEltype) = type_names(Val{eltype(rows)}())
@@ -55,7 +55,9 @@ Showing 4 of 5 rows
 |   4 |   2 |
 ```
 """
-Peek(rows::Rows, Names = item_names(rows); maximum_length = 4) where {Rows} = Peek{Names, Rows}(rows, maximum_length)
+Peek(rows::Rows, Names = item_names(rows); maximum_length = 4) where {Rows} =
+    Peek{Names, Rows}(rows, maximum_length)
+
 function show(output::IO, peek::Peek{Names}) where {Names}
     if isa(IteratorSize(peek.rows), Union{HasLength, HasShape})
         if length(peek.rows) > peek.maximum_length
@@ -83,7 +85,7 @@ julia> @name to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))
 ((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 ```
 """
-to_columns(rows::Generator{<: Rows, <: Tuple{Name, Vararg{Name}}}) =
+to_columns(rows::Generator{<: Rows, <: Some{Name}}) =
     rows.f(rows.iter.columns)
 export to_columns
 

@@ -75,16 +75,16 @@ order(unordered, key; keywords...) =
     view(unordered, mappedarray(first,
         sort!(
             collect(Enumerated(Generator(key, unordered)));
-            by = last,
+            by = second,
             keywords...
         )
     ))
 export order
 
 # piracy
-function similar(old::Dict, ::Type{Pair{Key, Value}}) where {Key, Value}
+similar(old::Dict, ::Type{Pair{Key, Value}}) where {Key, Value} =
     Dict{Key, Value}(old)
-end
+
 function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Pair{Key, Value}}) where {Key, Value}
     foreach(pair -> dictionary[pair.first] = pair.second, pairs)
     dictionary
@@ -211,26 +211,39 @@ iterate(grouped::Group, ::Nothing) = nothing
 function iterate(grouped::Group, (state, left_index, last_result))
     item_state = iterate(grouped.ungrouped, state)
     if item_state === nothing
-        last_result => (@inbounds view(grouped.ungrouped, left_index:length(grouped.ungrouped))), nothing
+        last_result => (@inbounds view(
+            grouped.ungrouped,
+            left_index:length(grouped.ungrouped)
+        )), nothing
     else
         item, state = item_state
         result = grouped.key(item)
         while isequal(result, last_result)
             item_state = iterate(grouped.ungrouped, state)
             if item_state === nothing
-                return last_result => (@inbounds view(grouped.ungrouped, left_index:length(grouped.ungrouped))), nothing
+                return last_result => (@inbounds view(
+                    grouped.ungrouped,
+                    left_index:length(grouped.ungrouped)
+                )), nothing
             else
                 item, state = item_state
                 result = grouped.key(item)
             end
         end
         right_index = state_to_index(grouped.ungrouped, state)
-        last_result => (@inbounds view(grouped.ungrouped, left_index:right_index - 1)), (state, right_index, result)
+        last_result => (@inbounds view(
+            grouped.ungrouped,
+            left_index:right_index - 1
+        )), (state, right_index, result)
     end
 end
 function iterate(grouped::Group)
     item, state = @ifsomething iterate(grouped.ungrouped)
-    iterate(grouped, (state, state_to_index(grouped.ungrouped, state), grouped.key(item)))
+    iterate(grouped, (
+        state,
+        state_to_index(grouped.ungrouped, state),
+        grouped.key(item)
+    ))
 end
 export Group
 
@@ -320,11 +333,14 @@ handle_endings(left_history, ::Nothing) =
     (left_history.item => missing), nothing
 handle_endings(left_history, right_history) =
     if isless(left_history, right_history)
-        (left_history.item => missing), (left_history, right_history, true, false)
+        (left_history.item => missing),
+        (left_history, right_history, true, false)
     elseif isless(right_history, left_history)
-        (missing => right_history.item, (left_history, right_history, false, true))
+        (missing => right_history.item,
+        (left_history, right_history, false, true))
     else
-        (left_history.item => right_history.item), (left_history, right_history, true, true)
+        (left_history.item => right_history.item),
+        (left_history, right_history, true, true)
     end
 iterate(::Join, ::Nothing) = nothing
 function iterate(joined::Join)

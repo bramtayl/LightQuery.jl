@@ -15,6 +15,7 @@ substitute_underscores!(dictionary, maybe_argument::Symbol) =
     else
         maybe_argument
     end
+
 function substitute_underscores!(dictionary, code::Expr)
     # have to do this the old fashioned way, _ has a special meaning in MacroTools
     if code.head === :macrocall && length(code.args) === 3

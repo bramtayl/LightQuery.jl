@@ -44,13 +44,12 @@ maybe_setindex_widen_up_to(column::AbstractArray{Item}, item, index) where {Item
     else
         setindex_widen_up_to(column, item, index)
     end
-function setindex_widen_up_to(rows::Rows, row, index)
+setindex_widen_up_to(rows::Rows, row, index) =
 	zip(map(
 		(column, item) -> maybe_setindex_widen_up_to(column, item, index),
 		rows.columns,
 		row
 	)...)
-end
 maybe_push_widen(column::AbstractArray{Item}, item) where {Item} =
     if isa(item, Item)
         push!(column, item)
