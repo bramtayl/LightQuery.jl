@@ -18,6 +18,7 @@ using Markdown: MD, Table
 using Tables: Schema, schema
 export Generator, Filter, flatten
 
+include("utilities.jl")
 include("macros.jl")
 include("Unzip.jl")
 include("rows.jl")

@@ -1,5 +1,3 @@
-const Some{AType} = Tuple{AType, Vararg{AType}}
-
 struct Name{x} end
 
 get_property(row, ::Name{name}) where {name} = getproperty(row, name)
@@ -11,8 +9,6 @@ show(output::IO, ::Name{name}) where {name} = print(output, '`', name, '`')
 @inline matches(::Tuple{Name{name}, Any}, ::Tuple{Name{name}, Any}) where {name} = true
 @inline matches(::Tuple{Name{name}, Any}, ::Name{name}) where {name} = true
 @inline matches(apple, orange) = false
-
-second(it) = it[2]
 
 get_index(row::Tuple{}, name::Name) = error("Cannot find $name")
 function get_index(row, name::Name)
@@ -29,7 +25,7 @@ getindex(row::Some{Named}, name::Name) =
 get_property(row::Some{Named}, name::Name) = row[name]
 
 getindex(row::Some{Named}, some_names::Some{Name}) =
-    map(name -> get_index(row, name), some_names)
+    partial_map(get_index, row, some_names)
 (some_names::Some{Name})(row::Some{Named}) = row[some_names]
 
 (some_names::Some{Name})(values::Tuple) = map(tuple, some_names, values)
@@ -90,10 +86,6 @@ macro name(code)
 end
 export @name
 
-flatten_unrolled(::Tuple{}) = ()
-flatten_unrolled(them) =
-    them[1]..., flatten_unrolled(tail(them))...
-
 if_not_in(it, ::Tuple{}) = (it,)
 if_not_in(it, them) =
     if matches(it, them[1])
@@ -151,9 +143,12 @@ julia> @name rename((a = 1, b = 2), c = :a)
 """
 rename(row, new_name_old_names...) =
     diff_unrolled(row, map(second, new_name_old_names))...,
-    map(
-        new_name_old_name -> (first(new_name_old_name), row[second(new_name_old_name)]),
-        new_name_old_names
+    partial_map(
+        (row, new_name_old_name) -> (
+            first(new_name_old_name),
+            row[second(new_name_old_name)]
+        ),
+        row, new_name_old_names
     )...
 
 export rename
@@ -172,9 +167,12 @@ julia> @name gather((a = 1, b = 2, c = 3), d = (:a, :c))
 """
 gather(row, new_name_old_names...) =
     diff_unrolled(row, flatten_unrolled(map(second, new_name_old_names)))...,
-    map(
-        new_name_old_names -> (new_name_old_names[1], row[new_name_old_names[2]]),
-        new_name_old_names
+    partial_map(
+        (row, new_name_old_name) -> (
+            new_name_old_name[1],
+            row[new_name_old_name[2]]
+        ),
+        row, new_name_old_names
     )...
 export gather
 
@@ -229,8 +227,7 @@ function get_index(row, name_val_type::Tuple{Name, Val{AType}}) where {AType}
 end
 (name_val_type::Tuple{Name, Val})(row) = get_index(row, name_val_type)
 
-get_index(row, name_val_types::Some{Tuple{Name, Val}}) = map(
-    name_val_type -> get_index(row, name_val_type),
-    name_val_types
-)
+get_index(row, name_val_types::Some{Tuple{Name, Val}}) =
+    partial_map(get_index, row, name_val_types)
+
 (name_val_types::Some{Tuple{Name, Val}})(row) = get_index(row, name_val_types)

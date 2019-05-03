@@ -1,19 +1,3 @@
-"""
-    over(iterator, call)
-
-Lazy `map` with argument order reversed.
-"""
-over(iterator, call) = Generator(call, iterator)
-export over
-
-"""
-    when(iterator, call)
-
-Lazy `filter` with argument order reversed.
-"""
-when(iterator, call) = Filter(call, iterator)
-export when
-
 state_to_index(::AbstractArray, state) = state[2]
 state_to_index(::Array, state) = state - 1
 state_to_index(filtered::Filter, state) = state_to_index(filtered.itr, state)
@@ -246,22 +230,6 @@ function iterate(grouped::Group)
     ))
 end
 export Group
-
-"""
-    key(pair)
-
-The `key` in a `key => value` `pair`.
-"""
-key(pair::Pair) = pair.first
-export key
-
-"""
-    value(pair)
-
-The `value` in a `key => value` `pair`.
-"""
-value(pair::Pair) = pair.second
-export value
 
 struct History{State, Item, Result}
     state::State

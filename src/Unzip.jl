@@ -18,12 +18,12 @@ axes(rows::Rows, dimensions...) =
 size(rows::Rows, dimensions...) =
 	size(rows.columns[1], dimensions...)
 @inline function getindex(rows::Rows, index...)
-    @inline getindex_at(column) = column[index...]
-    map(getindex_at, rows.columns)
+    @inline getindex_at(index, column) = column[index...]
+    partial_map(getindex_at, index, rows.columns)
 end
 @inline function setindex!(rows::Rows, row, index...)
-    @inline setindex_at!(column, value) = column[index...] = value
-    map(setindex_at!, rows.columns, row)
+    @inline setindex_at!(index, column, value) = column[index...] = value
+    partial_map(setindex_at!, index, rows.columns, row)
 end
 push!(rows::Rows, row) = map(push!, rows.columns, row)
 function similar(rows::Rows, ::Type, dimensions::Dims)
@@ -45,11 +45,10 @@ maybe_setindex_widen_up_to(column::AbstractArray{Item}, item, index) where {Item
         setindex_widen_up_to(column, item, index)
     end
 setindex_widen_up_to(rows::Rows, row, index) =
-	zip(map(
-		(column, item) -> maybe_setindex_widen_up_to(column, item, index),
-		rows.columns,
-		row
-	)...)
+	zip(partial_map(
+		(index, column, item) ->
+			maybe_setindex_widen_up_to(column, item, index),
+		index, rows.columns, row)...)
 maybe_push_widen(column::AbstractArray{Item}, item) where {Item} =
     if isa(item, Item)
         push!(column, item)
@@ -60,9 +59,9 @@ maybe_push_widen(column::AbstractArray{Item}, item) where {Item} =
 push_widen(rows::Rows, row) =
     zip(map(maybe_push_widen, rows.columns, row)...)
 view(rows::Rows, index...) =
-    zip(map(column -> view(column, index...), rows.columns)...)
-
-@generated type_length(::Val{Row}) where {Row} = Val{fieldcount(Row)}()
+    zip(partial_map(
+		(index, column) -> view(column, index...),
+		index, rows.columns)...)
 
 empty_number_of_columns(rows, ::HasEltype) = type_length(Val{eltype(rows)}())
 empty_number_of_columns(rows, ::EltypeUnknown) =
