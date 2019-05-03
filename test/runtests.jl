@@ -13,8 +13,6 @@ deploydocs(
 
 using Test
 
-@inline Base.propertynames(p::Pair) = (:first, :second);
-
 @testset "macros" begin
     @test (@> 1 |> (@> _ |> _ + 1)) == 2
 end
@@ -22,7 +20,6 @@ end
 @testset "named_tuples" begin
     @name @test @inferred(getindex((a = 1, b = 1.0), :a)) == 1
     @name @test @inferred(getindex((a = 1, b = 1.0), (:a,))) == (a = 1,)
-    @name @test @inferred(named_tuple(1 => 1.0)) == (first = 1, second = 1.0)
     @name @test @inferred(transform((a = 1,), b = 1.0)) == (a = 1, b = 1.0)
     @name @test @inferred(remove((a = 1, b = 1.0), :b)) == (a = 1,)
     @name @test @inferred(rename((a = 1, b = 1.0), c = :a)) == (b = 1.0, c = 1)
@@ -33,24 +30,24 @@ end
 end
 
 f(x) = (x, x + 0.0)
-test(x) = unzip(x, 2)
 f2(x) = x < 3 ? (x, x + 0.0) : (x, missing)
 
 @testset "Unzip" begin
     @test collect(zip([1, 2], [1.0, 2.0])) == [(1, 1.0), (2, 2.0)]
     @test isequal(
-        test(Generator(f, [1, missing])),
+        unzip(Generator(f, [1, missing])),
         (Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])
     )
-    @test_throws ErrorException test(Generator(x -> error(), 1:1))
-    @test (@inferred test(zip([1], [1.0]))) == ([1], [1.0])
-    @test (@inferred test([(1, 1.0)])) == ([1], [1.0])
+    @test_throws ErrorException unzip(Generator(x -> error(), 1:1))
+    @test (@inferred unzip(zip([1], [1.0]))) == ([1], [1.0])
+    @test (@inferred unzip([(1, 1.0)])) == ([1], [1.0])
+    @test (@inferred unzip(Tuple{Int, Float64}[])) == (Int64[], Float64[])
     @test isequal(
-         test(Generator(f2, [1, 2, 3])),
+         unzip(Generator(f2, [1, 2, 3])),
          ([1, 2, 3], Union{Missing, Float64}[1.0, 2.0, missing])
     )
     @test isequal(
-         test(Generator(f2, Filter(x -> true, [1, 2, 3]))),
+         unzip(Generator(f2, Filter(x -> true, [1, 2, 3]))),
          ([1, 2, 3], Union{Missing, Float64}[1.0, 2.0, missing])
     )
 end
@@ -63,9 +60,9 @@ end
 end
 
 @testset "LightQuery" begin
-    @name @test @inferred(collect(rows((a = [1, 2], b = [1.0, 2.0])))) ==
+    @name @test @inferred(collect(to_rows((a = [1, 2], b = [1.0, 2.0])))) ==
         [(a = 1, b = 1.0), (a = 2, b = 2.0)]
-    @name @test @inferred(columns(rows((a = [1, 2], b = [1.0, 2.0])))) ==
+    @name @test @inferred(to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))) ==
         (a = [1, 2], b = [1.0, 2.0])
     @name @test @inferred(make_columns([(a = 1, b = 1.0), (a = 2, b = 2.0)])) ==
         (a = [1, 2], b = [1.0, 2.0])

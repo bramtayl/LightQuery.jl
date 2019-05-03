@@ -20,14 +20,16 @@ julia> import Dates: Minute
 
 julia> Minute(::Missing) = missing;
 
-julia> using Unitful: mi, °, ft
-
 julia> using TimeZones: Class, TimeZone, VariableTimeZone, ZonedDateTime
+
+julia> using Unitful: °, ft, mi
 ```
 
-I re-export [`CSV`](http://juliadata.github.io/CSV.jl/stable/) for input-output. See the documentation there for information about [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File).
+Use [`CSV`](http://juliadata.github.io/CSV.jl/stable/) for input-output. See the documentation there for information about [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File).
 
 ```jldoctest dplyr
+julia> import CSV
+
 julia> const airports_file = CSV.File("airports.csv",
             allowmissing = :auto,
             missingstrings = ["", "\\N"]
@@ -44,24 +46,24 @@ Tables.Schema:
  :tzone  Union{Missing, String}
 ```
 
-Use [`row_type`](@ref) to see the type of the rows:
+Use [`named_schema`](@ref) to see the type of the rows:
 
 ```jldoctest dplyr
-julia> const Airport = row_type(airports_file)
-Tuple{Tuple{LightQuery.Name{:faa},String},Tuple{LightQuery.Name{:name},String},Tuple{LightQuery.Name{:lat},Float64},Tuple{LightQuery.Name{:lon},Float64},Tuple{LightQuery.Name{:alt},Int64},Tuple{LightQuery.Name{:tz},Int64},Tuple{LightQuery.Name{:dst},String},Tuple{LightQuery.Name{:tzone},T} where T<:Union{Missing, String}}
+julia> const Airport = named_schema(airports_file)
+((`faa`, Val{String}()), (`name`, Val{String}()), (`lat`, Val{Float64}()), (`lon`, Val{Float64}()), (`alt`, Val{Int64}()), (`tz`, Val{Int64}()), (`dst`, Val{String}()), (`tzone`, Val{Union{Missing, String}}()))
 ```
 
-Look at the first row. Use [`named_tuple`](@ref) to coerce a `CSV.Row` to a named tuple. Use the chaining macro [`@>`](@ref) to chain calls together.
+Look at the first row. Use the chaining macro [`@>`](@ref) to chain calls together.
 
 ```jldoctest dplyr
 julia> airport =
         @> airports_file |>
         first |>
-        named_tuple(_)::Airport
+        Airport
 ((`faa`, "04G"), (`name`, "Lansdowne Airport"), (`lat`, 41.1304722), (`lon`, -80.6195833), (`alt`, 1044), (`tz`, -5), (`dst`, "A"), (`tzone`, "America/New_York"))
 ```
 
-Notice this doesn't look like the `NamedTuples` you're probably familiar with. I've created a homemade version of `NamedTuples`. Use the [`@name`](@ref) macro to turn NamedTuples into [`named_tuple`](@ref)s and symbols into `Name`s.
+Notice this doesn't look like the `NamedTuples` you're probably familiar with. I've created a homemade version of `NamedTuples`. Use the [`@name`](@ref) macro to work with them.
 
 Rename so that we understand what the columns mean.
 
@@ -123,7 +125,7 @@ Put it all together.
 ```jldoctest dplyr
 julia> function process_airport(row)
             @name @> row |>
-            named_tuple(_)::Airport |>
+            Airport |>
             rename(_,
                 airport_code = :faa,
                 latitude = :lat,
@@ -159,13 +161,13 @@ julia> airports =
         over(_, process_airport);
 ```
 
-Call [`make_columns`](@ref) then [`rows`](@ref) to store the data column-wise.
+Call [`make_columns`](@ref) then [`to_rows`](@ref) to store the data column-wise.
 
 ```jldoctest dplyr
 julia> airports =
         airports |>
         make_columns |>
-        rows;
+        to_rows;
 ```
 
 Use [`Peek`](@ref) to look at the data.
@@ -218,12 +220,12 @@ Tables.Schema:
  :minute          Int64
  :time_hour       String
 
-julia> const Flight = row_type(flights_file);
+julia> const Flight = named_schema(flights_file);
 
 julia> flight =
         @name @> flights_file |>
         first |>
-        named_tuple(_)::Flight |>
+        Flight |>
         rename(_,
             departure_time = :dep_time,
             scheduled_departure_time = :sched_dep_time,
@@ -236,7 +238,6 @@ julia> flight =
         )
 ((`year`, 2013), (`month`, 1), (`day`, 1), (`carrier`, "UA"), (`flight`, 1545), (`origin`, "EWR"), (`air_time`, 227), (`distance`, 1400), (`hour`, 5), (`minute`, 15), (`time_hour`, "2013-01-01 05:00:00"), (`departure_time`, 517), (`scheduled_departure_time`, 515), (`departure_delay`, 2), (`arrival_time`, 830), (`scheduled_arrival_time`, 819), (`arrival_delay`, 11), (`tail_number`, "N14228"), (`destination`, "IAH"))
 ```
-@name flight.origin
 Use the `indexed_airports` data to make datetimes with timezones.
 
 ```jldoctest dplyr
@@ -277,7 +278,7 @@ julia> scheduled_arrival_time =
 julia> function process_flight(row)
             flight =
                 @name @> row |>
-                named_tuple(_)::Flight |>
+                Flight |>
                 rename(_,
                     departure_time = :dep_time,
                     scheduled_departure_time = :sched_dep_time,
@@ -337,7 +338,7 @@ julia> flights =
         @> flights_file |>
         over(_, process_flight) |>
         make_columns |>
-        rows;
+        to_rows;
 
 julia> Peek(flights)
 Showing 4 of 336776 rows
@@ -383,7 +384,7 @@ julia> paths =
         @> paths_grouped |>
         over(_, key) |>
         make_columns |>
-        rows;
+        to_rows;
 
 julia> Peek(paths)
 Showing 4 of 226 rows
@@ -459,13 +460,12 @@ Looks like there are multiple records for the same flights.
 ## Columns
 
 ```@docs
-named_tuple
 rename
 transform
 remove
 gather
 spread
-row_type
+named_schema
 ```
 
 ## Rows
@@ -488,8 +488,8 @@ Length
 ## Pivot
 
 ```@docs
-rows
+to_rows
 Peek
-columns
+to_columns
 make_columns
 ```

@@ -1,30 +1,29 @@
 """
-    over(it, call)
+    over(iterator, call)
 
 Lazy `map` with argument order reversed.
 """
-over(it, call) = Generator(call, it)
+over(iterator, call) = Generator(call, iterator)
 export over
 
 """
-    when(it, call)
+    when(iterator, call)
 
 Lazy `filter` with argument order reversed.
 """
-when(it, call) = Filter(call, it)
+when(iterator, call) = Filter(call, iterator)
 export when
 
-
-state_to_index(it::AbstractArray, state) = state[2]
-state_to_index(it::Array, state::Int) = state - 1
-state_to_index(it::Filter, state) = state_to_index(it.itr, state)
-state_to_index(it::Generator, state) = state_to_index(it.iter, state)
+state_to_index(::AbstractArray, state) = state[2]
+state_to_index(::Array, state) = state - 1
+state_to_index(filtered::Filter, state) = state_to_index(filtered.itr, state)
+state_to_index(mapped::Generator, state) = state_to_index(mapped.iter, state)
 """
-    Enumerated{It}
+    Enumerated{Iterator}
 
 Relies on the fact that iteration states can be converted to indices; thus, you might have to define `LightQuery.state_to_index` for unrecognized types. "Sees through" some iterators like `Filter`.
 
-```jldoctest
+```jldoccall
 julia> using LightQuery
 
 julia> collect(Enumerated(when([4, 3, 2, 1], iseven)))
@@ -33,31 +32,34 @@ julia> collect(Enumerated(when([4, 3, 2, 1], iseven)))
  (3, 2)
 ```
 """
-struct Enumerated{It}
-    it::It
+struct Enumerated{Iterator}
+    iterator::Iterator
 end
-IteratorEltype(::Type{Enumerated{It}}) where {It} = IteratorEltype(It)
-eltype(::Type{Enumerated{It}}) where {It} = Tuple{Int, eltype(It)}
-IteratorSize(::Type{Enumerated{It}}) where {It} = IteratorSize(It)
-length(it::Enumerated) = length(it.it)
-size(it::Enumerated) = size(it.it)
-axes(it::Enumerated) = axes(it.it)
-function iterate(it::Enumerated)
-    item, state = @ifsomething iterate(it.it)
-    (state_to_index(it.it, state), item), state
+IteratorEltype(::Type{Enumerated{Iterator}}) where {Iterator} =
+    IteratorEltype(Iterator)
+eltype(::Type{Enumerated{Iterator}}) where {Iterator} =
+    Tuple{Int, eltype(Iterator)}
+IteratorSize(::Type{Enumerated{Iterator}}) where {Iterator} =
+    IteratorSize(Iterator)
+length(enumerated::Enumerated) = length(enumerated.iterator)
+size(enumerated::Enumerated) = size(enumerated.iterator)
+axes(enumerated::Enumerated) = axes(enumerated.iterator)
+function iterate(enumerated::Enumerated)
+    item, state = @ifsomething iterate(enumerated.iterator)
+    (state_to_index(enumerated.iterator, state), item), state
 end
-function iterate(it::Enumerated, state)
-    item, state = @ifsomething iterate(it.it, state)
-    (state_to_index(it.it, state), item), state
+function iterate(enumerated::Enumerated, state)
+    item, state = @ifsomething iterate(enumerated.iterator, state)
+    (state_to_index(enumerated.iterator, state), item), state
 end
 export Enumerated
 
 """
-    order(it, call; keywords...)
+    order(unordered, key; keywords...)
 
 Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. See [`By`](@ref) for a way to explicitly mark that an object has been sorted. Relies on [`Enumerated`](@ref).
 
-```jldoctest
+```jldoccall
 julia> using LightQuery
 
 julia> @name order([
@@ -69,59 +71,63 @@ julia> @name order([
  ((`item`, "b"), (`index`, 2))
 ```
 """
-order(it, call; keywords...) =
-    view(it, mappedarray(first,
-        sort!(collect(Enumerated(Generator(call, it))), by = last; keywords...)
+order(unordered, key; keywords...) =
+    view(unordered, mappedarray(first,
+        sort!(
+            collect(Enumerated(Generator(key, unordered)));
+            by = last,
+            keywords...
+        )
     ))
 export order
 
+# piracy
 function similar(old::Dict, ::Type{Pair{Key, Value}}) where {Key, Value}
     Dict{Key, Value}(old)
 end
-function copyto!(dictionary::Dict{Key, Value}, array::AbstractVector{Pair{Key, Value}}) where {Key, Value}
-    for item in array
-        dictionary[item.first] = item.second
-    end
+function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Pair{Key, Value}}) where {Key, Value}
+    foreach(pair -> dictionary[pair.first] = pair.second, pairs)
     dictionary
 end
 
-struct Indexed{It, Indices}
-    it::It
+struct Indexed{Iterator, Indices}
+    iterator::Iterator
     indices::Indices
 end
-@propagate_inbounds getindex(it::Indexed, index) = it.it[it.indices[index]]
-function get(it::Indexed, index, default)
-    inner_index = get(it.indices, index, nothing)
+@propagate_inbounds getindex(indexed::Indexed, index) =
+    indexed.iterator[indexed.indices[index]]
+function get(indexed::Indexed, index, default)
+    inner_index = get(indexed.indices, index, nothing)
     if inner_index === nothing
         default
     else
-        it.it[inner_index]
+        indexed.iterator[inner_index]
     end
 end
-haskey(it::Indexed, index) = haskey(it.indices, index)
-function iterate(it::Indexed)
-    item, state = @ifsomething iterate(it.indices)
-    (item.first => it.it[item.second]), state
+haskey(indexed::Indexed, index) = haskey(indexed.indices, index)
+function iterate(indexed::Indexed)
+    item, state = @ifsomething iterate(indexed.indices)
+    (item.first => indexed.iterator[item.second]), state
 end
-function iterate(it::Indexed, state)
-    item, state = @ifsomething iterate(it.indices, state)
-    (item.first => it.it[item.second]), state
+function iterate(indexed::Indexed, state)
+    item, state = @ifsomething iterate(indexed.indices, state)
+    (item.first => indexed.iterator[item.second]), state
 end
-IteratorSize(::Type{Indexed{It, Indices}}) where {It, Indices} =
+IteratorSize(::Type{Indexed{Iterator, Indices}}) where {Iterator, Indices} =
     IteratorSize(Indices)
-length(it::Indexed) = length(it.indices)
-size(it::Indexed) = size(it.indices)
-axes(it::Indexed) = axes(it.indices)
-IteratorEltype(::Type{Indexed{It, Indices}}) where {It, Indices} =
-    combine_iterator_eltype(IteratorEltype(It), IteratorEltype(Indices))
-eltype(::Type{Indexed{It, Indices}}) where {It, Indices} =
-    Pair{keytype(Indices), Union{Missing, eltype(It)}}
+length(indexed::Indexed) = length(indexed.indices)
+size(indexed::Indexed) = size(indexed.indices)
+axes(indexed::Indexed) = axes(indexed.indices)
+IteratorEltype(::Type{Indexed{Iterator, Indices}}) where {Iterator, Indices} =
+    combine_iterator_eltype(IteratorEltype(Iterator), IteratorEltype(Indices))
+eltype(::Type{Indexed{Iterator, Indices}}) where {Iterator, Indices} =
+    Pair{keytype(Indices), Union{Missing, eltype(Iterator)}}
 """
-    indexed(it, call)
+    indexed(iterator, key)
 
-Index `it` by the results of `call`. Relies on [`Enumerated`](@ref).
+Index `iterator` by the results of `key`. Relies on [`Enumerated`](@ref).
 
-```jldoctest
+```jldoccall
 julia> using LightQuery
 
 julia> result = @name indexed(
@@ -136,27 +142,27 @@ julia> result[1]
 ((`item`, "a"), (`index`, 1))
 ```
 """
-function indexed(it, call)
-    Indexed(it, collect_similar(
+function indexed(iterator, key)
+    Indexed(iterator, collect_similar(
         Dict{Union{}, Union{}}(),
         Generator(
             index_item -> begin
                 index, item = index_item
-                call(item) => index
+                key(item) => index
             end,
-            Enumerated(it)
+            Enumerated(iterator)
         )
     ))
 end
 export indexed
 
 """
-    By(it, call)
+    By(iterator, key)
 
-Mark that `it` has been pre-sorted by `call`. For use with [`Group`](@ref) or
+Mark that `iterator` has been pre-sorted by `key`. For use with [`Group`](@ref) or
 [`Join`](@ref).
 
-```jldoctest
+```jldoccall
 julia> using LightQuery
 
 julia> @name By([
@@ -165,23 +171,22 @@ julia> @name By([
         ], :index);
 ```
 """
-struct By{It, Call}
-    it::It
-    call::Call
+struct By{Iterator, Key}
+    iterator::Iterator
+    key::Key
 end
 export By
 
-
-struct Group{It, Call}
-    it::It
-    call::Call
+struct Group{Iterator, Key}
+    ungrouped::Iterator
+    key::Key
 end
 """
-    Group(it::By)
+    Group(ungrouped::By)
 
-Group consecutive keys in `it`. Requires a presorted object (see [`By`](@ref)). Relies on [`Enumerated`](@ref).
+Group consecutive keys in `ungrouped`. Requires a presorted object (see [`By`](@ref)). Relies on [`Enumerated`](@ref).
 
-```jldoctest
+```jldoccall
 julia> using LightQuery
 
 julia> @name Group(By(
@@ -199,50 +204,50 @@ julia> @name Group(By(
  2 => [((`item`, "c"), (`group`, 2)), ((`item`, "d"), (`group`, 2))]
 ```
 """
-Group(it::By) = Group(it.it, it.call)
+Group(sorted::By) = Group(sorted.iterator, sorted.key)
 IteratorSize(::Type{<: Group})  = SizeUnknown()
 IteratorEltype(::Type{<: Group}) = EltypeUnknown()
-iterate(it::Group, ::Nothing) = nothing
-function iterate(it::Group, (state, left_index, last_result))
-    item_state = iterate(it.it, state)
+iterate(grouped::Group, ::Nothing) = nothing
+function iterate(grouped::Group, (state, left_index, last_result))
+    item_state = iterate(grouped.ungrouped, state)
     if item_state === nothing
-        last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
+        last_result => (@inbounds view(grouped.ungrouped, left_index:length(grouped.ungrouped))), nothing
     else
         item, state = item_state
-        result = it.call(item)
+        result = grouped.key(item)
         while isequal(result, last_result)
-            item_state = iterate(it.it, state)
+            item_state = iterate(grouped.ungrouped, state)
             if item_state === nothing
-                return last_result => (@inbounds view(it.it, left_index:length(it.it))), nothing
+                return last_result => (@inbounds view(grouped.ungrouped, left_index:length(grouped.ungrouped))), nothing
             else
                 item, state = item_state
-                result = it.call(item)
+                result = grouped.key(item)
             end
         end
-        right_index = state_to_index(it.it, state)
-        last_result => (@inbounds view(it.it, left_index:right_index - 1)), (state, right_index, result)
+        right_index = state_to_index(grouped.ungrouped, state)
+        last_result => (@inbounds view(grouped.ungrouped, left_index:right_index - 1)), (state, right_index, result)
     end
 end
-function iterate(it::Group)
-    item, state = @ifsomething iterate(it.it)
-    iterate(it, (state, state_to_index(it.it, state), it.call(item)))
+function iterate(grouped::Group)
+    item, state = @ifsomething iterate(grouped.ungrouped)
+    iterate(grouped, (state, state_to_index(grouped.ungrouped, state), grouped.key(item)))
 end
 export Group
 
 """
-    key(it)
+    key(pair)
 
-The `key` in a `key => value` pair.
+The `key` in a `key => value` `pair`.
 """
-key(it::Pair) = it.first
+key(pair::Pair) = pair.first
 export key
 
 """
-    value(it)
+    value(pair)
 
-The `value` in a `key => value` pair.
+The `value` in a `key => value` `pair`.
 """
-value(it::Pair) = it.second
+value(pair::Pair) = pair.second
 export value
 
 struct History{State, Item, Result}
@@ -250,19 +255,19 @@ struct History{State, Item, Result}
     item::Item
     result::Result
 end
-History(it::By, (item, state)) = History(state, item, it.call(item))
-History(it::By, ::Nothing) = nothing
-next_history(it::By, history::History) =
-    History(it, iterate(it.it, history.state))
-next_history(it::By) = History(it, iterate(it.it))
+History(sorted::By, (item, state)) = History(state, item, sorted.key(item))
+History(sorted::By, ::Nothing) = nothing
+next_history(sorted::By, history::History) =
+    History(sorted, iterate(sorted.iterator, history.state))
+next_history(sorted::By) = History(sorted, iterate(sorted.iterator))
 isless(history1::History, history2::History) =
     isless(history1.result, history2.result)
 """
     Join(left::By, right::By)
 
-Find all pairs where `isequal(left.call(left.it), right.call(right.it))`.
+Find all pairs where `isequal(left.key(left.iterator), right.key(right.iterator))`.
 
-```jldoctest Join
+```jldoccall Join
 julia> using LightQuery
 
 julia> @name Join(
@@ -303,47 +308,47 @@ struct Join{Left <: By, Right <: By}
 end
 combine_iterator_eltype(::HasEltype, ::HasEltype) = HasEltype()
 combine_iterator_eltype(x, y) = EltypeUnknown()
-IteratorEltype(::Type{Join{By{It1, Call1}, By{It2, Call2}}}) where {It1, Call1, It2, Call2} =
+IteratorEltype(::Type{Join{By{It1, Key1}, By{It2, Key2}}}) where {It1, Key1, It2, Key2} =
     combine_iterator_eltype(IteratorEltype(It1), IteratorEltype(It2))
-eltype(::Type{Join{By{It1, Call1}, By{It2, Call2}}}) where {It1, Call1, It2, Call2} =
+eltype(::Type{Join{By{It1, Key1}, By{It2, Key2}}}) where {It1, Key1, It2, Key2} =
     Pair{Union{Missing, eltype(It1)}, Union{Missing, eltype(It2)}}
 IteratorSize(::Type{F}) where {F <: Join} = SizeUnknown()
-full_dispatch(it, ::Nothing, ::Nothing) = nothing
-full_dispatch(it, ::Nothing, right_history) =
+handle_endings(::Nothing, ::Nothing) = nothing
+handle_endings(::Nothing, right_history) =
     (missing => right_history.item), nothing
-full_dispatch(it, left_history, ::Nothing) =
+handle_endings(left_history, ::Nothing) =
     (left_history.item => missing), nothing
-full_dispatch(it, left_history, right_history) =
+handle_endings(left_history, right_history) =
     if isless(left_history, right_history)
         (left_history.item => missing), (left_history, right_history, true, false)
     elseif isless(right_history, left_history)
         (missing => right_history.item, (left_history, right_history, false, true))
     else
-    (left_history.item => right_history.item), (left_history, right_history, true, true)
+        (left_history.item => right_history.item), (left_history, right_history, true, true)
     end
-iterate(it::Join, ::Nothing) = nothing
-function iterate(it::Join)
-    left_history = next_history(it.left)
-    right_history = next_history(it.right)
-    full_dispatch(it, left_history, right_history)
+iterate(::Join, ::Nothing) = nothing
+function iterate(joined::Join)
+    left_history = next_history(joined.left)
+    right_history = next_history(joined.right)
+    handle_endings(left_history, right_history)
 end
-function iterate(it::Join, (left_history, right_history, next_left, next_right))
+function iterate(joined::Join, (left_history, right_history, next_left, next_right))
     if next_left
-        left_history = next_history(it.left, left_history)
+        left_history = next_history(joined.left, left_history)
     end
     if next_right
-        right_history = next_history(it.right, right_history)
+        right_history = next_history(joined.right, right_history)
     end
-    full_dispatch(it, left_history, right_history)
+    handle_endings(left_history, right_history)
 end
 export Join
 
 """
-    Length(it, length)
+    Length(fixed, length)
 
 Allow optimizations based on length. Especially useful after [`Join`](@ref) and before [`make_columns`](@ref).
 
-```jldoctest
+```jldoccall
 julia> using LightQuery
 
 julia> @> Filter(iseven, 1:4) |>
@@ -354,20 +359,23 @@ julia> @> Filter(iseven, 1:4) |>
  4
 ```
 """
-struct Length{It}
-    it::It
-    length::Int
+struct Length{Iterator}
+    iterator::Iterator
+    new_length::Int
 end
-IteratorEltype(::Type{Length{It}}) where {It} = IteratorEltype(It)
-eltype(it::Length) = eltype(it.it)
+IteratorEltype(::Type{Length{Iterator}}) where {Iterator} =
+    IteratorEltype(Iterator)
+eltype(fixed::Length) = eltype(fixed.iterator)
 IteratorLength(::Type{T}) where {T <: Length} = HasLength()
-length(it::Length) = it.length
-iterate(it::Length) = iterate(it.it)
-iterate(it::Length, state) = iterate(it.it, state)
+length(fixed::Length) = fixed.new_length
+iterate(fixed::Length) = iterate(fixed.iterator)
+iterate(fixed::Length, state) = iterate(fixed.iterator, state)
 export Length
 
 # piracy
-@propagate_inbounds view(it::Generator, index...) =
-    Generator(it.f, view(it.iter, index...))
-@propagate_inbounds view(it::Filter, index...) = view(it.itr, index...)
-@propagate_inbounds getindex(it::Generator, index...) = it.f(it.iter[index...])
+@propagate_inbounds view(mapped::Generator, index...) =
+    Generator(mapped.f, view(mapped.iter, index...))
+@propagate_inbounds view(filtered::Filter, index...) =
+    view(filtered.itr, index...)
+@propagate_inbounds getindex(mapped::Generator, index...) =
+    mapped.f(mapped.iter[index...])

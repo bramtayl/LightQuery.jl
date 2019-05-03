@@ -1,97 +1,100 @@
-struct ZippedArrays{Items, Dimensions, Arrays} <: AbstractArray{Items, Dimensions}
-    arrays::Arrays
+struct Rows{Row, Dimensions, Columns} <: AbstractArray{Row, Dimensions}
+    columns::Columns
 end
-function ZippedArrays(model, rest...)
-    arrays = (model, rest...)
-    ZippedArrays{
-        Tuple{map(eltype, arrays)...},
+function Rows(model, rest...)
+    columns = (model, rest...)
+    Rows{
+        Tuple{map(eltype, columns)...},
         ndims(model),
-        typeof(arrays)
-    }(arrays)
+        typeof(columns)
+    }(columns)
 end
-IteratorEltype(::Type{ZippedArrays{Items, Dimensions, Arrays}}) where {Items, Dimensions, Arrays} =
-    _zip_iterator_eltype(Arrays)
-IteratorSize(::Type{ZippedArrays{Items, Dimensions, Arrays}}) where {Items, Dimensions, Arrays} =
-    _zip_iterator_size(Arrays)
-axes(arrays::ZippedArrays, args...) = axes(arrays.arrays[1], args...)
-size(arrays::ZippedArrays, args...) = size(arrays.arrays[1], args...)
-@propagate_inbounds function getindex(arrays::ZippedArrays, index...)
-    @propagate_inbounds inner_getindex(array) = array[index...]
-    map(inner_getindex, arrays.arrays)
+IteratorEltype(::Type{Rows{Row, Dimensions, Columns}}) where {Row, Dimensions, Columns} =
+    _zip_iterator_eltype(Columns)
+IteratorSize(::Type{Rows{Row, Dimensions, Columns}}) where {Row, Dimensions, Columns} =
+    _zip_iterator_size(Columns)
+axes(rows::Rows, dimensions...) =
+	axes(rows.columns[1], dimensions...)
+size(rows::Rows, dimensions...) =
+	size(rows.columns[1], dimensions...)
+@inline function getindex(rows::Rows, index...)
+    @inline getindex_at(column) = column[index...]
+    map(getindex_at, rows.columns)
 end
-@propagate_inbounds function setindex!(arrays::ZippedArrays, values, index...)
-    @propagate_inbounds inner_setindex!(array, value) = array[index...] = value
-    map(inner_setindex!, arrays.arrays, values)
+@inline function setindex!(rows::Rows, row, index...)
+    @inline setindex_at!(column, value) = column[index...] = value
+    map(setindex_at!, rows.columns, row)
 end
-push!(arrays::ZippedArrays, values) = map(push!, arrays.arrays, values)
-function similar(arrays::ZippedArrays, ::Type, dimensions::Dims)
-	@inline inner_similar(index) = Array{Any}(undef, dimensions...)
-	zip(ntuple(inner_similar, Val{length(arrays.arrays)}())...)
+push!(rows::Rows, row) = map(push!, rows.columns, row)
+function similar(rows::Rows, ::Type, dimensions::Dims)
+	@inline similar_at(index) = Array{Any}(undef, dimensions...)
+	zip(ntuple(similar_at, Val{length(rows.columns)}())...)
 end
-function similar(arrays::ZippedArrays, ::Type{Items}, dimensions::Dims) where {Items <: Tuple}
-	@inline inner_similar(index) =
-		Array{fieldtype(Items, index)}(undef, dimensions...)
-	zip(ntuple(inner_similar, Val{length(arrays.arrays)}())...)
+function similar(rows::Rows, ::Type{Row}, dimensions::Dims) where {Row <: Tuple}
+	@inline similar_at(index) =
+		Array{fieldtype(Row, index)}(undef, dimensions...)
+	zip(ntuple(similar_at, Val{length(rows.columns)}())...)
 end
-empty(array::ZippedArrays{Olds}, ::Type{News} = Olds) where {Olds, News} =
-    similar(array, News)
-maybe_setindex_widen_up_to(array::AbstractArray{Item}, item, index) where {Item} =
+empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow} =
+    similar(column, NewRow)
+maybe_setindex_widen_up_to(column::AbstractArray{Item}, item, index) where {Item} =
     if isa(item, Item)
-        @inbounds array[index] = item
-        array
+        @inbounds column[index] = item
+        column
     else
-        setindex_widen_up_to(array, item, index)
+        setindex_widen_up_to(column, item, index)
     end
-setindex_widen_up_to(arrays::ZippedArrays, items, index) = zip(map(
-    (array, item) -> maybe_setindex_widen_up_to(array, item, index),
-    arrays.arrays, items
-)...)
-maybe_push_widen(array::AbstractArray{Item}, item) where {Item} =
+function setindex_widen_up_to(rows::Rows, row, index)
+	zip(map(
+		(column, item) -> maybe_setindex_widen_up_to(column, item, index),
+		rows.columns,
+		row
+	)...)
+end
+maybe_push_widen(column::AbstractArray{Item}, item) where {Item} =
     if isa(item, Item)
-        push!(array, item)
-        array
+        push!(column, item)
+        column
     else
-        push_widen(array, item)
+        push_widen(column, item)
     end
-push_widen(arrays::ZippedArrays, items) =
-    zip(map(maybe_push_widen, arrays.arrays, items)...)
-view(arrays::ZippedArrays, index...) =
-    zip(map(array -> view(array, index...), arrays.arrays)...)
+push_widen(rows::Rows, row) =
+    zip(map(maybe_push_widen, rows.columns, row)...)
+view(rows::Rows, index...) =
+    zip(map(column -> view(column, index...), rows.columns)...)
 
-@generated type_length(::Val{It}) where {It} = Val{fieldcount(It)}()
+@generated type_length(::Val{Row}) where {Row} = Val{fieldcount(Row)}()
 
-empty_item_length(it, ::HasEltype) = item_length(Val{eltype(it)}())
-empty_item_length(it, ::EltypeUnknown) = item_length(Val{@default_eltype(it)}())
+empty_number_of_columns(rows, ::HasEltype) = type_length(Val{eltype(rows)}())
+empty_number_of_columns(rows, ::EltypeUnknown) =
+	type_length(Val{@default_eltype(rows)}())
 
-item_length(it) =
-	if isempty(it)
-		empty_item_length(it, IteratorEltype(it))
+get_number_of_columns(rows) =
+	if isempty(rows)
+		empty_number_of_columns(rows, IteratorEltype(rows))
 	else
-		Val{length(first(it))}()
+		Val{length(first(rows))}()
 	end
 
 """
-    unzip(it, n = item_length(it))
+    unzip(rows, number_of_columns = number_of_columns(rows))
 
-Unzip an iterator `it` which returns tuples of length `n`.
+Unzip an iterator `rows` which returns tuples of length `number_of_columns`.
 
 ```jldoctest
 julia> using LightQuery
 
 julia> unzip([(1, 1.0), (2, 2.0)])
 ([1, 2], [1.0, 2.0])
-
-julia> unzip([(1, 1.0), (2, 2.0)], Val(2))
-([1, 2], [1.0, 2.0])
 ```
 """
-@inline unzip(it, n = item_length(it)) = _collect(
-    zip(ntuple(x -> 1:1, n)...),
-    it,
-    IteratorEltype(it),
-    IteratorSize(it)
-).arrays
+unzip(rows, number_of_columns = get_number_of_columns(rows)) = _collect(
+    zip(ntuple(x -> 1:1, number_of_columns)...),
+    rows,
+    IteratorEltype(rows),
+    IteratorSize(rows)
+).columns
 export unzip
 
 # piracy
-zip(model::AbstractArray, rest::AbstractArray...) = ZippedArrays(model, rest...)
+zip(model::AbstractArray, rest::AbstractArray...) = Rows(model, rest...)

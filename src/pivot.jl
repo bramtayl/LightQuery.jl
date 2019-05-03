@@ -1,50 +1,51 @@
-function type_names(it::Val{It}) where It
-    @inline field(i) = fieldtype(fieldtype(It, i), 1)()
-    ntuple(field, type_length(it))
+function type_names(name_val_s::Val{NameValS}) where NameValS
+    @inline name_at(index) = fieldtype(fieldtype(NameValS, index), 1)()
+    ntuple(name_at, type_length(name_val_s))
 end
 
-empty_item_names(it, ::HasEltype) = type_names(Val{eltype(it)}())
-empty_item_names(it, ::EltypeUnknown) = type_names(Val{@default_eltype(it)}())
+empty_item_names(rows, ::HasEltype) = type_names(Val{eltype(rows)}())
+empty_item_names(rows, ::EltypeUnknown) =
+    type_names(Val{@default_eltype(rows)}())
 
-item_names(it) =
-    if isempty(it)
-        empty_item_names(it, IteratorEltype(it))
+item_names(rows) =
+    if isempty(rows)
+        empty_item_names(rows, IteratorEltype(rows))
     else
-        map(first, first(it))
+        map(first, first(rows))
     end
 
 """
-    rows(it)
+    to_rows(columns)
 
-Iterator over `rows` of a `NamedTuple` of arrays. Always lazy. Inverse of [`columns`](@ref). See [`Peek`](@ref) for a way to view.
+Iterator over `rows` of a table. Always lazy. Inverse of [`to_columns`](@ref). See [`Peek`](@ref) for a way to view.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(rows((a = [1, 2], b = [1.0, 2.0])))
+julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
 2-element Array{Tuple{Tuple{LightQuery.Name{:a},Int64},Tuple{LightQuery.Name{:b},Float64}},1}:
  ((`a`, 1), (`b`, 1.0))
  ((`a`, 2), (`b`, 2.0))
 ```
 """
-rows(it) = Generator(map(first, it), zip(map(value, it)...))
-export rows
+to_rows(columns) = Generator(map(first, columns), zip(map(second, columns)...))
+export to_rows
 
-struct Peek{Names, It}
-    it::It
-    max_rows::Int
+struct Peek{Names, Rows}
+    rows::Rows
+    maximum_length::Int
 end
 
 export Peek
 """
-    Peek(it, names = item_names(it); max_rows = 4)
+    Peek(rows, some_names = item_names(rows); maximum_length = 4)
 
-Get a peek of an iterator which returns items with `propertynames`. Will show no more than `max_rows`.
+Get a peek of an iterator which returns items with `propertynames`. Will show no more than `maximum_length` rows.
 
 ```jldoctest Peek
 julia> using LightQuery
 
-julia> @name Peek(rows((a = 1:5, b = 5:-1:1)))
+julia> @name Peek(to_rows((a = 1:5, b = 5:-1:1)))
 Showing 4 of 5 rows
 | `a` | `b` |
 | ---:| ---:|
@@ -54,82 +55,60 @@ Showing 4 of 5 rows
 |   4 |   2 |
 ```
 """
-Peek(it::It, names = item_names(it); max_rows = 4) where {It} = Peek{names, It}(it, max_rows)
-function show(io::IO, peek::Peek{them}) where {them}
-    if isa(IteratorSize(peek.it), Union{HasLength, HasShape})
-        if length(peek.it) > peek.max_rows
-            println(io, "Showing $(peek.max_rows) of $(length(peek.it)) rows")
+Peek(rows::Rows, Names = item_names(rows); maximum_length = 4) where {Rows} = Peek{Names, Rows}(rows, maximum_length)
+function show(output::IO, peek::Peek{Names}) where {Names}
+    if isa(IteratorSize(peek.rows), Union{HasLength, HasShape})
+        if length(peek.rows) > peek.maximum_length
+            println(output, "Showing $(peek.maximum_length) of $(length(peek.rows)) rows")
         end
     else
-        println(io, "Showing at most $(peek.max_rows) rows")
+        println(output, "Showing at most $(peek.maximum_length) rows")
     end
-    flat(row) = Any[map(value, row)...]
-    less_rows = collect(take(Generator(flat, peek.it), peek.max_rows))
-    pushfirst!(less_rows, Any[them...])
-    show(io, MD(Table(less_rows, [map(x -> :r, them)...])))
+    flat(row) = Any[map(second, row)...]
+    less_rows = collect(take(Generator(flat, peek.rows), peek.maximum_length))
+    pushfirst!(less_rows, Any[Names...])
+    show(output, MD(Table(less_rows, [map(x -> :r, Names)...])))
 end
 
 """
-    columns(it)
+    to_columns(rows)
 
-Inverse of [`rows`](@ref). Always lazy, see [`make_columns`](@ref) for eager
+Inverse of [`to_rows`](@ref). Always lazy, see [`make_columns`](@ref) for eager
 version.
 
 ```jldoctest
 julia> using LightQuery
 
-julia> @name columns(rows((a = [1, 2], b = [1.0, 2.0])))
+julia> @name to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))
 ((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 ```
 """
-columns(it::Generator{<: ZippedArrays, <: Tuple{Name, Vararg{Name}}}) =
-    it.f(it.iter.arrays)
-
-export columns
+to_columns(rows::Generator{<: Rows, <: Tuple{Name, Vararg{Name}}}) =
+    rows.f(rows.iter.columns)
+export to_columns
 
 """
-    make_columns(it, names = item_names(it))
+    make_columns(rows, some_names = item_names(rows))
 
-Collect into columns with `names`. Always eager, see [`columns`](@ref) for lazy version.
+Collect into columns with `some_names`. Always eager, see [`to_columns`](@ref) for lazy version.
 
 ```jldoctest make_columns
 julia> using LightQuery
 
-julia> it = @name [(a = 1, b = 1.0), (a = 2, b = 2.0)];
+julia> rows = @name [(a = 1, b = 1.0), (a = 2, b = 2.0)];
 
-julia> make_columns(it)
+julia> make_columns(rows)
 ((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 
-julia> empty!(it);
+julia> empty!(rows);
 
-julia> make_columns(it)
+julia> make_columns(rows)
 ((`a`, Int64[]), (`b`, Float64[]))
 ```
 """
-make_columns(it, names = item_names(it)) =
-    names(unzip(Generator(row -> map(value, row), it), Val{length(names)}()))
+make_columns(rows, some_names = item_names(rows)) =
+    some_names(unzip(
+        Generator(row -> map(second, row), rows),
+        Val{length(some_names)}()
+    ))
 export make_columns
-
-function pair_type(name, a_type)
-    typed_name = Name{name}
-    if isconcretetype(a_type)
-        Tuple{typed_name, a_type}
-    else
-        Tuple{typed_name, T} where {T <: a_type}
-    end
-end
-
-"""
-    row_type(file)
-
-Get the `row_type` of a `file`.
-
-```jldoctest
-julia> using LightQuery
-
-julia> row_type(CSV.File("test.csv"))
-Tuple{Tuple{LightQuery.Name{:a},T} where T<:Union{Missing, Int64},Tuple{LightQuery.Name{:b},T} where T<:Union{Missing, Float64}}
-```
-"""
-row_type(file::CSV.File) = Tuple{map(pair_type, file.names, file.types)...}
-export row_type
