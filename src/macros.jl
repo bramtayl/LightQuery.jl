@@ -38,7 +38,7 @@ function anonymous(location, body::Expr)
     new_body = substitute_underscores!(dictionary, body)
     code = Expr(:function,
         Expr(:call, gensym(), Generator(
-            pair -> pair.second,
+            pair -> value(pair),
             sort!(collect(dictionary), by = first)
         )...),
         Expr(:block, location, new_body)

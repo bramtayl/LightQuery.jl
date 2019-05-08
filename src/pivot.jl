@@ -1,11 +1,10 @@
-function type_names(name_values_type::Val{NameValues}) where NameValues
-    @inline name_at(index) = fieldtype(fieldtype(NameValues, index), 1)()
-    ntuple(name_at, type_length(name_values_type))
+function type_names(name_values_type)
+    @inline name_at(index) = fieldtype(fieldtype(name_values_type, index), 1)()
+    ntuple(name_at, pure_fieldcount(name_values_type))
 end
 
-empty_item_names(rows, ::HasEltype) = type_names(Val{eltype(rows)}())
-empty_item_names(rows, ::EltypeUnknown) =
-    type_names(Val{@default_eltype(rows)}())
+empty_item_names(rows, ::HasEltype) = type_names(eltype(rows))
+empty_item_names(rows, ::EltypeUnknown) = type_names(@default_eltype(rows))
 
 item_names(rows) =
     if isempty(rows)
@@ -28,7 +27,7 @@ julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
  ((`a`, 2), (`b`, 2.0))
 ```
 """
-to_rows(columns) = Generator(map(first, columns), zip(map(second, columns)...))
+to_rows(columns) = Generator(map(first, columns), zip(map(value, columns)...))
 export to_rows
 
 struct Peek{Names, Rows}
@@ -66,7 +65,7 @@ function show(output::IO, peek::Peek{Names}) where {Names}
     else
         println(output, "Showing at most $(peek.maximum_length) rows")
     end
-    flat(row) = Any[map(second, row)...]
+    flat(row) = Any[map(value, row)...]
     less_rows = collect(take(Generator(flat, peek.rows), peek.maximum_length))
     pushfirst!(less_rows, Any[Names...])
     show(output, MD(Table(less_rows, [map(x -> :r, Names)...])))
@@ -109,7 +108,7 @@ julia> make_columns(rows)
 """
 make_columns(rows, some_names = item_names(rows)) =
     some_names(unzip(
-        Generator(row -> map(second, row), rows),
+        Generator(row -> map(value, row), rows),
         Val{length(some_names)}()
     ))
 export make_columns

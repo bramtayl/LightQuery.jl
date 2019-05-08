@@ -1,16 +1,14 @@
-second(it) = it[2]
-
 const Some{AType} = Tuple{AType, Vararg{AType}}
 
 flatten_unrolled(::Tuple{}) = ()
-flatten_unrolled(them) =
+flatten_unrolled(them::Some{Any}) =
     them[1]..., flatten_unrolled(tail(them))...
 
 partial_map(f, fixed, variables::Tuple{}) = ()
-partial_map(f, fixed, variables::Tuple) =
+partial_map(f, fixed, variables::Some{Any}) =
     f(fixed, variables[1]), partial_map(f, fixed, tail(variables))...
 partial_map(f, fixed, ::Tuple{}, ::Tuple{}) = ()
-partial_map(f, fixed, variables1::Tuple, variables2::Tuple) =
+partial_map(f, fixed, variables1::Some{Any}, variables2::Some{Any}) =
     f(fixed, variables1[1], variables2[1]),
     partial_map(f, fixed, tail(variables1), tail(variables2))...
 partial_map(f, fixed, variables) = map(
@@ -26,7 +24,7 @@ partial_map(f, fixed, variables1, variables2) = map(
     variables1, variables2
 )
 
-@generated type_length(::Val{AType}) where {AType} = Val{fieldcount(AType)}()
+@pure pure_fieldcount(AType) = Val{fieldcount(AType)}()
 
 """
     over(iterator, call)
@@ -49,6 +47,7 @@ export when
 
 The `key` in a `key => value` `pair`.
 """
+key(pair::Tuple) = pair[1]
 key(pair::Pair) = pair.first
 export key
 
@@ -57,5 +56,9 @@ export key
 
 The `value` in a `key => value` `pair`.
 """
+value(pair::Tuple) = pair[2]
 value(pair::Pair) = pair.second
+
 export value
+
+const ValType = Val{AType} where AType <: Type

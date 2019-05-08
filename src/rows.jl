@@ -60,7 +60,7 @@ order(unordered, key; keywords...) =
     view(unordered, mappedarray(first,
         sort!(
             collect(Enumerated(Generator(key, unordered)));
-            by = second,
+            by = value,
             keywords...
         )
     ))
@@ -71,7 +71,7 @@ similar(old::Dict, ::Type{Pair{Key, Value}}) where {Key, Value} =
     Dict{Key, Value}(old)
 
 function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Pair{Key, Value}}) where {Key, Value}
-    foreach(pair -> dictionary[pair.first] = pair.second, pairs)
+    foreach(pair -> dictionary[key(pair)] = value(pair), pairs)
     dictionary
 end
 
@@ -92,11 +92,11 @@ end
 haskey(indexed::Indexed, index) = haskey(indexed.indices, index)
 function iterate(indexed::Indexed)
     item, state = @ifsomething iterate(indexed.indices)
-    (item.first => indexed.iterator[item.second]), state
+    (key(item) => indexed.iterator[value(item)]), state
 end
 function iterate(indexed::Indexed, state)
     item, state = @ifsomething iterate(indexed.indices, state)
-    (item.first => indexed.iterator[item.second]), state
+    (key(item) => indexed.iterator[value(item)]), state
 end
 IteratorSize(::Type{Indexed{Iterator, Indices}}) where {Iterator, Indices} =
     IteratorSize(Indices)
@@ -273,13 +273,13 @@ julia> @name Join(
             )
         ) |>
         collect
-6-element Array{Pair{Union{Missing, Tuple{Tuple{Name{:left},String},Tuple{Name{:index},Int64}}},Union{Missing, Tuple{Tuple{Name{:right},String},Tuple{Name{:index},Int64}}}},1}:
- ((`left`, "a"), (`index`, 1)) => ((`right`, "a"), (`index`, 1))
- ((`left`, "b"), (`index`, 2)) => missing
-                       missing => ((`right`, "c"), (`index`, 3))
-                       missing => ((`right`, "d"), (`index`, 4))
- ((`left`, "e"), (`index`, 5)) => missing
- ((`left`, "f"), (`index`, 6)) => ((`right`, "e"), (`index`, 6))
+6-element Array{Tuple{Union{Missing, Tuple{Tuple{Name{:left},String},Tuple{Name{:index},Int64}}},Union{Missing, Tuple{Tuple{Name{:right},String},Tuple{Name{:index},Int64}}}},1}:
+ (((`left`, "a"), (`index`, 1)), ((`right`, "a"), (`index`, 1)))
+ (((`left`, "b"), (`index`, 2)), missing)
+ (missing, ((`right`, "c"), (`index`, 3)))
+ (missing, ((`right`, "d"), (`index`, 4)))
+ (((`left`, "e"), (`index`, 5)), missing)
+ (((`left`, "f"), (`index`, 6)), ((`right`, "e"), (`index`, 6)))
 ```
 
 Assumes `left` and `right` are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. For other join flavors, combine with [`when`](@ref). Annotate with [`Length`](@ref) if you know it.
@@ -293,22 +293,22 @@ combine_iterator_eltype(x, y) = EltypeUnknown()
 IteratorEltype(::Type{Join{By{It1, Key1}, By{It2, Key2}}}) where {It1, Key1, It2, Key2} =
     combine_iterator_eltype(IteratorEltype(It1), IteratorEltype(It2))
 eltype(::Type{Join{By{It1, Key1}, By{It2, Key2}}}) where {It1, Key1, It2, Key2} =
-    Pair{Union{Missing, eltype(It1)}, Union{Missing, eltype(It2)}}
-IteratorSize(::Type{F}) where {F <: Join} = SizeUnknown()
+    Tuple{Union{Missing, eltype(It1)}, Union{Missing, eltype(It2)}}
+IteratorSize(::Type{AType}) where {AType <: Join} = SizeUnknown()
 handle_endings(::Nothing, ::Nothing) = nothing
 handle_endings(::Nothing, right_history) =
-    (missing => right_history.item), nothing
+    (missing, right_history.item), nothing
 handle_endings(left_history, ::Nothing) =
-    (left_history.item => missing), nothing
+    (left_history.item, missing), nothing
 handle_endings(left_history, right_history) =
     if isless(left_history, right_history)
-        (left_history.item => missing),
+        (left_history.item, missing),
         (left_history, right_history, true, false)
     elseif isless(right_history, left_history)
-        (missing => right_history.item,
-        (left_history, right_history, false, true))
+        (missing, right_history.item),
+        (left_history, right_history, false, true)
     else
-        (left_history.item => right_history.item),
+        (left_history.item, right_history.item),
         (left_history, right_history, true, true)
     end
 iterate(::Join, ::Nothing) = nothing

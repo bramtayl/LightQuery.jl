@@ -17,16 +17,28 @@ using Test
     @test (@> 1 |> (@> _ |> _ + 1)) == 2
 end
 
+struct MyType
+    a::Int
+    b::Float64
+end
+
+import Base: propertynames
+@inline propertynames(::MyType) = (:a, :b)
+
 @testset "named_tuples" begin
     @name @test @inferred(getindex((a = 1, b = 1.0), :a)) == 1
     @name @test @inferred(getindex((a = 1, b = 1.0), (:a,))) == (a = 1,)
     @name @test @inferred(transform((a = 1,), b = 1.0)) == (a = 1, b = 1.0)
+    @name @test @inferred(merge((a = 1, b = 1.0), (b = 2.0, c = "b"))) ==
+        (a = 1, b = 2.0, c = "b")
     @name @test @inferred(remove((a = 1, b = 1.0), :b)) == (a = 1,)
     @name @test @inferred(rename((a = 1, b = 1.0), c = :a)) == (b = 1.0, c = 1)
     @name @test @inferred(gather((a = 1, b = 1.0, c = 1//1), d = (:a, :c))) ==
         (b = 1.0, d = (a = 1, c = 1//1))
     @name @test @inferred(spread((b = 1.0, d = (a = 1, c = 1//1)), :d)) ==
         (b = 1.0, a = 1, c = 1//1)
+    @name @inferred named_tuple(MyType(1, 1.0)) == (a = 1, b = 1.0)
+    @test (@name @inferred NamedTuple((a = 1, b = 1.0))) == (a = 1, b = 1.0)
 end
 
 f(x) = (x, x + 0.0)
@@ -57,8 +69,8 @@ end
     @test collect(Group(By(Int[], identity))) == []
     @test Group(By([1], iseven)) |> collect == [false => [1]]
     @test (Length(1:2, 2) |> collect == [1, 2])
-    @test isequal(collect(Join(By([1], identity), By([], identity))), [1 => missing])
-    @test isequal(collect(Join(By([], identity), By([1], identity))), [missing => 1])
+    @test isequal(collect(Join(By([1], identity), By([], identity))), [(1, missing)])
+    @test isequal(collect(Join(By([], identity), By([1], identity))), [(missing, 1)])
     @test collect(Join(By([], identity), By([], identity))) == []
 end
 

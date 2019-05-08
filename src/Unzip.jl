@@ -63,9 +63,9 @@ view(rows::Rows, index...) =
 		(index, column) -> view(column, index...),
 		index, rows.columns)...)
 
-empty_number_of_columns(rows, ::HasEltype) = type_length(Val{eltype(rows)}())
+empty_number_of_columns(rows, ::HasEltype) = pure_fieldcount(eltype(rows))
 empty_number_of_columns(rows, ::EltypeUnknown) =
-	type_length(Val{@default_eltype(rows)}())
+	pure_fieldcount(@default_eltype(rows))
 
 get_number_of_columns(rows) =
 	if isempty(rows)
