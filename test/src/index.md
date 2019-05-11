@@ -729,16 +729,11 @@ on average.
 
 ## Reshaping
 
-For this section, I will use data from the Global Historical Climatology
-Network. I got this idea from the
-[`tidyr` tutorial](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html).
+For this section, I will use [data from the Global Historical Climatology
+Network](https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/all/ACW00011604.dly). I
+got this idea from the [`tidyr` tutorial](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html).
 
 ```jldoctest dplyr
-julia> download(
-            "https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/all/ACW00011604.dly",
-            "climate.txt"
-        );
-
 julia> file = open("climate.txt");
 
 julia> line = readline(file)
@@ -838,8 +833,6 @@ julia> climate_data =
         flatten |>
         make_columns |>
         to_rows;
-
-julia> rm("climate.txt");
 
 julia> Peek(climate_data)
 Showing 4 of 1231 rows
