@@ -6,7 +6,8 @@ flatten_unrolled(them::Some{Any}) =
 
 @inline partial_map(f, fixed, variables::Vararg{Tuple{}}) = ()
 @inline partial_map(f, fixed, variables::Vararg{Tuple}) =
-    f(fixed, map(first, variables)...), partial_map(f, fixed, map(tail, variables)...)...
+    f(fixed, map(first, variables)...),
+    partial_map(f, fixed, map(tail, variables)...)...
 @inline partial_map(f, fixed, variables) = map(
     let fixed = fixed
         variable -> f(fixed, variable)
