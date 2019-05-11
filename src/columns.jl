@@ -1,4 +1,32 @@
+"""
+    struct Name{x} end
+
+Create a typed `Name`. See [`unname`](@ref)
+
+```jlodctest
+julia> using LightQuery
+
+julia> Name{:a}()
+`a`
+```
+"""
 struct Name{x} end
+export Name
+
+"""
+    unname(::Name{name}) where name
+
+Inverse of [`Name`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> Name{:a}() |> unname
+:a
+```
+"""
+@inline unname(::Name{name}) where name = name
+export unname
 
 show(output::IO, ::Name{name}) where {name} = print(output, '`', name, '`')
 
@@ -8,20 +36,21 @@ const Named = Tuple{Name, Any}
 
 @inline matches(::Tuple{Name{name}, Any}, ::Tuple{Name{name}, Any}) where {name} = true
 @inline matches(::Tuple{Name{name}, Any}, ::Name{name}) where {name} = true
+@inline matches(::Name{name}, ::Tuple{Name{name}, Any}) where {name} = true
 @inline matches(apple, orange) = false
 
 get_pair(row::Tuple{}, name::Name) = error("Cannot find $name")
 function get_pair(row::Some{Named}, name::Name)
-    name_value_1 = row[1]
+    name_value_1 = first(row)
     if matches(name_value_1, name)
         name_value_1
     else
         get_pair(tail(row), name)
     end
 end
-get_pair(row, name::Name) = (name, get_property(row, name))
+get_pair(row, name::Name) = name, get_property(row, name)
 function get_pair(row, name_val_type::Tuple{Name, Val{AType}}) where AType
-    name = name_val_type[1]
+    name = first(name_val_type)
     name, get_property(row, name)::AType
 end
 (name_val_type::Tuple{Name, Any})(row) = get_pair(row, name_val_type)
@@ -170,13 +199,12 @@ function named_tuple(::Schema{some_names, Values}) where {some_names, Values}
     ntuple(named_at, Val{length(some_names)}())
 end
 
-@inline unname(::Name{symbol}) where {symbol} = symbol
 @inline unname_all(some_names::Some{Name}) = map(unname, some_names)
 NamedTuple(row) = NamedTuple{unname_all(map(key, row))}(map(value, row))
 
 if_not_in(it, ::Tuple{}) = (it,)
 if_not_in(it, them::Tuple) =
-    if matches(it, them[1])
+    if matches(it, first(them))
         ()
     else
         if_not_in(it, tail(them))
@@ -185,6 +213,8 @@ if_not_in(it, them::Tuple) =
 diff_unrolled(::Tuple{}, less) = ()
 diff_unrolled(more::Tuple, less) =
     if_not_in(first(more), less)..., diff_unrolled(tail(more), less)...
+
+@inline haskey(row::Some{Named}, name) = isempty(if_not_in(name, row))
 
 """
     remove(row, old_names...)
@@ -262,8 +292,8 @@ gather(row, new_name_old_names...) =
     diff_unrolled(row, flatten_unrolled(map(value, new_name_old_names)))...,
     partial_map(
         (row, new_name_old_name) -> (
-            new_name_old_name[1],
-            row[new_name_old_name[2]]
+            key(new_name_old_name),
+            row[value(new_name_old_name)]
         ),
         row, new_name_old_names
     )...

@@ -41,42 +41,42 @@ import Base: propertynames
     @test (@name @inferred NamedTuple((a = 1, b = 1.0))) == (a = 1, b = 1.0)
 end
 
-f(x) = (x, x + 0.0)
-f2(x) = x < 3 ? (x, x + 0.0) : (x, missing)
-
-@testset "Unzip" begin
-    @test collect(zip([1, 2], [1.0, 2.0])) == [(1, 1.0), (2, 2.0)]
-    @test isequal(
-        unzip(Generator(f, [1, missing])),
-        (Union{Missing, Int64}[1, missing], Union{Missing, Float64}[1.0, missing])
-    )
-    @test_throws ErrorException unzip(Generator(x -> error(), 1:1))
-    @test (@inferred unzip(zip([1], [1.0]))) == ([1], [1.0])
-    @test (@inferred unzip([(1, 1.0)])) == ([1], [1.0])
-    @test (@inferred unzip(Tuple{Int, Float64}[])) == (Int64[], Float64[])
-    @test (@inferred unzip(over(Tuple{Int, Float64}[], identity))) == (Int64[], Float64[])
-    @test isequal(
-         unzip(Generator(f2, [1, 2, 3])),
-         ([1, 2, 3], Union{Missing, Float64}[1.0, 2.0, missing])
-    )
-    @test isequal(
-         unzip(Generator(f2, Filter(x -> true, [1, 2, 3]))),
-         ([1, 2, 3], Union{Missing, Float64}[1.0, 2.0, missing])
-    )
-end
-
 @testset "iterators" begin
     @test collect(Group(By(Int[], identity))) == []
-    @test Group(By([1], iseven)) |> collect == [false => [1]]
+    @test Group(By([1], iseven)) |> collect == [(false, [1])]
     @test (Length(1:2, 2) |> collect == [1, 2])
-    @test isequal(collect(Join(By([1], identity), By([], identity))), [(1, missing)])
-    @test isequal(collect(Join(By([], identity), By([1], identity))), [(missing, 1)])
-    @test collect(Join(By([], identity), By([], identity))) == []
+    @test collect(InnerJoin(By([1], identity), By([], identity))) == []
+    @test collect(InnerJoin(By([], identity), By([1], identity))) == []
+    @test collect(InnerJoin(By([], identity), By([], identity))) == []
 end
 
-@testset "LightQuery" begin
+f(x) = @name (a = x, b = x + 0.0)
+f2(x) = @name (a = x, b = x < 3 ? x + 0.0 : missing)
+
+@testset "pivot" begin
+    @test isequal(
+        make_columns(Generator(f, [1, missing])),
+        @name (a = Union{Missing, Int64}[1, missing], b = Union{Missing, Float64}[1.0, missing])
+    )
+    @test @name make_columns(Generator(f, Any[1])) == ((a = [1]), (b = [1.0]))
+    @test (@inferred make_columns(to_rows(@name (a = [1], b = [1.0]))) ==
+        @name (a = [1], b = [1.0]))
+    rows = @name [(a = 1, b  = 1.0)]
+    @test (@inferred make_columns(rows)) == @name (a = [1], b = [1.0])
+    empty!(rows)
+    @test (@inferred make_columns(rows)) == @name (a = [], b = [])
+    @test (@inferred make_columns(over(rows, identity))) == @name (a = [], b = [])
+    @test isequal(
+         make_columns(Generator(f2, [1, 2, 3])),
+         @name (a = [1, 2, 3], b = [1.0, 2.0, missing])
+    )
+    @test isequal(
+         make_columns(Generator(f2, Filter(x -> true, [1, 2, 3]))),
+         @name (a = [1, 2, 3], b = [1.0, 2.0, missing])
+    )
     @name @test @inferred(collect(to_rows((a = [1, 2], b = [1.0, 2.0])))) ==
         [(a = 1, b = 1.0), (a = 2, b = 2.0)]
+    to_columns(@name to_rows((a = [1, 2], b = [1.0, 2.0])))
     @name @test @inferred(to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))) ==
         (a = [1, 2], b = [1.0, 2.0])
     @name @test @inferred(make_columns([(a = 1, b = 1.0), (a = 2, b = 2.0)])) ==
@@ -85,5 +85,5 @@ end
         ((a = Int64[]), (b = Float64[]))
     @name @inferred(make_columns(over(to_rows((a = Int[], b = Float64[])), identity))) ==
         ((a = Int64[]), (b = Float64[]))
-    @name @test_throws ErrorException Generator(x -> error(), 1:2) |> make_columns
+    @name @test_throws ErrorException Generator(x -> error("test"), 1:2) |> make_columns
 end

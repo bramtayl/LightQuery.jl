@@ -69,21 +69,22 @@ macro _(body)
 end
 export @_
 
+function link(location, object, call::Expr)
+    dictionary = Dict{Symbol, Symbol}()
+    body = substitute_underscores!(dictionary, call)
+    Expr(:let,
+        Expr(:(=), dictionary[:_], object),
+        Expr(:block,
+            location,
+            body
+        )
+    )
+end
+link(location, object, call) = Expr(:call, call, object)
+
 make_chain(location, maybe_chain) =
     if @capture maybe_chain object_ |> call_
-        if isa(call, Expr)
-            dictionary = Dict{Symbol, Symbol}()
-            body = substitute_underscores!(dictionary, call)
-            Expr(:let,
-                Expr(:(=), dictionary[:_], make_chain(location, object)),
-                Expr(:block,
-                    location,
-                    body
-                )
-            )
-        else
-            Expr(:call, call, make_chain(location, object))
-        end
+        link(location, make_chain(location, object), call)
     else
         maybe_chain
     end

@@ -1,18 +1,3 @@
-function type_names(name_values_type)
-    @inline name_at(index) = fieldtype(fieldtype(name_values_type, index), 1)()
-    ntuple(name_at, pure_fieldcount(name_values_type))
-end
-
-empty_item_names(rows, ::HasEltype) = type_names(eltype(rows))
-empty_item_names(rows, ::EltypeUnknown) = type_names(@default_eltype(rows))
-
-item_names(rows) =
-    if isempty(rows)
-        empty_item_names(rows, IteratorEltype(rows))
-    else
-        map(first, first(rows))
-    end
-
 """
     to_rows(columns)
 
@@ -22,7 +7,7 @@ Iterator over `rows` of a table. Always lazy. Inverse of [`to_columns`](@ref). U
 julia> using LightQuery
 
 julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
-2-element Array{Tuple{Tuple{LightQuery.Name{:a},Int64},Tuple{LightQuery.Name{:b},Float64}},1}:
+2-element Array{Tuple{Tuple{Name{:a},Int64},Tuple{Name{:b},Float64}},1}:
  ((`a`, 1), (`b`, 1.0))
  ((`a`, 2), (`b`, 2.0))
 ```
@@ -30,14 +15,14 @@ julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
 to_rows(columns) = Generator(map(first, columns), zip(map(value, columns)...))
 export to_rows
 
-struct Peek{Names, Rows}
+struct Peek{Rows}
     rows::Rows
     maximum_length::Int
 end
 
 export Peek
 """
-    Peek(rows, some_names = item_names(rows); maximum_length = 4)
+    Peek(rows, maximum_length = 4)
 
 Peek an iterator which returns named tuples. Will show no more than `maximum_length` rows.
 
@@ -54,10 +39,11 @@ Showing 4 of 5 rows
 |   4 |   2 |
 ```
 """
-Peek(rows::Rows, Names = item_names(rows); maximum_length = 4) where {Rows} =
-    Peek{Names, Rows}(rows, maximum_length)
+Peek(rows) = Peek(rows, 4)
 
-function show(output::IO, peek::Peek{Names}) where {Names}
+make_any(values) = Any[values...]
+
+function show(output::IO, peek::Peek)
     if isa(IteratorSize(peek.rows), Union{HasLength, HasShape})
         if length(peek.rows) > peek.maximum_length
             println(output, "Showing $(peek.maximum_length) of $(length(peek.rows)) rows")
@@ -65,10 +51,13 @@ function show(output::IO, peek::Peek{Names}) where {Names}
     else
         println(output, "Showing at most $(peek.maximum_length) rows")
     end
-    flat(row) = Any[map(value, row)...]
-    less_rows = collect(take(Generator(flat, peek.rows), peek.maximum_length))
-    pushfirst!(less_rows, Any[Names...])
-    show(output, MD(Table(less_rows, [map(x -> :r, Names)...])))
+    columns = make_columns(take(
+        peek.rows,
+        peek.maximum_length
+    ))
+    rows = map(make_any, zip(map(value, columns)...))
+    pushfirst!(rows, make_any(map(key, columns)))
+    show(output, MD(Table(rows, make_any(map(x -> :r, columns)))))
 end
 
 """
@@ -83,32 +72,6 @@ julia> @name to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))
 ((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 ```
 """
-to_columns(rows::Generator{<: Rows, <: Some{Name}}) =
-    rows.f(rows.iter.columns)
+to_columns(rows::Generator{<: Zip, <: Some{Name}}) =
+    rows.f(rows.iter.is)
 export to_columns
-
-"""
-    make_columns(rows, some_names = item_names(rows))
-
-Collect into columns with `some_names`. Always eager, see [`to_columns`](@ref) for a lazy version.
-
-```jldoctest make_columns
-julia> using LightQuery
-
-julia> rows = @name [(a = 1, b = 1.0), (a = 2, b = 2.0)];
-
-julia> make_columns(rows)
-((`a`, [1, 2]), (`b`, [1.0, 2.0]))
-
-julia> empty!(rows);
-
-julia> make_columns(rows)
-((`a`, Int64[]), (`b`, Float64[]))
-```
-"""
-make_columns(rows, some_names = item_names(rows)) =
-    some_names(unzip(
-        Generator(row -> map(value, row), rows),
-        Val{length(some_names)}()
-    ))
-export make_columns
