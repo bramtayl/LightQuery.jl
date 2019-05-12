@@ -24,11 +24,6 @@ end
 
 to_columns(rows::Rows) = map(tuple, rows.names, rows.columns)
 
-@inline IteratorEltype(::Type{Rows{Row, Dimensions, Columns}}) where {Row, Dimensions, Columns} =
-    _zip_iterator_eltype(Columns)
-@inline IteratorSize(::Type{Rows{Row, Dimensions, Columns}}) where {Row, Dimensions, Columns} =
-    _zip_iterator_size(Columns)
-
 axes(rows::Rows, dimensions...) =
     axes(first(rows.columns), dimensions...)
 size(rows::Rows, dimensions...) =
@@ -58,20 +53,20 @@ push_at!(columns, (name, value)) =
     end
 push!(rows::Rows, row) = partial_map(push_at!, to_columns(rows), row)
 
-similar_at((model, dimensions), ::Val{AType}) where {AType} =
-    fieldtype(AType, 1)(), similar(model, fieldtype(AType, 2), dimensions)
+similar_named((model, dimensions), ::Val{Tuple{Name{name}, Value}}) where {name, Value} =
+    Name{name}(), similar(model, Value, dimensions)
 
 similar(rows::Rows{Tuple{}}, ::Type{Row}, dimensions::Dims) where Row =
     Rows(partial_map(
-        similar_at,
+        similar_named,
         (1:1, 0),
-        val_fieldtypes(Row)
+        val_fieldtypes_or_empty(Row)
     ))
 similar(rows::Rows, ::Type{Row}, dimensions::Dims) where Row =
     Rows(partial_map(
-        similar_at,
+        similar_named,
         (first(rows.columns), dimensions),
-        val_fieldtypes(Row)
+        val_fieldtypes_or_empty(Row)
     ))
 
 empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow} =
@@ -149,3 +144,64 @@ make_columns(rows) = to_columns(_collect(
     IteratorSize(rows)
 ))
 export make_columns
+
+@static if VERSION < v"1.1"
+    # backport #30076 just for Rows
+    import Base: collect_to!, grow_to!
+    using Base: promote_typejoin
+
+    function collect_to!(dest::Rows{T}, itr, offs, st) where T
+        # collect to dest array, checking the type of each result. if a result does not
+        # match, widen the result type and re-dispatch.
+        i = offs
+        while true
+            y = iterate(itr, st)
+            y === nothing && break
+            el, st = y
+            if el isa T || typeof(el) === T
+                @inbounds dest[i] = el::T
+                i += 1
+            else
+                new = setindex_widen_up_to(dest, el, i)
+                return collect_to!(new, itr, i+1, st)
+            end
+        end
+        return dest
+    end
+
+    @inline function setindex_widen_up_to(dest::AbstractArray{T}, el, i) where T
+        new = similar(dest, promote_typejoin(T, typeof(el)))
+        copyto!(new, firstindex(new), dest, firstindex(dest), i-1)
+        @inbounds new[i] = el
+        return new
+    end
+
+    function grow_to!(dest::Rows, itr, st)
+        T = eltype(dest)
+        y = iterate(itr, st)
+        while y !== nothing
+            el, st = y
+            if el isa T || typeof(el) === T
+                push!(dest, el::T)
+            else
+                new = push_widen(dest, el)
+                return grow_to!(new, itr, st)
+            end
+            y = iterate(itr, st)
+        end
+        return dest
+    end
+
+    @inline function push_widen(dest, el)
+        new = sizehint!(empty(dest, promote_typejoin(eltype(dest), typeof(el))), length(dest))
+        if new isa AbstractSet
+            # TODO: merge back these two branches when copy! is re-enabled for sets/vectors
+            union!(new, dest)
+        else
+            append!(new, dest)
+        end
+        push!(new, el)
+        return new
+    end
+
+end

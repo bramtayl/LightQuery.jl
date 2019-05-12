@@ -3,7 +3,7 @@ state_to_index(::Array, state) = state - 1
 state_to_index(filtered::Filter, state) = state_to_index(filtered.itr, state)
 state_to_index(mapped::Generator, state) = state_to_index(mapped.iter, state)
 state_to_index(zipped::Zip, state) =
-    state_to_index(first(zipped.is), first(state))
+    state_to_index(first(get_columns(zipped)), first(state))
 
 """
     Enumerated{Iterator}
@@ -401,10 +401,10 @@ similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
 
 @inline getindex_reverse(index, column) = column[index...]
 @inline getindex(zipped::Zip, index...) =
-    partial_map(getindex_reverse, index, zipped.is)
+    partial_map(getindex_reverse, index, get_columns(zipped))
 @inline view_reverse(index, column) = view(column, index...)
 @inline view(zipped::Zip, index...) =
-    zip(partial_map(view_reverse, index, zipped.is)...)
+    zip(partial_map(view_reverse, index, get_columns(zipped))...)
 
 @inline view(filtered::Filter, index...) = view(filtered.itr, index...)
 

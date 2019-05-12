@@ -5,6 +5,7 @@ version = "0.2.2"
 author = ["Brandon Taylor <brandon.taylor221@gmail.com>"]
 
 [deps]
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
@@ -24,4 +25,4 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 test = ["CSV", "Dates", "Documenter", "Statistics", "Test", "TimeZones", "Unitful"]
 
 [compat]
-julia = "1.1"
+julia = "1.0"

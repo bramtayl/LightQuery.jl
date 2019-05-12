@@ -26,10 +26,10 @@ function filter_unrolled(f, them::Some{Any})
     end
 end
 
-val_fieldtypes(type::TypeofBottom) = ()
-val_fieldtypes(type::Union) = ()
-val_fieldtypes(type::UnionAll) = ()
-@pure val_fieldtypes(type::DataType) =
+val_fieldtypes_or_empty(type::TypeofBottom) = ()
+val_fieldtypes_or_empty(type::Union) = ()
+val_fieldtypes_or_empty(type::UnionAll) = ()
+@pure val_fieldtypes_or_empty(type::DataType) =
     if type.abstract || (type.name === Tuple.name && isvatuple(type))
         ()
     else

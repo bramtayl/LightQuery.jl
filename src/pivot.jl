@@ -73,5 +73,5 @@ julia> @name to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))
 ```
 """
 to_columns(rows::Generator{<: Zip, <: Some{Name}}) =
-    rows.f(rows.iter.is)
+    rows.f(get_columns(rows.iter))
 export to_columns
