@@ -4,7 +4,7 @@ struct Rows{Row, Dimensions, Columns, Names} <: AbstractArray{Row, Dimensions}
 end
 
 row_type_at(::Name, column) = Tuple{Name, eltype(column)}
-row_type(names::Tuple, columns::Tuple) =
+row_type(names, columns) =
     Tuple{map(row_type_at, names, columns)...}
 
 Rows(::Tuple{}) = Rows{Tuple{}, 0, Tuple{}, Tuple{}}((), ())
@@ -29,29 +29,28 @@ axes(rows::Rows, dimensions...) =
 size(rows::Rows, dimensions...) =
     size(first(rows.columns), dimensions...)
 
-@inline getindex_at((columns, an_index), name) =
-    name, if haskey(columns, name)
-        columns[name][an_index...]
+@propagate_inbounds getindex_at((columns, an_index), name) =
+    name, if has_name(columns, name)
+        get_name(columns, name)[an_index...]
     else
         missing
     end
-@inline getindex(rows::Rows, an_index...) =
+@propagate_inbounds getindex(rows::Rows, an_index...) =
     partial_map(getindex_at, (to_columns(rows), an_index), rows.names)
 
-@inline setindex_at!((columns, an_index), (name, value)) =
-    if haskey(columns, name)
-        columns[name][an_index...] = value
+@propagate_inbounds setindex_at!((columns, an_index), (name, value)) =
+    if has_name(columns, name)
+        get_name(columns, name)[an_index...] = value
         nothing
     end
-@inline setindex!(rows::Rows, row, an_index...) =
+@propagate_inbounds setindex!(rows::Rows, row, an_index...) =
     partial_map(setindex_at!, (to_columns(rows), an_index), row)
 
-push_at!(columns, (name, value)) =
-    if haskey(columns, name)
-        push!(columns[name], value)
+push!(rows::Rows, row) = partial_map((columns, (name, value)) ->
+    if has_name(columns, name)
+        push!(get_name(columns, name), value)
         nothing
-    end
-push!(rows::Rows, row) = partial_map(push_at!, to_columns(rows), row)
+    end, to_columns(rows), row)
 
 similar_named((model, dimensions), ::Val{Tuple{Name{name}, Value}}) where {name, Value} =
     Name{name}(), similar(model, Value, dimensions)
@@ -81,8 +80,8 @@ maybe_setindex_widen_up_to(column::AbstractArray{Item}, item, an_index...) where
     end
 
 setindex_widen_up_to_at((columns, an_index), (name, a_value)) =
-    if haskey(columns, name)
-        name, maybe_setindex_widen_up_to(columns[name], a_value, an_index...)
+    if has_name(columns, name)
+        name, maybe_setindex_widen_up_to(get_name(columns, name), a_value, an_index...)
     else
         name, similar(value(first(columns)), Union{Missing, typeof(a_value)})
     end
@@ -103,8 +102,8 @@ maybe_push_widen(column::AbstractArray{Item}, item) where {Item} =
         push_widen(column, item)
     end
 push_widen_at(columns, (name, a_value)) =
-    if haskey(columns, name)
-        name, maybe_push_widen(columns[name], a_value)
+    if has_name(columns, name)
+        name, maybe_push_widen(get_name(columns, name), a_value)
     else
         model = value(first(columns))
         name, similar(model, Union{Missing, typeof(a_value)}, length(model) + 1)
@@ -113,9 +112,11 @@ function push_widen(rows::Rows, row)
     columns = to_columns(rows)
     Rows(transform(columns, partial_map(push_widen_at, columns, row)...))
 end
-view_at(an_index, name, column) = name, view(column, an_index...)
+
 view(rows::Rows, an_index...) = Rows(partial_map(
-    view_at, an_index, rows.names, rows.columns
+    (an_index, name, column) -> (name, view(column, an_index...)),
+    an_index, rows.names,
+    rows.columns
 ))
 
 """

@@ -1,7 +1,7 @@
 """
-    struct Name{x} end
+    struct Name{name} end
 
-Create a typed `Name`. See [`unname`](@ref)
+Create a typed `Name`. Inverse of [`unname`](@ref)
 
 ```jlodctest
 julia> using LightQuery
@@ -10,7 +10,7 @@ julia> Name{:a}()
 `a`
 ```
 """
-struct Name{x} end
+struct Name{name} end
 export Name
 
 """
@@ -30,34 +30,35 @@ export unname
 
 show(output::IO, ::Name{name}) where {name} = print(output, '`', name, '`')
 
-get_property(row, ::Name{name}) where {name} = getproperty(row, name)
+get_name(row, ::Name{name}) where {name} = getproperty(row, name)
 
-const Named = Tuple{Name, Any}
+const Named{name} = Tuple{Name{name}, Any}
 
-@inline matches(::Tuple{Name{name}, Any}, ::Tuple{Name{name}, Any}) where {name} = true
-@inline matches(::Tuple{Name{name}, Any}, ::Name{name}) where {name} = true
-@inline matches(::Name{name}, ::Tuple{Name{name}, Any}) where {name} = true
-@inline matches(apple, orange) = false
+@inline name_matches(::Named{name}, ::Named{name}) where {name} = true
+@inline name_matches(::Named{name}, ::Name{name}) where {name} = true
+@inline name_matches(::Name{name}, ::Named{name}) where {name} = true
+@inline name_matches(apple, orange) = false
 
 get_pair(row::Tuple{}, name::Name) = error("Cannot find $name")
 function get_pair(row::Some{Named}, name::Name)
-    name_value_1 = first(row)
-    if matches(name_value_1, name)
-        name_value_1
+    first_pair = first(row)
+    if name_matches(first_pair, name)
+        first_pair
     else
         get_pair(tail(row), name)
     end
 end
-get_pair(row, name::Name) = name, get_property(row, name)
-function get_pair(row, name_val_type::Tuple{Name, Val{AType}}) where AType
-    name = first(name_val_type)
-    name, get_property(row, name)::AType
+get_pair(row, name::Name) = name, get_name(row, name)
+function get_pair(row, template::Tuple{Name, Val{AType}}) where AType
+    name = first(template)
+    name, get_name(row, name)::AType
 end
-(name_val_type::Tuple{Name, Any})(row) = get_pair(row, name_val_type)
+(template::Tuple{Name, Any})(row) = get_pair(row, template)
 
 getindex(row::Some{Named}, name::Name) = value(get_pair(row, name))
-(name::Name)(row) = row[name]
-get_property(row::Some{Named}, name::Name) = row[name]
+get_name(row::Some{Named}, name::Name) = row[name]
+(name::Name)(row) = get_name(row, name)
+
 
 getindex(row::Some{Named}, some_names::Some{Name}) =
     partial_map(get_pair, row, some_names)
@@ -65,8 +66,8 @@ getindex(row::Some{Named}, some_names::Some{Name}) =
 
 (some_names::Some{Name})(values::Tuple) = map(tuple, some_names, values)
 
-(name_val_types::Some{Tuple{Name, Any}})(row) =
-    partial_map(get_pair, row, name_val_types)
+(templates::Some{Named})(row) =
+    partial_map(get_pair, row, templates)
 
 @pure isless(::Name{name1}, ::Name{name2}) where {name1, name2} =
     isless(name1, name2)
@@ -75,7 +76,7 @@ make_names(other) = other
 make_names(symbol::QuoteNode) = Name{symbol.value}()
 make_names(code::Expr) =
     if @capture code row_.name_
-        Expr(:call, get_property, make_names(row), Name{name}())
+        Expr(:call, get_name, make_names(row), Name{name}())
     elseif @capture code name_Symbol = value_
         Expr(:tuple, Name{name}(), make_names(value))
     else
@@ -151,8 +152,7 @@ julia> named_tuple((a = 1, b = 1.0))
 ((`a`, 1), (`b`, 1.0))
 ```
 
-`propertynames` need to constant propagate for performance. This already works
-for `NamedTuple`s. For other structs, `@inline` constant `propertynames`.
+`propertynames` need to constant propagate for performance. This already works for `NamedTuple`s. For other structs, `@inline` constant `propertynames`.
 
 ```jldoctest named_tuple
 julia> struct MyType
@@ -175,8 +175,7 @@ export named_tuple
 """
     named_tuple(::Schema)
 
-You can convert a `Tables.Schema` to a named tuple. Then, you can use it as a
-type-stable function.
+Convert a `Tables.Schema` to a `named_tuple` template.
 
 ```jldoctest
 julia> using LightQuery
@@ -194,27 +193,29 @@ julia> f(first(file))
 ((`a`, 1), (`b`, 1.0))
 ```
 """
-function named_tuple(::Schema{some_names, Values}) where {some_names, Values}
-    @inline named_at(i) = Name{some_names[i]}(), Val{fieldtype(Values, i)}()
-    ntuple(named_at, Val{length(some_names)}())
-end
+named_tuple(::Schema{some_names, Values}) where {some_names, Values} =
+    map(tuple, to_names(some_names), val_fieldtypes_or_empty(Values))
 
-@inline unname_all(some_names::Some{Name}) = map(unname, some_names)
+@pure unname_all(some_names::Some{Name}) = map(unname, some_names)
 NamedTuple(row) = NamedTuple{unname_all(map(key, row))}(map(value, row))
 
-if_not_in(it, ::Tuple{}) = (it,)
-if_not_in(it, them::Tuple) =
-    if matches(it, first(them))
+if_name_not_in(it, ::Tuple{}) = (it,)
+if_name_not_in(it, them::Some{Any}) =
+    if name_matches(it, first(them))
         ()
     else
-        if_not_in(it, tail(them))
+        if_name_not_in(it, tail(them))
     end
 
-diff_unrolled(::Tuple{}, less) = ()
-diff_unrolled(more::Tuple, less) =
-    if_not_in(first(more), less)..., diff_unrolled(tail(more), less)...
+diff_names_unrolled(::Tuple{}, less) = ()
+diff_names_unrolled(more::Some{Any}, less) =
+    if_name_not_in(first(more), less)...,
+    diff_names_unrolled(tail(more), less)...
 
-@inline haskey(row::Some{Named}, name) = isempty(if_not_in(name, row))
+@inline haskey(row::Some{Named}, name) = isempty(if_name_not_in(name, row))
+@inline has_name(row::Some{Named}, name::Name) = haskey(row, name)
+@inline has_name(row, ::Name{name}) where {name} =
+    hasproperty(row, name)
 
 """
     remove(row, old_names...)
@@ -228,13 +229,13 @@ julia> @name remove((a = 1, b = 2, c = 3), :b)
 ((`a`, 1), (`c`, 3))
 ```
 """
-remove(row, old_names...) = diff_unrolled(row, old_names)
+remove(row, old_names...) = diff_names_unrolled(row, old_names)
 export remove
 
 """
-    transform(row, name_values...)
+    transform(row, assignments...)
 
-Merge `name_values` into `row`, overwriting old values.
+Merge `assignments` into `row`, overwriting old values.
 
 ```jldoctest
 julia> using LightQuery
@@ -243,8 +244,8 @@ julia> @name transform((a = 1, b = 2), a = 3)
 ((`b`, 2), (`a`, 3))
 ```
 """
-transform(row, name_values...) =
-    diff_unrolled(row, name_values)..., name_values...
+transform(row, assignments...) =
+    diff_names_unrolled(row, assignments)..., assignments...
 export transform
 
 reduce_unrolled(f, x, y, z...) = reduce_unrolled(f, f(x, y), z...)
@@ -266,11 +267,11 @@ julia> @name rename((a = 1, b = 2), c = :a)
 ```
 """
 rename(row, new_name_old_names...) =
-    diff_unrolled(row, map(value, new_name_old_names))...,
+    diff_names_unrolled(row, map(value, new_name_old_names))...,
     partial_map(
         (row, new_name_old_name) -> (
             first(new_name_old_name),
-            row[value(new_name_old_name)]
+            get_name(row, value(new_name_old_name))
         ),
         row, new_name_old_names
     )...
@@ -289,7 +290,10 @@ julia> @name gather((a = 1, b = 2, c = 3), d = (:a, :c))
 ```
 """
 gather(row, new_name_old_names...) =
-    diff_unrolled(row, flatten_unrolled(map(value, new_name_old_names)))...,
+    diff_names_unrolled(
+        row,
+        flatten_unrolled(map(value, new_name_old_names))
+    )...,
     partial_map(
         (row, new_name_old_name) -> (
             key(new_name_old_name),
@@ -312,6 +316,6 @@ julia> @name spread((b = 2, d = (a = 1, c = 3)), :d)
 ```
 """
 spread(row, some_names...) =
-    diff_unrolled(row, some_names)...,
+    diff_names_unrolled(row, some_names)...,
     flatten_unrolled(map(value, row[some_names]))...
 export spread

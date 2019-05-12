@@ -8,7 +8,7 @@ using Base: argument_datatype, _collect, @default_eltype, diff_names,
     EltypeUnknown, Generator, HasEltype, HasLength, HasShape, isvarargtype,
     isvatuple, @pure, promote_op, @propagate_inbounds, SizeUnknown, sym_in, tail
 using Base.Iterators: Filter, flatten, product, take, Zip
-using Compat: fieldcount
+using Compat: fieldcount, hasproperty
 using Core: TypeofBottom
 using Base.Meta: quot
 using IterTools: @ifsomething

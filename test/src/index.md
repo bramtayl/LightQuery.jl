@@ -3,6 +3,7 @@
 I'm using the data from the [dplyr tutorial](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). The data is in the test folder of this package.
 
 I created it with the following R code:
+
 ```R
 library(nycflights13)
 setwd("C:/Users/hp/.julia/dev/LightQuery/test")
@@ -352,7 +353,19 @@ julia> get_flight(indexed_airports, first(flights_file))
 ```jldoctest dplyr
 julia> flights =
         @> flights_file |>
-        over(_, @_ get_flight(indexed_airports, _)) |>
+        over(_, @_ get_flight(indexed_airports, _));
+```
+
+Check inference before collecting. Inference is optional, but speeds up performance.
+
+```jldoctest dplyr
+julia> Base.@default_eltype(flights)
+Tuple{Tuple{Name{:carrier},String},Tuple{Name{:flight},Int64},Tuple{Name{:origin},String},Tuple{Name{:destination},String},Tuple{Name{:tail_number},Union{Missing, String}},Tuple{Name{:air_time},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:distance},Unitful.Quantity{Int64,𝐋,Unitful.FreeUnits{(mi,),𝐋,nothing}}},Tuple{Name{:departure_delay},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:arrival_delay},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:scheduled_departure_time},Union{Missing, ZonedDateTime}},Tuple{Name{:scheduled_arrival_time},Union{Missing, ZonedDateTime}}}
+```
+
+```jldoctest dplyr
+julia> flights =
+        flights |>
         make_columns |>
         to_rows;
 
@@ -729,9 +742,7 @@ on average.
 
 ## Reshaping
 
-For this section, I will use [data from the Global Historical Climatology
-Network](https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/all/ACW00011604.dly). I
-got this idea from the [`tidyr` tutorial](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html).
+For this section, I will use [data from the Global Historical Climatology Network](https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/all/ACW00011604.dly). I got this idea from the [`tidyr` tutorial](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html).
 
 ```jldoctest dplyr
 julia> file = open("climate.txt");

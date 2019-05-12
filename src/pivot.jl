@@ -12,7 +12,7 @@ julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
  ((`a`, 2), (`b`, 2.0))
 ```
 """
-to_rows(columns) = Generator(map(first, columns), zip(map(value, columns)...))
+to_rows(columns) = Generator(map(key, columns), zip(map(value, columns)...))
 export to_rows
 
 struct Peek{Rows}
@@ -44,20 +44,22 @@ Peek(rows) = Peek(rows, 4)
 make_any(values) = Any[values...]
 
 function show(output::IO, peek::Peek)
-    if isa(IteratorSize(peek.rows), Union{HasLength, HasShape})
-        if length(peek.rows) > peek.maximum_length
-            println(output, "Showing $(peek.maximum_length) of $(length(peek.rows)) rows")
+    rows = peek.rows
+    maximum_length = peek.maximum_length
+    if isa(IteratorSize(rows), Union{HasLength, HasShape})
+        if length(rows) > maximum_length
+            println(output, "Showing $(maximum_length) of $(length(rows)) rows")
         end
     else
-        println(output, "Showing at most $(peek.maximum_length) rows")
+        println(output, "Showing at most $(maximum_length) rows")
     end
     columns = make_columns(take(
-        peek.rows,
-        peek.maximum_length
+        rows,
+        maximum_length
     ))
     rows = map(make_any, zip(map(value, columns)...))
     pushfirst!(rows, make_any(map(key, columns)))
-    show(output, MD(Table(rows, make_any(map(x -> :r, columns)))))
+    show(output, MD(Table(rows, make_any(map(column -> :r, columns)))))
 end
 
 """

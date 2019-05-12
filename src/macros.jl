@@ -5,43 +5,46 @@ end
 (call_code::CallCode)(arguments...; keyword_arguments...) =
     call_code.call(arguments...; keyword_arguments...)
 
-substitute_underscores!(dictionary, other) = other
-substitute_underscores!(dictionary, maybe_argument::Symbol) =
+substitute_underscores!(underscores_to_gensyms, other) = other
+substitute_underscores!(underscores_to_gensyms, maybe_argument::Symbol) =
     if all(isequal('_'), string(maybe_argument))
-        if !haskey(dictionary, maybe_argument)
-            dictionary[maybe_argument] = gensym(maybe_argument)
+        if !haskey(underscores_to_gensyms, maybe_argument)
+            underscores_to_gensyms[maybe_argument] = gensym(maybe_argument)
         end
-        dictionary[maybe_argument]
+        underscores_to_gensyms[maybe_argument]
     else
         maybe_argument
     end
-
-function substitute_underscores!(dictionary, code::Expr)
-    # have to do this the old fashioned way, _ has a special meaning in MacroTools
-    if code.head === :macrocall && length(code.args) === 3
-        name, location, body = code.args
-        if name === Symbol("@_")
-            code = anonymous(location, body)
-        elseif name === Symbol("@>")
-            code = make_chain(location, body)
+function substitute_underscores!(underscores_to_gensyms, code::Expr)
+    # have to do this the old fashioned way because _ has a special meaning in MacroTools
+    expanded_code =
+        if code.head === :macrocall && length(code.args) === 3
+            name, location, body = code.args
+            if name === Symbol("@_")
+                anonymous(location, body)
+            elseif name === Symbol("@>")
+                make_chain(location, body)
+            end
+        else
+            code
         end
-    end
-    Expr(code.head, map(
-        line -> substitute_underscores!(dictionary, line),
-        code.args
+    Expr(expanded_code.head, partial_map(
+        substitute_underscores!,
+        underscores_to_gensyms,
+        expanded_code.args
     )...)
 end
 
 anonymous(location, other) = other
 function anonymous(location, body::Expr)
-    dictionary = Dict{Symbol, Symbol}()
-    new_body = substitute_underscores!(dictionary, body)
+    underscores_to_gensyms = Dict{Symbol, Symbol}()
+    substituted_body = substitute_underscores!(underscores_to_gensyms, body)
     code = Expr(:function,
         Expr(:call, gensym(), Generator(
-            pair -> value(pair),
-            sort!(collect(dictionary), by = first)
+            value,
+            sort!(collect(underscores_to_gensyms), by = first)
         )...),
-        Expr(:block, location, new_body)
+        Expr(:block, location, substituted_body)
     )
     Expr(:call,
         CallCode,
@@ -49,6 +52,7 @@ function anonymous(location, body::Expr)
         quot(code)
     )
 end
+
 """
     macro _(body)
 
@@ -70,15 +74,20 @@ end
 export @_
 
 function link(location, object, call::Expr)
-    dictionary = Dict{Symbol, Symbol}()
-    body = substitute_underscores!(dictionary, call)
-    Expr(:let,
-        Expr(:(=), dictionary[:_], object),
-        Expr(:block,
-            location,
-            body
+    underscores_to_gensyms = Dict{Symbol, Symbol}()
+    body = substitute_underscores!(underscores_to_gensyms, call)
+    if length(underscores_to_gensyms) != 1 ||
+        !haskey(underscores_to_gensyms,  :_)
+        error("@> requires _ as the only underscore argument")
+    else
+        Expr(:let,
+            Expr(:(=), underscores_to_gensyms[:_], object),
+            Expr(:block,
+                location,
+                body
+            )
         )
-    )
+    end
 end
 link(location, object, call) = Expr(:call, call, object)
 

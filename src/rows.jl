@@ -61,10 +61,10 @@ julia> @name order([
  ((`item`, "b"), (`index`, 2))
 ```
 """
-order(unordered, key; keywords...) =
-    view(unordered, mappedarray(first,
+order(unordered, a_key; keywords...) =
+    view(unordered, mappedarray(key,
         sort!(
-            collect(Enumerated(Generator(key, unordered)));
+            collect(Enumerated(Generator(a_key, unordered)));
             by = value,
             keywords...
         )
@@ -241,7 +241,6 @@ function iterate(grouped::Group)
 end
 export Group
 
-
 abstract type Join{Left <: By, Right <: By} end
 
 combine_iterator_eltype(::HasEltype, ::HasEltype) = HasEltype()
@@ -265,7 +264,9 @@ iterate(joined::Join) = compare(
     next_history(joined.right)
 )
 
-function iterate(joined::Join, (left_history, right_history, next_left, next_right))
+function iterate(joined::Join,
+    (left_history, right_history, next_left, next_right)
+)
     if next_left
         if next_right
             compare(
@@ -395,18 +396,20 @@ end
 similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
     Dict{Key, Value}(old)
 
-@inline getindex(mapped::Generator, index...) = mapped.f(mapped.iter[index...])
-@inline view(mapped::Generator, index...) =
+@propagate_inbounds getindex(mapped::Generator, index...) =
+    mapped.f(mapped.iter[index...])
+@propagate_inbounds view(mapped::Generator, index...) =
     Generator(mapped.f, view(mapped.iter, index...))
 
-@inline getindex_reverse(index, column) = column[index...]
-@inline getindex(zipped::Zip, index...) =
+@propagate_inbounds getindex_reverse(index, column) = column[index...]
+@propagate_inbounds getindex(zipped::Zip, index...) =
     partial_map(getindex_reverse, index, get_columns(zipped))
-@inline view_reverse(index, column) = view(column, index...)
-@inline view(zipped::Zip, index...) =
+@propagate_inbounds view_reverse(index, column) = view(column, index...)
+@propagate_inbounds view(zipped::Zip, index...) =
     zip(partial_map(view_reverse, index, get_columns(zipped))...)
 
-@inline view(filtered::Filter, index...) = view(filtered.itr, index...)
+@propagate_inbounds view(filtered::Filter, index...) =
+    view(filtered.itr, index...)
 
 # identical to Base except key, value
 @inline function iterate(g::Generator, s...)

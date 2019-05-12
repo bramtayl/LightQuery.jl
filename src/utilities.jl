@@ -26,11 +26,24 @@ function filter_unrolled(f, them::Some{Any})
     end
 end
 
-val_fieldtypes_or_empty(type::TypeofBottom) = ()
-val_fieldtypes_or_empty(type::Union) = ()
-val_fieldtypes_or_empty(type::UnionAll) = ()
+function val_fieldtypes_or_empty(type::TypeofBottom)
+    @warn "Unable to infer the fieldtypes of $type, defaulting to `()` for empty iterators. Likely to due inner function error"
+    ()
+end
+function val_fieldtypes_or_empty(type::Union)
+    @warn "Unable to infer the fieldtypes of the Union type $type, defaulting to `()` for empty iterators"
+    ()
+end
+function val_fieldtypes_or_empty(type::UnionAll)
+    @warn "Unable to infer the fieldtypes of the UnionAll type $type, defaulting to `()` for empty iterators"
+    ()
+end
 @pure val_fieldtypes_or_empty(type::DataType) =
-    if type.abstract || (type.name === Tuple.name && isvatuple(type))
+    if type.abstract
+        @warn "Unable to infer the fieldtypes of the abstract type $type, defaulting to `()` for empty iterators"
+        ()
+    elseif (type.name === Tuple.name && isvatuple(type))
+        @warn "Unable to infer the fieldtypes of the Varargs type $type, defaulting to `()` for empty iterators"
         ()
     else
         map(Val, fieldtypes(type))
@@ -57,7 +70,10 @@ export when
 
 The `key` in a `key => value` `pair`.
 """
-@inline key(pair::Tuple{Any, Any}) = pair[1]
+function key(pair)
+    a_key, a_value = pair
+    a_key
+end
 key(pair::Pair) = pair.first
 export key
 
@@ -66,7 +82,10 @@ export key
 
 The `value` in a `key => value` `pair`.
 """
-@inline value(pair::Tuple{Any, Any}) = pair[2]
+function value(pair::Tuple{Any, Any})
+    a_key, a_value = pair
+    a_value
+end
 value(pair::Pair) = pair.second
 export value
 
