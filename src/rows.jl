@@ -45,7 +45,7 @@ end
 export Enumerated
 
 """
-    order(unordered, key; keywords...)
+    order(unordered, a_key; keywords...)
 
 Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. Relies on [`Enumerated`](@ref).
 
@@ -111,9 +111,9 @@ eltype(::Type{Indexed{Iterator, Indices}}) where {Iterator, Indices} =
     Pair{keytype(Indices), Union{Missing, eltype(Iterator)}}
 
 """
-    index(iterator, key)
+    index(iterator, a_key)
 
-Index `iterator` by the results of `key`. Relies on [`Enumerated`](@ref).
+Index `iterator` by the results of `a_key`. Relies on [`Enumerated`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -130,24 +130,19 @@ julia> result[2]
 ((`item`, "b"), (`index`, 2))
 ```
 """
-function index(iterator, key)
+function index(iterator, a_key)
+    inner_index((index, item)) = a_key(item) => index
     Indexed(iterator, collect_similar(
         Dict{Union{}, Union{}}(),
-        Generator(
-            index_item -> begin
-                index, item = index_item
-                key(item) => index
-            end,
-            Enumerated(iterator)
-        )
+        Generator(inner_index, Enumerated(iterator))
     ))
 end
 export index
 
 """
-    By(iterator, key)
+    By(iterator, a_key)
 
-Mark that `iterator` has been pre-sorted by `key`. Use with [`Group`](@ref) or
+Mark that `iterator` has been pre-sorted by `a_key`. Use with [`Group`](@ref) or
 [`InnerJoin`](@ref).
 
 ```jldoctest
@@ -390,8 +385,8 @@ export Length
 
 # piracy
 function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
-    foreach(pair -> dictionary[key(pair)] = value(pair), pairs)
-    dictionary
+    copyto_at!((a_key, a_value)) = dictionary[a_key] = a_value
+    foreach(copyto_at!, dictionary)
 end
 similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
     Dict{Key, Value}(old)

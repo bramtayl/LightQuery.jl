@@ -1,16 +1,27 @@
 const Some{AType} = Tuple{AType, Vararg{AType}}
 
+val_fieldtypes_or_empty(something) = ()
+@pure val_fieldtypes_or_empty(type::DataType) =
+    if type.abstract || (type.name === Tuple.name && isvatuple(type))
+        ()
+    else
+        map(Val, fieldtypes(type))
+    end
+
 flatten_unrolled(::Tuple{}) = ()
 flatten_unrolled(them::Some{Any}) =
     first(them)..., flatten_unrolled(tail(them))...
+
+reduce_unrolled(f, x, y, z...) = reduce_unrolled(f, f(x, y), z...)
+reduce_unrolled(f, x) = x
 
 @inline partial_map(f, fixed, variables::Vararg{Tuple{}}) = ()
 @inline partial_map(f, fixed, variables::Vararg{Tuple}) =
     f(fixed, map(first, variables)...),
     partial_map(f, fixed, map(tail, variables)...)...
 @inline partial_map(f, fixed, variables) = map(
-    let fixed = fixed
-        variable -> f(fixed, variable)
+    let f = f, fixed = fixed
+        partial_map_at(variable) = f(fixed, variable)
     end,
     variables
 )
@@ -25,29 +36,6 @@ function filter_unrolled(f, them::Some{Any})
         rest
     end
 end
-
-function val_fieldtypes_or_empty(type::TypeofBottom)
-    @warn "Unable to infer the fieldtypes of $type, defaulting to `()` for empty iterators. Likely to due inner function error"
-    ()
-end
-function val_fieldtypes_or_empty(type::Union)
-    @warn "Unable to infer the fieldtypes of the Union type $type, defaulting to `()` for empty iterators"
-    ()
-end
-function val_fieldtypes_or_empty(type::UnionAll)
-    @warn "Unable to infer the fieldtypes of the UnionAll type $type, defaulting to `()` for empty iterators"
-    ()
-end
-@pure val_fieldtypes_or_empty(type::DataType) =
-    if type.abstract
-        @warn "Unable to infer the fieldtypes of the abstract type $type, defaulting to `()` for empty iterators"
-        ()
-    elseif (type.name === Tuple.name && isvatuple(type))
-        @warn "Unable to infer the fieldtypes of the Varargs type $type, defaulting to `()` for empty iterators"
-        ()
-    else
-        map(Val, fieldtypes(type))
-    end
 
 """
     over(iterator, call)

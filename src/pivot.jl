@@ -42,7 +42,7 @@ Showing 4 of 5 rows
 Peek(rows) = Peek(rows, 4)
 
 make_any(values) = Any[values...]
-
+default_side(column) = :r
 function show(output::IO, peek::Peek)
     rows = peek.rows
     maximum_length = peek.maximum_length
@@ -59,12 +59,12 @@ function show(output::IO, peek::Peek)
     ))
     rows = map(make_any, zip(map(value, columns)...))
     pushfirst!(rows, make_any(map(key, columns)))
-    show(output, MD(Table(rows, make_any(map(column -> :r, columns)))))
+    show(output, MD(Table(rows, make_any(map(default_side, columns)))))
 end
 
 """
     to_columns(rows)
-
+    
 Inverse of [`to_rows`](@ref). Always lazy, see [`make_columns`](@ref) for an eager version.
 
 ```jldoctest

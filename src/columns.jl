@@ -137,7 +137,7 @@ macro name(code)
 end
 export @name
 
-@pure Name(symbol::Symbol) = Name{symbol}()
+@inline Name(symbol::Symbol) = Name{symbol}()
 @pure to_names(some_names::Some{Symbol}) = map(Name, some_names)
 
 """
@@ -214,8 +214,7 @@ diff_names_unrolled(more::Some{Any}, less) =
 
 @inline haskey(row::Some{Named}, name) = isempty(if_name_not_in(name, row))
 @inline has_name(row::Some{Named}, name::Name) = haskey(row, name)
-@inline has_name(row, ::Name{name}) where {name} =
-    hasproperty(row, name)
+@inline has_name(row, ::Name{name}) where {name} = hasproperty(row, name)
 
 """
     remove(row, old_names...)
@@ -248,12 +247,10 @@ transform(row, assignments...) =
     diff_names_unrolled(row, assignments)..., assignments...
 export transform
 
-reduce_unrolled(f, x, y, z...) = reduce_unrolled(f, f(x, y), z...)
-reduce_unrolled(f, x) = x
+merge_2(row1, row2) = transform(row1, row2...)
+merge(rows::Some{Named}...) = reduce_unrolled(merge_2, rows...)
 
-merge(rows::Some{Named}...) =
-    reduce_unrolled((row1, row2) -> transform(row1, row2...), rows...)
-
+rename_at(row, (new_name, old_name)) = new_name, get_name(row, old_name)
 """
     rename(row, new_name_old_names...)
 
@@ -268,15 +265,10 @@ julia> @name rename((a = 1, b = 2), c = :a)
 """
 rename(row, new_name_old_names...) =
     diff_names_unrolled(row, map(value, new_name_old_names))...,
-    partial_map(
-        (row, new_name_old_name) -> (
-            first(new_name_old_name),
-            get_name(row, value(new_name_old_name))
-        ),
-        row, new_name_old_names
-    )...
+    partial_map(rename_at, row, new_name_old_names)...
 export rename
 
+gather_at(row, (new_name, old_names)) = new_name, row[old_names]
 """
     gather(row, new_name_old_names...)
 
@@ -294,13 +286,7 @@ gather(row, new_name_old_names...) =
         row,
         flatten_unrolled(map(value, new_name_old_names))
     )...,
-    partial_map(
-        (row, new_name_old_name) -> (
-            key(new_name_old_name),
-            row[value(new_name_old_name)]
-        ),
-        row, new_name_old_names
-    )...
+    partial_map(gather_at, row, new_name_old_names)...
 export gather
 
 """
@@ -317,5 +303,5 @@ julia> @name spread((b = 2, d = (a = 1, c = 3)), :d)
 """
 spread(row, some_names...) =
     diff_names_unrolled(row, some_names)...,
-    flatten_unrolled(map(value, row[some_names]))...
+    flatten_unrolled(map(value, getindex(row, some_names)))...
 export spread
