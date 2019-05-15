@@ -1,8 +1,8 @@
 @static if VERSION < v"1.1"
     # backport #30076 just for Rows
     function fieldtypes(type::Type)
-        fieldtype(index) = fieldtype(type, index)
-        ntuple(index, fieldcount(type))
+        inner_fieldtype(index) = fieldtype(type, index)
+        ntuple(inner_fieldtype, fieldcount(type))
     end
 
     get_columns(zipped::Zip) = zipped.a, get_columns(zipped.z)...
