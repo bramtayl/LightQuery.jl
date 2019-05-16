@@ -286,6 +286,16 @@ julia> collect(InnerJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
  (1, -1)
  (-6, 6)
 
+julia> collect(InnerJoin(By(Int[], abs), By(Int[], abs)))
+0-element Array{Tuple{Int64,Int64},1}
+
+julia> collect(InnerJoin(By(Int[1], abs), By(Int[], abs)))
+0-element Array{Tuple{Int64,Int64},1}
+
+julia> collect(InnerJoin(By(Int[], abs), By(Int[1], abs)))
+0-element Array{Tuple{Int64,Int64},1}
+```
+
 Assumes `left` and `right` are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. Annotate with [`Length`](@ref) if you know it.
 """
 struct InnerJoin{Left <: By, Right <: By} <: Join{Left, Right}

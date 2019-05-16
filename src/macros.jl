@@ -40,7 +40,7 @@ function anonymous(location, body::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
     substituted_body = substitute_underscores!(underscores_to_gensyms, body)
     code = Expr(:function,
-        Expr(:call, gensym(), Generator(
+        Expr(:call, gensym("@_"), Generator(
             value,
             sort!(collect(underscores_to_gensyms), by = first)
         )...),
@@ -76,18 +76,13 @@ export @_
 function link(location, object, call::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
     body = substitute_underscores!(underscores_to_gensyms, call)
-    if length(underscores_to_gensyms) != 1 ||
-        !haskey(underscores_to_gensyms,  :_)
-        error("@> requires _ as the only underscore argument")
-    else
-        Expr(:let,
-            Expr(:(=), underscores_to_gensyms[:_], object),
-            Expr(:block,
-                location,
-                body
-            )
+    Expr(:let,
+        Expr(:(=), underscores_to_gensyms[:_], object),
+        Expr(:block,
+            location,
+            body
         )
-    end
+    )
 end
 link(location, object, call) = Expr(:call, call, object)
 
