@@ -1,16 +1,21 @@
+struct Name{name}
+    Name{name}() where {name} = new{name::Symbol}()
+end
+
 """
-    struct Name{name} end
+    Name(symbol::Symbol)
 
 Create a typed `Name`. Inverse of [`unname`](@ref)
 
 ```jlodctest
 julia> using LightQuery
 
-julia> Name{:a}()
+julia> Name(:a)
 `a`
 ```
 """
-struct Name{name} end
+@inline Name(symbol::Symbol) = Name{symbol}()
+
 export Name
 
 """
@@ -21,7 +26,7 @@ Inverse of [`Name`](@ref).
 ```jldoctest
 julia> using LightQuery
 
-julia> Name{:a}() |> unname
+julia> unname(Name(:a))
 :a
 ```
 """
@@ -86,13 +91,15 @@ make_names(code::Expr) =
 """
     macro name(code)
 
-Switch to [`named_tuple`](@ref)s
+Switch to [`named_tuple`](@ref)s.
 
 ```jldoctest name
 julia> using LightQuery
 
-julia> row = @name (a = 1, b = 2, c = 3)
-((`a`, 1), (`b`, 2), (`c`, 3))
+julia> using Test: @inferred
+
+julia> row = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 
 based on typed `Name`s.
@@ -105,31 +112,50 @@ julia> @name :a
 `Name`s can be used as properties
 
 ```jldoctest name
-julia> @name row.a
+julia> @name @inferred row.c
 1
 ```
 
 indices
 
 ```jldoctest name
-julia> @name row[:a]
+julia> @name @inferred row[:c]
 1
-
-julia> @name row[(:a, :b)]
-((`a`, 1), (`b`, 2))
 ```
 
-and functions
+And selector functions.
 
 ```jldoctest name
-julia> @name (:a)(row)
+julia> @name @inferred (:c)(row)
 1
+```
 
-julia> @name (:a, :b)(row)
-((`a`, 1), (`b`, 2))
+Multiple names can be used as indices
 
-julia> @name (:a, :b)((1, 2))
-((`a`, 1), (`b`, 2))
+```jldoctest name
+julia> @name @inferred row[(:c, :f)]
+((`c`, 1), (`f`, 1.0))
+```
+
+selector functions
+
+```jldoctest name
+julia> @name @inferred (:c, :f)(row)
+((`c`, 1), (`f`, 1.0))
+```
+
+and also to create new names
+
+```jldoctest name
+julia> @name @inferred (:a, :b)((1, 1.0))
+((`a`, 1), (`b`, 1.0))
+```
+
+You can also convert back to `NamedTuple`s.
+
+```jldoctest name
+julia> @inferred NamedTuple(row)
+(a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
 ```
 """
 macro name(code)
@@ -137,39 +163,45 @@ macro name(code)
 end
 export @name
 
-@inline Name(symbol::Symbol) = Name{symbol}()
-@pure to_names(some_names::Some{Symbol}) = map(Name, some_names)
+@pure get_names(some_names::NTuple{N, Symbol}) where {N} = map(Name, some_names)
 
 """
-    named_tuple(data)
+    named_tuple(row)
 
-Convert `data` to a named tuple (see [`@name`](@ref)).
+Convert `row` to a `named_tuple` (see [`@name`](@ref)).
 
 ```jldoctest named_tuple
 julia> using LightQuery
 
-julia> named_tuple((a = 1, b = 1.0))
-((`a`, 1), (`b`, 1.0))
+julia> using Test: @inferred
+
+julia> @inferred named_tuple((a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0))
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 
-`propertynames` need to constant propagate for performance. This already works for `NamedTuple`s. For other structs, `@inline` constant `propertynames`.
+For stability working with arbitrary `struct`s, `propertynames` must constant propagate.
 
 ```jldoctest named_tuple
 julia> struct MyType
             a::Int
             b::Float64
+            c::Int
+            d::Float64
+            e::Int
+            f::Float64
         end
 
 julia> import Base: propertynames
 
-julia> @inline propertynames(::MyType) = (:a, :b);
+julia> @inline propertynames(::MyType) = (:a, :b, :c, :d, :e, :f);
 
-julia> named_tuple(MyType(1, 1.0))
-((`a`, 1), (`b`, 1.0))
+julia> @inferred named_tuple(MyType(1, 1.0, 1, 1.0, 1, 1.0))
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-named_tuple(data) =
-    partial_map(get_pair, data, to_names(Tuple(propertynames(data))))
+named_tuple(row) =
+    partial_map(get_pair, row, get_names(propertynames(row)))
+
 export named_tuple
 
 """
@@ -180,23 +212,25 @@ Convert a `Tables.Schema` to a `named_tuple` template.
 ```jldoctest
 julia> using LightQuery
 
+julia> using Test: @inferred
+
 julia> using CSV: File
 
 julia> using Tables: schema
 
 julia> file = File("test.csv");
 
-julia> f = named_tuple(schema(file))
-((`a`, Val{Int64}()), (`b`, Val{Float64}()))
+julia> template = named_tuple(schema(file))
+((`a`, Val{Int64}()), (`b`, Val{Float64}()), (`c`, Val{Int64}()), (`d`, Val{Float64}()), (`e`, Val{Int64}()), (`f`, Val{Float64}()))
 
-julia> f(first(file))
-((`a`, 1), (`b`, 1.0))
+julia> @inferred template(first(file))
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
 named_tuple(::Schema{some_names, Values}) where {some_names, Values} =
-    map(tuple, to_names(some_names), val_fieldtypes_or_empty(Values))
+    map(tuple, get_names(some_names), val_fieldtypes_or_empty(Values))
 
-@pure unname_all(some_names::Some{Name}) = map(unname, some_names)
+@inline unname_all(some_names::Some{Name}) = map(unname, some_names)
 NamedTuple(row) = NamedTuple{unname_all(map(key, row))}(map(value, row))
 
 if_name_not_in(it, ::Tuple{}) = (it,)
@@ -224,8 +258,13 @@ Remove `old_names` from `row`.
 ```jldoctest
 julia> using LightQuery
 
-julia> @name remove((a = 1, b = 2, c = 3), :b)
-((`a`, 1), (`c`, 3))
+julia> using Test: @inferred
+
+julia> row = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+
+julia> @name @inferred remove(row, :c, :f)
+((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1))
 ```
 """
 remove(row, old_names...) = diff_names_unrolled(row, old_names)
@@ -239,8 +278,13 @@ Merge `assignments` into `row`, overwriting old values.
 ```jldoctest
 julia> using LightQuery
 
-julia> @name transform((a = 1, b = 2), a = 3)
-((`b`, 2), (`a`, 3))
+julia> using Test: @inferred
+
+julia> row = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+
+julia> @name @inferred transform(row, c = 2.0, f = 2, g = 1, h = 1.0)
+((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1), (`c`, 2.0), (`f`, 2), (`g`, 1), (`h`, 1.0))
 ```
 """
 transform(row, assignments...) =
@@ -259,8 +303,13 @@ Rename `row`.
 ```jldoctest
 julia> using LightQuery
 
-julia> @name rename((a = 1, b = 2), c = :a)
-((`b`, 2), (`c`, 1))
+julia> using Test: @inferred
+
+julia> row = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+
+julia> @name @inferred rename(row, c2 = :c, f2 = :f)
+((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1), (`c2`, 1), (`f2`, 1.0))
 ```
 """
 rename(row, new_name_old_names...) =
@@ -277,8 +326,13 @@ For each `new_name, old_names` pair in `new_name_old_names`, gather the `old_nam
 ```jldoctest
 julia> using LightQuery
 
-julia> @name gather((a = 1, b = 2, c = 3), d = (:a, :c))
-((`b`, 2), (`d`, ((`a`, 1), (`c`, 3))))
+julia> using Test: @inferred
+
+julia> row = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+
+julia> @name gather(row, g = (:b, :e), h = (:c, :f))
+((`a`, 1), (`d`, 1.0), (`g`, ((`b`, 1.0), (`e`, 1))), (`h`, ((`c`, 1), (`f`, 1.0))))
 ```
 """
 gather(row, new_name_old_names...) =
@@ -297,8 +351,13 @@ Unnest nested named tuples. Inverse of [`gather`](@ref).
 ```jldoctest
 julia> using LightQuery
 
-julia> @name spread((b = 2, d = (a = 1, c = 3)), :d)
-((`b`, 2), (`a`, 1), (`c`, 3))
+julia> using Test: @inferred
+
+julia> gathered = @name (a = 1, d = 1.0, g = (b = 1.0, e = 1), h = (c = 1, f = 1.0))
+((`a`, 1), (`d`, 1.0), (`g`, ((`b`, 1.0), (`e`, 1))), (`h`, ((`c`, 1), (`f`, 1.0))))
+
+julia> @name spread(gathered, :g, :h)
+((`a`, 1), (`d`, 1.0), (`b`, 1.0), (`e`, 1), (`c`, 1), (`f`, 1.0))
 ```
 """
 spread(row, some_names...) =

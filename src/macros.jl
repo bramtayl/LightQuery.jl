@@ -103,11 +103,18 @@ make_chain(location, maybe_chain) =
 
 If body is in the form `object_ |> call_`, call [`@_`](@ref) on `call`, and recur on `object`.
 
-```jldoctest
+```jldoctest chain
 julia> using LightQuery
 
 julia> @> 0 |> _ - 1 |> abs
 1
+```
+
+You can nest chains:
+
+```jldoctest chain
+julia> @> 1 |> (@> _ + 1 |> _ + 1)
+3
 ```
 """
 macro >(body)
