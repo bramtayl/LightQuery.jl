@@ -41,6 +41,17 @@ end
     over(iterator, call)
 
 Lazy `map` with the reverse argument order.
+
+```jldoctest
+julia> using LightQuery
+
+julia> collect(over([1, -2, -3, 4], abs))
+4-element Array{Int64,1}:
+ 1
+ 2
+ 3
+ 4
+```
 """
 over(iterator, call) = Generator(call, iterator)
 export over
@@ -49,6 +60,15 @@ export over
     when(iterator, call)
 
 Lazy `filter` with the reverse argument order.
+
+```jldoctest
+julia> using LightQuery
+
+julia> collect(when(1:4, iseven))
+2-element Array{Int64,1}:
+ 2
+ 4
+```
 """
 when(iterator, call) = Filter(call, iterator)
 export when
@@ -57,6 +77,16 @@ export when
     key(pair)
 
 The `key` in a `key => value` `pair`.
+
+```jldoctest
+julia> using LightQuery
+
+julia> key(:a => 1)
+:a
+
+julia> key((:a, 1))
+:a
+```
 """
 function key(pair)
     a_key, a_value = pair
@@ -69,6 +99,16 @@ export key
     value(pair)
 
 The `value` in a `key => value` `pair`.
+
+```jldoctest
+julia> using LightQuery
+
+julia> value(:a => 1)
+1
+
+julia> value((:a, 1))
+1
+```
 """
 function value(pair::Tuple{Any, Any})
     a_key, a_value = pair
