@@ -22,7 +22,7 @@ TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [targets]
-test = ["CSV", "Dates", "Documenter", "Statistics", "Test", "TimeZones", "Unitful"]
+test = ["Dates", "Documenter", "Statistics", "Test", "TimeZones", "Unitful"]
 
 [compat]
 julia = "1.0"
