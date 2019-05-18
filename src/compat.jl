@@ -15,7 +15,7 @@
     state_to_index(zipped::Zip2, state) =
         state_to_index(first(get_columns(zipped)), first(state))
 
-    to_columns(rows::Generator{<: Zip2, <: Some{Name}}) =
+    to_columns(rows::Generator{<: Zip2, <: Apply}) =
         rows.f(get_columns(rows.iter))
 
     function collect_to!(destination::Rows{Item}, iterator, offset, state) where Item
