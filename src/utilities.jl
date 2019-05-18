@@ -145,12 +145,11 @@ missing
 """
 macro if_known(something)
     quote
-        let something = $(esc(something))
-            if something === missing
-                return missing
-            else
-                something
-            end
+        something = $(esc(something))
+        if something === missing
+            return missing
+        else
+            something
         end
     end
 end

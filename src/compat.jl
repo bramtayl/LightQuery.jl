@@ -1,9 +1,4 @@
 @static if VERSION < v"1.1"
-    # backport #30076 just for Rows
-    function fieldtypes(type::Type)
-        @inline inner_fieldtype(index) = fieldtype(type, index)
-        ntuple(inner_fieldtype, fieldcount(type))
-    end
 
     get_columns(zipped::Zip) = zipped.a, get_columns(zipped.z)...
     get_columns(zipped::Zip2) = zipped.a, zipped.b
@@ -18,6 +13,7 @@
     to_columns(rows::Generator{<: Zip2, <: Apply}) =
         rows.f(get_columns(rows.iter))
 
+    # backport #30076 just for Rows
     function collect_to!(destination::Rows{Item}, iterator, offset, state) where Item
         # collect to destination array, checking the type of each result. if a result does not
         # match, widen the result type and re-dispatch.
@@ -34,7 +30,7 @@
                 return collect_to!(new, iterator, index + 1, state)
             end
         end
-        return destination
+        destination
     end
 
     @inline function setindex_widen_up_to(destination::AbstractArray{Item}, item, index) where Item
@@ -57,7 +53,7 @@
             end
             result = iterate(iterator, state)
         end
-        return destination
+        destination
     end
 
     @inline function push_widen(destination, item)
@@ -72,7 +68,7 @@
             append!(new, destination)
         end
         push!(new, item)
-        return new
+        new
     end
 else
     get_columns(zipped::Zip) = zipped.is

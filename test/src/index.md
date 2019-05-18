@@ -636,7 +636,7 @@ julia> Peek(interested_in(a_match))
 |      10.0 mi |         -4 minute |
 ```
 
-Use `flatten` to unnest data.
+Use `flatten` to unnest data (exported from Base).
 
 ```jldoctest dplyr
 julia> data =
