@@ -47,13 +47,13 @@ Tables.Schema:
 
 For this package, I made [`named_tuple`](@ref)s to replace `NamedTuple`s. Use [`@name`](@ref) to work with them.
 
-Convert the `schema` to a [`named_tuple`](@ref).
+Convert the `schema` [`to_Columns`](@ref).
 
 ```jldoctest dplyr
 julia> using Tables: schema
 
-julia> const Airport = named_tuple(schema(airports_file))
-((`faa`, Val{String}()), (`name`, Val{String}()), (`lat`, Val{Float64}()), (`lon`, Val{Float64}()), (`alt`, Val{Int64}()), (`tz`, Val{Int64}()), (`dst`, Val{String}()), (`tzone`, Val{Union{Missing, String}}()))
+julia> const Airport = to_Columns(schema(airports_file))
+(Column{:faa,String,1}(), Column{:name,String,2}(), Column{:lat,Float64,3}(), Column{:lon,Float64,4}(), Column{:alt,Int64,5}(), Column{:tz,Int64,6}(), Column{:dst,String,7}(), Column{:tzone,Union{Missing, String},8}())
 ```
 
 Read the first row.
@@ -207,7 +207,8 @@ Tables.Schema:
 Get the first flight, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
 
 ```jldoctest dplyr
-julia> const Flight = named_tuple(schema(flights_file));
+julia> const Flight = to_Columns(schema(flights_file))
+(Column{:year,Int64,1}(), Column{:month,Int64,2}(), Column{:day,Int64,3}(), Column{:dep_time,Union{Missing, Int64},4}(), Column{:sched_dep_time,Int64,5}(), Column{:dep_delay,Union{Missing, Int64},6}(), Column{:arr_time,Union{Missing, Int64},7}(), Column{:sched_arr_time,Int64,8}(), Column{:arr_delay,Union{Missing, Int64},9}(), Column{:carrier,String,10}(), Column{:flight,Int64,11}(), Column{:tailnum,Union{Missing, String},12}(), Column{:origin,String,13}(), Column{:dest,String,14}(), Column{:air_time,Union{Missing, Int64},15}(), Column{:distance,Int64,16}(), Column{:hour,Int64,17}(), Column{:minute,Int64,18}(), Column{:time_hour,String,19}())
 
 julia> flight =
         @name @> flights_file |>
@@ -304,7 +305,7 @@ julia> arrival = @name get_time(
 2013-01-01T08:19:00-06:00
 ```
 
-[`over`](@ref) each row.
+All together.
 
 ```jldoctest dplyr
 julia> function get_flight(indexed_airports, row)
@@ -361,9 +362,7 @@ Check inference before collecting. Inference is optional, but speeds up performa
 ```jldoctest dplyr
 julia> Base.@default_eltype(flights)
 Tuple{Tuple{Name{:carrier},String},Tuple{Name{:flight},Int64},Tuple{Name{:origin},String},Tuple{Name{:destination},String},Tuple{Name{:tail_number},Union{Missing, String}},Tuple{Name{:air_time},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:distance},Unitful.Quantity{Int64,𝐋,Unitful.FreeUnits{(mi,),𝐋,nothing}}},Tuple{Name{:departure_delay},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:arrival_delay},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:scheduled_departure_time},Union{Missing, ZonedDateTime}},Tuple{Name{:scheduled_arrival_time},Union{Missing, ZonedDateTime}}}
-```
 
-```jldoctest dplyr
 julia> flights =
         flights |>
         make_columns |>
@@ -477,10 +476,10 @@ Showing at most 4 rows
 
 ## Weather cleaning
 
-Import weather data.
+Import weather data. Get the first row, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
 
 ```jldoctest dplyr
-julia> const weathers_file = CSV.File("weather.csv")
+julia> weathers_file = CSV.File("weather.csv")
 CSV.File("weather.csv"):
 Size: 26115 x 15
 Tables.Schema:
@@ -500,7 +499,7 @@ Tables.Schema:
  :visib       Float64
  :time_hour   String
 
-julia> const Weather = named_tuple(schema(weathers_file));
+julia> const Weather = to_Columns(schema(weathers_file));
 
 julia> function get_weather(indexed_airports, row)
             @name @> row |>
@@ -930,6 +929,9 @@ transform
 remove
 gather
 spread
+Apply
+Column
+to_Columns
 ```
 
 ## Rows

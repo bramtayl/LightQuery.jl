@@ -12,7 +12,10 @@ julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
  ((`a`, 2), (`b`, 2.0))
 ```
 """
-to_rows(columns) = Generator(map(key, columns), zip(map(value, columns)...))
+to_rows(columns) = Generator(
+    Apply(map_unrolled(key, columns)),
+    zip(map_unrolled(value, columns)...)
+)
 export to_rows
 
 struct Peek{Rows}
@@ -58,13 +61,13 @@ function show(output::IO, peek::Peek)
         maximum_length
     ))
     rows = map(make_any, zip(map(value, columns)...))
-    pushfirst!(rows, make_any(map(key, columns)))
-    show(output, MD(Table(rows, make_any(map(default_side, columns)))))
+    pushfirst!(rows, make_any(map_unrolled(key, columns)))
+    show(output, MD(Table(rows, make_any(map_unrolled(default_side, columns)))))
 end
 
 """
     to_columns(rows)
-    
+
 Inverse of [`to_rows`](@ref). Always lazy, see [`make_columns`](@ref) for an eager version.
 
 ```jldoctest
@@ -74,6 +77,6 @@ julia> @name to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))
 ((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 ```
 """
-to_columns(rows::Generator{<: Zip, <: Some{Name}}) =
+to_columns(rows::Generator{<: Zip, <: Apply}) =
     rows.f(get_columns(rows.iter))
 export to_columns

@@ -1,10 +1,3 @@
-struct CallCode{Call}
-    call::Call
-    code::Expr
-end
-(call_code::CallCode)(arguments...; keyword_arguments...) =
-    call_code.call(arguments...; keyword_arguments...)
-
 substitute_underscores!(underscores_to_gensyms, other) = other
 substitute_underscores!(underscores_to_gensyms, maybe_argument::Symbol) =
     if all(isequal('_'), string(maybe_argument))
@@ -28,9 +21,8 @@ function substitute_underscores!(underscores_to_gensyms, code::Expr)
         else
             code
         end
-    Expr(expanded_code.head, partial_map(
-        substitute_underscores!,
-        underscores_to_gensyms,
+    Expr(expanded_code.head, map(
+        arg -> substitute_underscores!(underscores_to_gensyms, arg),
         expanded_code.args
     )...)
 end
@@ -39,17 +31,12 @@ anonymous(location, other) = other
 function anonymous(location, body::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
     substituted_body = substitute_underscores!(underscores_to_gensyms, body)
-    code = Expr(:function,
+    Expr(:function,
         Expr(:call, gensym("@_"), Generator(
             value,
             sort!(collect(underscores_to_gensyms), by = first)
         )...),
         Expr(:block, location, substituted_body)
-    )
-    Expr(:call,
-        CallCode,
-        code,
-        quot(code)
     )
 end
 

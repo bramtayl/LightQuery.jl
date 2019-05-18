@@ -1,9 +1,8 @@
 struct Name{name}
-    Name{name}() where {name} = new{name::Symbol}()
 end
 
 """
-    Name(symbol::Symbol)
+    Name(name)
 
 Create a typed `Name`. Inverse of [`unname`](@ref)
 
@@ -14,7 +13,7 @@ julia> Name(:a)
 `a`
 ```
 """
-@inline Name(symbol::Symbol) = Name{symbol}()
+@inline Name(name) = Name{name}()
 
 export Name
 
@@ -35,57 +34,46 @@ export unname
 
 show(output::IO, ::Name{name}) where {name} = print(output, '`', name, '`')
 
-get_name(row, ::Name{name}) where {name} = getproperty(row, name)
-
 const Named{name} = Tuple{Name{name}, Any}
 
-@inline name_matches(::Named{name}, ::Named{name}) where {name} = true
-@inline name_matches(::Named{name}, ::Name{name}) where {name} = true
-@inline name_matches(::Name{name}, ::Named{name}) where {name} = true
-@inline name_matches(apple, orange) = false
-
-get_pair(row::Tuple{}, name::Name) = error("Cannot find $name")
-function get_pair(row::Some{Named}, name::Name)
-    first_pair = first(row)
-    if name_matches(first_pair, name)
-        first_pair
+recursive_get(initial, name) = throw(BoundsError(initial, (name,)))
+function recursive_get(initial, name, (check_name, value), rest...)
+    if name === check_name
+        value
     else
-        get_pair(tail(row), name)
+        recursive_get(initial, name, rest...)
     end
 end
-get_pair(row, name::Name) = name, get_name(row, name)
-function get_pair(row, template::Tuple{Name, Val{AType}}) where AType
-    name = first(template)
-    name, get_name(row, name)::AType
-end
-(template::Tuple{Name, Any})(row) = get_pair(row, template)
 
-getindex(row::Some{Named}, name::Name) = value(get_pair(row, name))
-get_name(row::Some{Named}, name::Name) = row[name]
-(name::Name)(row) = get_name(row, name)
+getindex(row, ::Name{name}) where {name} = getproperty(row, name)
+getindex(row::Some{Named}, name::Name) = recursive_get(row, name, row...)
 
+get_pair(row, name) = name, row[name]
+getindex(row, some_names::Some{Name}) = partial_map(get_pair, row, some_names)
+getindex(row::Some{Named}, ::Tuple{}) = ()
 
-getindex(row::Some{Named}, some_names::Some{Name}) =
-    partial_map(get_pair, row, some_names)
-(some_names::Some{Name})(row::Some{Named}) = row[some_names]
+(name::Name)(row) = row[name]
+(some_names::Some{Name})(row) = row[some_names]
 
-(some_names::Some{Name})(values::Tuple) = map(tuple, some_names, values)
-
-(templates::Some{Named})(row) =
-    partial_map(get_pair, row, templates)
-
-@pure isless(::Name{name1}, ::Name{name2}) where {name1, name2} =
+@inline isless(::Name{name1}, ::Name{name2}) where {name1, name2} =
     isless(name1, name2)
 
-make_names(other) = other
-make_names(symbol::QuoteNode) = Name{symbol.value}()
-make_names(code::Expr) =
+# to override recusion limit on constant propagation
+@pure to_Names(some_names::Some{Symbol}) = map_unrolled(Name, some_names)
+
+NamedTuple(row::Some{Named}) = NamedTuple{map_unrolled(unname ∘ key, row)}(
+    map_unrolled(value, row)
+)
+
+code_with_names(other) = other
+code_with_names(symbol::QuoteNode) = Name{symbol.value}()
+code_with_names(code::Expr) =
     if @capture code row_.name_
-        Expr(:call, get_name, make_names(row), Name{name}())
+        Expr(:ref, code_with_names(row), Name{name}())
     elseif @capture code name_Symbol = value_
-        Expr(:tuple, Name{name}(), make_names(value))
+        Expr(:tuple, Name{name}(), code_with_names(value))
     else
-        Expr(code.head, map(make_names, code.args)...)
+        Expr(code.head, map(code_with_names, code.args)...)
     end
 
 """
@@ -114,6 +102,10 @@ julia> @name :a
 ```jldoctest name
 julia> @name @inferred row.c
 1
+
+julia> @name row.g
+ERROR: BoundsError: attempt to access ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+[...]
 ```
 
 indices
@@ -123,7 +115,7 @@ julia> @name @inferred row[:c]
 1
 ```
 
-And selector functions.
+and selector functions.
 
 ```jldoctest name
 julia> @name @inferred (:c)(row)
@@ -137,18 +129,11 @@ julia> @name @inferred row[(:c, :f)]
 ((`c`, 1), (`f`, 1.0))
 ```
 
-selector functions
+and selector functions
 
 ```jldoctest name
 julia> @name @inferred (:c, :f)(row)
 ((`c`, 1), (`f`, 1.0))
-```
-
-and also to create new names
-
-```jldoctest name
-julia> @name @inferred (:a, :b)((1, 1.0))
-((`a`, 1), (`b`, 1.0))
 ```
 
 You can also convert back to `NamedTuple`s.
@@ -159,11 +144,9 @@ julia> @inferred NamedTuple(row)
 ```
 """
 macro name(code)
-    esc(make_names(code))
+    esc(code_with_names(code))
 end
 export @name
-
-@pure get_names(some_names::NTuple{N, Symbol}) where {N} = map(Name, some_names)
 
 """
     named_tuple(row)
@@ -199,56 +182,12 @@ julia> @inferred named_tuple(MyType(1, 1.0, 1, 1.0, 1, 1.0))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-named_tuple(row) =
-    partial_map(get_pair, row, get_names(propertynames(row)))
-
+named_tuple(row) = row[to_Names(propertynames(row))]
 export named_tuple
 
-"""
-    named_tuple(::Schema)
-
-Convert a `Tables.Schema` to a `named_tuple` template.
-
-```jldoctest
-julia> using LightQuery
-
-julia> using Test: @inferred
-
-julia> using CSV: File
-
-julia> using Tables: schema
-
-julia> file = File("test.csv");
-
-julia> template = named_tuple(schema(file))
-((`a`, Val{Int64}()), (`b`, Val{Float64}()), (`c`, Val{Int64}()), (`d`, Val{Float64}()), (`e`, Val{Int64}()), (`f`, Val{Float64}()))
-
-julia> @inferred template(first(file))
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
-```
-"""
-named_tuple(::Schema{some_names, Values}) where {some_names, Values} =
-    map(tuple, get_names(some_names), val_fieldtypes_or_empty(Values))
-
-@inline unname_all(some_names::Some{Name}) = map(unname, some_names)
-NamedTuple(row) = NamedTuple{unname_all(map(key, row))}(map(value, row))
-
-if_name_not_in(it, ::Tuple{}) = (it,)
-if_name_not_in(it, them::Some{Any}) =
-    if name_matches(it, first(them))
-        ()
-    else
-        if_name_not_in(it, tail(them))
-    end
-
-diff_names_unrolled(::Tuple{}, less) = ()
-diff_names_unrolled(more::Some{Any}, less) =
-    if_name_not_in(first(more), less)...,
-    diff_names_unrolled(tail(more), less)...
-
-@inline haskey(row::Some{Named}, name) = isempty(if_name_not_in(name, row))
-@inline has_name(row::Some{Named}, name::Name) = haskey(row, name)
-@inline has_name(row, ::Name{name}) where {name} = hasproperty(row, name)
+haskey(row::Some{Named}, name::Name) =
+    isempty(if_not_in(map_unrolled(key, row), name))
+haskey(row, ::Name{name}) where {name} = hasproperty(row, name)
 
 """
     remove(row, old_names...)
@@ -267,7 +206,11 @@ julia> @name @inferred remove(row, :c, :f)
 ((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1))
 ```
 """
-remove(row, old_names...) = diff_names_unrolled(row, old_names)
+remove(row, old_names...) =
+    row[diff_unrolled(map_unrolled(key, row), old_names)]
+
+old_names = @name (:c, :f)
+
 export remove
 
 """
@@ -288,13 +231,13 @@ julia> @name @inferred transform(row, c = 2.0, f = 2, g = 1, h = 1.0)
 ```
 """
 transform(row, assignments...) =
-    diff_names_unrolled(row, assignments)..., assignments...
+    remove(row, map_unrolled(key, assignments)...)..., assignments...
 export transform
 
 merge_2(row1, row2) = transform(row1, row2...)
 merge(rows::Some{Named}...) = reduce_unrolled(merge_2, rows...)
 
-rename_at(row, (new_name, old_name)) = new_name, get_name(row, old_name)
+rename_at(row, (new_name, old_name)) = new_name, row[old_name]
 """
     rename(row, new_name_old_names...)
 
@@ -313,11 +256,10 @@ julia> @name @inferred rename(row, c2 = :c, f2 = :f)
 ```
 """
 rename(row, new_name_old_names...) =
-    diff_names_unrolled(row, map(value, new_name_old_names))...,
+    remove(row, map_unrolled(value, new_name_old_names)...)...,
     partial_map(rename_at, row, new_name_old_names)...
 export rename
 
-gather_at(row, (new_name, old_names)) = new_name, row[old_names]
 """
     gather(row, new_name_old_names...)
 
@@ -336,11 +278,11 @@ julia> @name gather(row, g = (:b, :e), h = (:c, :f))
 ```
 """
 gather(row, new_name_old_names...) =
-    diff_names_unrolled(
+    remove(
         row,
-        flatten_unrolled(map(value, new_name_old_names))
+        flatten_unrolled(map_unrolled(value, new_name_old_names)...)...
     )...,
-    partial_map(gather_at, row, new_name_old_names)...
+    partial_map(rename_at, row, new_name_old_names)...
 export gather
 
 """
@@ -361,6 +303,90 @@ julia> @name spread(gathered, :g, :h)
 ```
 """
 spread(row, some_names...) =
-    diff_names_unrolled(row, some_names)...,
-    flatten_unrolled(map(value, getindex(row, some_names)))...
+    remove(row, some_names...)...,
+    flatten_unrolled(map_unrolled(value, row[some_names])...)...
 export spread
+
+"""
+    struct Apply{Names}
+
+Apply [`Name`](@ref)s to unnamed values.
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> @name @inferred Apply((:a, :b, :c, :d, :e, :f))((1, 1.0, 1, 1.0, 1, 1.0))
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+
+```
+"""
+struct Apply{Names <: Some{Name}}
+    names::Names
+end
+export Apply
+
+(apply::Apply)(them) = map_unrolled(tuple, apply.names, them)
+
+"""
+    struct Column{name, type, position}
+
+Contains the name, type, and position of each column. Useful for type stable
+iteration of rows. See example in [`to_Columns`](@ref).
+
+"""
+struct Column{name, type, position}
+    Column{name, type, position}() where {name, type, position} =
+        new{name::Symbol, type::Type, position::Int}()
+end
+export Column
+
+getindex(row::Row, ::Column{name, type, position}) where {name, type, position} =
+    getcell(getfile(row), type, position, getrow(row))::type
+get_pair(row::Row, column::Column{name}) where {name} =
+    Name{name}(), row[column]
+getindex(row, some_columns::Some{Column}) =
+    partial_map(get_pair, row, some_columns)
+
+(a_column::Column)(row::Row) = row[a_column]
+(some_columns::Some{Column})(row) = row[some_columns]
+
+"""
+    to_Columns(::Tables.Schema)
+
+Get the [`Column`](@ref)s in a schema. Useful for type stable iteration of rows.
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> using CSV: File
+
+julia> using Tables: schema
+
+julia> test = File("test.csv")
+CSV.File("test.csv"):
+Size: 1 x 6
+Tables.Schema:
+ :a  Int64
+ :b  Float64
+ :c  Int64
+ :d  Float64
+ :e  Int64
+ :f  Float64
+
+julia> template = to_Columns(schema(test))
+(Column{:a,Int64,1}(), Column{:b,Float64,2}(), Column{:c,Int64,3}(), Column{:d,Float64,4}(), Column{:e,Int64,5}(), Column{:f,Float64,6}())
+
+julia> @inferred template(first(test))
+((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+```
+"""
+function to_Columns(::Schema{Names, Types}) where {Names, Types}
+    @inline Column_at(index) =
+        Column{Names[index], fieldtype(Types, index), index}()
+    ntuple(Column_at, Val{length(Names)}())
+end
+export to_Columns

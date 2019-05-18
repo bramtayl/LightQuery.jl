@@ -3,67 +3,78 @@ struct Rows{Row, Dimensions, Columns, Names} <: AbstractArray{Row, Dimensions}
     names::Names
 end
 
-model(columns::Some{Any}) = first(columns)
+model(columns) = first(columns)
 model(::Tuple{}) = 1:0
 
-row_type_at(::Name, column) where {Name} = Tuple{Name, eltype(column)}
+row_type_at(::Name, ::Column) where {Name, Column} = Tuple{Name, eltype(Column)}
+Rows{Row, Dimension}(columns::Columns, names::Names) where {Row, Dimension, Columns, Names} =
+    Rows{Row, Dimension, Columns, Names}(columns, names)
 function Rows(named_columns)
-    some_names = map(key, named_columns)
-    columns = map(value, named_columns)
+    some_names = map_unrolled(key, named_columns)
+    columns = map_unrolled(value, named_columns)
     Rows{
-        Tuple{map(row_type_at, some_names, columns)...},
-        ndims(model(columns)),
-        typeof(columns),
-        typeof(some_names)
+        Tuple{map_unrolled(row_type_at, some_names, columns)...},
+        ndims(model(columns))
     }(columns, some_names)
 end
 
-to_columns(rows::Rows) = map(tuple, rows.names, rows.columns)
+to_columns(rows::Rows) = map_unrolled(tuple, rows.names, rows.columns)
 
 axes(rows::Rows, dimensions...) = axes(model(rows.columns), dimensions...)
 size(rows::Rows, dimensions...) = size(model(rows.columns), dimensions...)
 
 @propagate_inbounds getindex_at((columns, an_index), name) =
-    name, if has_name(columns, name)
-        get_name(columns, name)[an_index...]
+    name, if haskey(columns, name)
+        columns[name][an_index...]
     else
         missing
     end
 @propagate_inbounds getindex(rows::Rows, an_index...) =
     partial_map(getindex_at, (to_columns(rows), an_index), rows.names)
 
-@propagate_inbounds setindex_at!((columns, an_index), (name, value)) =
-    if has_name(columns, name)
-        get_name(columns, name)[an_index...] = value
-        nothing
+@propagate_inbounds function setindex_at!((columns, an_index), (name, value))
+    if haskey(columns, name)
+        columns[name][an_index...] = value
     end
+    nothing
+end
 @propagate_inbounds setindex!(rows::Rows, row, an_index...) =
     partial_map(setindex_at!, (to_columns(rows), an_index), row)
 
-push_at!(columns, (name, value)) = if has_name(columns, name)
-    push!(get_name(columns, name), value)
+function push_at!(columns, (name, value))
+    if haskey(columns, name)
+        push!(columns[name], value)
+    end
     nothing
 end
 push!(rows::Rows, row) = partial_map(push_at!, to_columns(rows), row)
 
-decompose_named_type(::Val{Tuple{Name{name}, Value}}) where {name, Value} =
-    Name{name}(), Val{Value}()
+val_fieldtypes_or_empty(something) = ()
+@pure val_fieldtypes_or_empty(a_type::DataType) =
+    if a_type.abstract || (a_type.name == Tuple.name && isvatuple(a_type))
+        ()
+    else
+        map_unrolled(Val, (a_type.types...,))
+    end
+
+decompose_named_type(::Val{Tuple{Name{name}, type}}) where {name, type} =
+    Name{name}(), Val{type}()
 decompose_named_type(type) = missing
 
 decompose_named_tuple_type(type) = filter_unrolled(
     !ismissing,
-    map(decompose_named_type, val_fieldtypes_or_empty(type))
+    map_unrolled(decompose_named_type, val_fieldtypes_or_empty(type))...
 )
 
-similar_val(model, ::Val{AType}, dimensions) where {AType} =
-    similar(model, AType, dimensions)
-similar_named((model, dimensions), (name, val_type)) =
-    name, similar_val(model, val_type, dimensions)
-similar(rows::Rows, ::Type{Row}, dimensions::Dims) where Row =
+similar_val_type(the_model, ::Val{type}, dimensions) where {type} =
+    similar(the_model, type, dimensions)
+similar_named((the_model, dimensions), (name, val_type)) =
+    name, similar_val_type(the_model, val_type, dimensions)
+similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow} =
     Rows(partial_map(
         similar_named,
         (model(rows.columns), dimensions),
-        decompose_named_tuple_type(Row)
+        decompose_named_tuple_type(ARow)
     ))
 
 empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow} =
@@ -96,31 +107,31 @@ widen_at(fixeds, variables) = widen_at(fixeds..., variables...)
 model_length(::SizeUnknown, rows, an_index) = an_index
 model_length(::HasLength, rows, an_index) = length(rows)
 
-lone_first((name, item)) = name, item, missing
-lone_second((name, item)) = name, missing, item
-found_match((name1, item1)::Tuple{Name{name}, Any}, (name2, item2)::Tuple{Name{name}, Any}) where {name} =
-    name1, item1, item2
-
-function full_merge(row1, row2)
-    lone_row1 = diff_names_unrolled(row1, row2)
-    lone_row2 = diff_names_unrolled(row2, row1)
-    matching_row1 = diff_names_unrolled(row1, lone_row1)
-    map(lone_first, lone_row1)...,
-    map(
-        found_match,
-        matching_row1,
-        diff_names_unrolled(row2, lone_row2)[map(key, matching_row1)]
-    )...,
-    map(lone_second, lone_row2)...
-end
+lone_column((name, column)) = name, column, missing
+lone_row((name, row)) = name, missing, row
+row_column_match((column_name, column), (row_name, row)) =
+    column_name, column, row
 
 function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
     named_columns = to_columns(rows)
     the_length = model_length(iterator_size, rows, an_index)
+    column_names = map_unrolled(key, named_columns)
+    row_names = map_unrolled(key, row)
+    just_column_names = diff_unrolled(column_names, row_names)
+    just_row_names = diff_unrolled(row_names, column_names)
+    in_both_names = diff_unrolled(column_names, just_column_names)
     Rows(partial_map(
         widen_at,
-        (iterator_size, the_length, an_index),
-        full_merge(named_columns, row)
+        (iterator_size, model_length(iterator_size, rows, an_index), an_index),
+        (
+            map_unrolled(lone_column, named_columns[just_column_names])...,
+            map_unrolled(
+                row_column_match,
+                named_columns[in_both_names],
+                row[in_both_names]
+            )...,
+            map_unrolled(lone_row, row[just_row_names])...
+        )
     ))
 end
 
@@ -145,17 +156,16 @@ julia> @inferred make_columns(over(1:4, stable))
 
 julia> unstable(x) =
             @name if x <= 2
-                (a = missing, b = x + 0.0, d = x + 0.0)
+                (a = missing, b = string(x), d = string(x))
             else
                 (a = x, b = missing, c = x)
             end;
 
 julia> make_columns(over(1:4, unstable))
-((`d`, Union{Missing, Float64}[1.0, 2.0, missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, Float64}[1.0, 2.0, missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
+((`d`, Union{Missing, String}["1", "2", missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, String}["1", "2", missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
 
 julia> make_columns(when(over(1:4, unstable), row -> true))
-((`d`, Union{Missing, Float64}[1.0, 2.0, missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, Float64}[1.0, 2.0, missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
-
+((`d`, Union{Missing, String}["1", "2", missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, String}["1", "2", missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
 ```
 """
 make_columns(rows) = to_columns(_collect(

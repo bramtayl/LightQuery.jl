@@ -8,7 +8,7 @@ state_to_index(zipped::Zip, state) =
 """
     Enumerated{Iterator}
 
-Relies on the fact that iteration states can be converted to indices; thus, you might have to define `LightQuery.state_to_index` for unrecognized types. "Sees through" some iterators like `when`.
+Relies on the fact that iteration states can be converted to indices; thus, you might have to define `LightQuery.state_to_index` for unrecognized types. "Sees through" some iterators like [`when`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -52,28 +52,27 @@ Generalized sort. `keywords` will be passed to `sort!`; see the documentation th
 ```jldoctest
 julia> using LightQuery
 
+julia> using Test: @inferred
+
 julia> order([-2, 1], abs)
 2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
   1
  -2
 ```
 """
-order(unordered, a_key; keywords...) =
-    view(unordered, mappedarray(key,
-        sort!(
-            collect(Enumerated(Generator(a_key, unordered)));
-            by = value,
-            keywords...
-        )
-    ))
+order(unordered, a_key; keywords...) = view(unordered, mappedarray(key, sort!(
+    collect(Enumerated(Generator(a_key, unordered)));
+    by = value,
+    keywords...
+)))
 export order
 
-struct Indexed{Iterator, Indices}
+struct Indexed{Key, Value, Iterator, Indices} <: AbstractDict{Key, Value}
     iterator::Iterator
     indices::Indices
 end
 
-@inline getindex(indexed::Indexed, index) =
+@propagate_inbounds getindex(indexed::Indexed, index) =
     indexed.iterator[indexed.indices[index]]
 
 function get(indexed::Indexed, index, default)
@@ -115,19 +114,26 @@ Index `iterator` by the results of `a_key`. Relies on [`Enumerated`](@ref). Resu
 ```jldoctest
 julia> using LightQuery
 
-julia> result = index([-2, 1], abs);
+julia> using Test: @inferred
 
-julia> result[2]
--2
+julia> @inferred index([-2, 1], abs)
+LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,Int64}} with 2 entries:
+  2 => -2
+  1 => 1
 ```
 """
 function index(iterator, a_key)
     inner_index((index, item)) = a_key(item) => index
-    Indexed(iterator, collect_similar(
+    inner_indexes = collect_similar(
         Dict{Union{}, Union{}}(),
         Generator(inner_index, Enumerated(iterator))
-    ))
+    )
+    Indexed{keytype(inner_indexes), eltype(iterator), typeof(iterator), typeof(inner_indexes)}(
+        iterator,
+        inner_indexes
+    )
 end
+methods(collect_similar)
 export index
 
 """
@@ -205,8 +211,7 @@ function iterate(grouped::Group, (state, left_index, last_result))
         result, state = next_result(grouped, item_state)
     end
     right_index = state_to_index(grouped.ungrouped, state)
-    return (last_result, (@inbounds view(
-        grouped.ungrouped,
+    (last_result, (@inbounds view(grouped.ungrouped,
         left_index:right_index - 1
     ))), (state, right_index, result)
 end
@@ -237,38 +242,35 @@ function next_history(side, (state, item, result))
 end
 
 iterate(::Join, ::Nothing) = nothing
-iterate(joined::Join) = compare(
-    joined,
+iterate(joined::Join) = compare(joined,
     next_history(joined.left),
     next_history(joined.right)
 )
 
-function iterate(joined::Join,
-    (left_history, right_history, next_left, next_right)
-)
+function iterate(joined::Join, (left_history, right_history, next_left, next_right))
     if next_left
         if next_right
-            compare(
-                joined,
+            compare(joined,
                 next_history(joined.left, left_history),
                 next_history(joined.right, right_history)
             )
         else
-            compare(
-                joined,
+            compare(joined,
                 next_history(joined.left, left_history),
                 right_history
             )
         end
     else
         if next_right
-            compare(
-                joined,
+            compare(joined,
                 left_history,
                 next_history(joined.right, right_history)
             )
         else
-            error("Unreachable")
+            compare(joined,
+                left_history,
+                right_history
+            )
         end
     end
 end

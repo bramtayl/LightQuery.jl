@@ -1,7 +1,7 @@
 @static if VERSION < v"1.1"
     # backport #30076 just for Rows
     function fieldtypes(type::Type)
-        inner_fieldtype(index) = fieldtype(type, index)
+        @inline inner_fieldtype(index) = fieldtype(type, index)
         ntuple(inner_fieldtype, fieldcount(type))
     end
 
@@ -18,57 +18,60 @@
     to_columns(rows::Generator{<: Zip2, <: Some{Name}}) =
         rows.f(get_columns(rows.iter))
 
-    function collect_to!(dest::Rows{T}, itr, offs, st) where T
-        # collect to dest array, checking the type of each result. if a result does not
+    function collect_to!(destination::Rows{Item}, iterator, offset, state) where Item
+        # collect to destination array, checking the type of each result. if a result does not
         # match, widen the result type and re-dispatch.
-        i = offs
+        index = offset
         while true
-            y = iterate(itr, st)
-            y === nothing && break
-            el, st = y
-            if el isa T || typeof(el) === T
-                @inbounds dest[i] = el::T
-                i += 1
+            result = iterate(iterator, state)
+            result === nothing && break
+            item, state = result
+            if item isa Item || typeof(item) === Item
+                @inbounds destination[index] = item::Item
+                index = index + 1
             else
-                new = setindex_widen_up_to(dest, el, i)
-                return collect_to!(new, itr, i+1, st)
+                new = setindex_widen_up_to(destination, item, index)
+                return collect_to!(new, iterator, index + 1, state)
             end
         end
-        return dest
+        return destination
     end
 
-    @inline function setindex_widen_up_to(dest::AbstractArray{T}, el, i) where T
-        new = similar(dest, promote_typejoin(T, typeof(el)))
-        copyto!(new, firstindex(new), dest, firstindex(dest), i-1)
-        @inbounds new[i] = el
+    @inline function setindex_widen_up_to(destination::AbstractArray{Item}, item, index) where Item
+        new = similar(destination, promote_typejoin(Item, typeof(item)))
+        copyto!(new, firstindex(new), destination, firstindex(destination), index - 1)
+        @inbounds new[index] = item
         return new
     end
 
-    function grow_to!(dest::Rows, itr, st)
-        T = eltype(dest)
-        y = iterate(itr, st)
-        while y !== nothing
-            el, st = y
-            if el isa T || typeof(el) === T
-                push!(dest, el::T)
+    function grow_to!(destination::Rows, iterator, state)
+        Item = eltype(destination)
+        result = iterate(iterator, state)
+        while result !== nothing
+            item, state = result
+            if item isa Item || typeof(item) === Item
+                push!(destination, item::Item)
             else
-                new = push_widen(dest, el)
-                return grow_to!(new, itr, st)
+                new = push_widen(destination, item)
+                return grow_to!(new, iterator, state)
             end
-            y = iterate(itr, st)
+            result = iterate(iterator, state)
         end
-        return dest
+        return destination
     end
 
-    @inline function push_widen(dest, el)
-        new = sizehint!(empty(dest, promote_typejoin(eltype(dest), typeof(el))), length(dest))
+    @inline function push_widen(destination, item)
+        new = sizehint!(empty(
+            destination,
+            promote_typejoin(eltype(destination), typeof(item))
+        ), length(destination))
         if new isa AbstractSet
             # TODO: merge back these two branches when copy! is re-enabled for sets/vectors
-            union!(new, dest)
+            union!(new, destination)
         else
-            append!(new, dest)
+            append!(new, destination)
         end
-        push!(new, el)
+        push!(new, item)
         return new
     end
 else

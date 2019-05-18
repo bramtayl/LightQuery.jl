@@ -18,6 +18,7 @@ end
 using Base.Meta: quot
 using Compat: fieldcount, hasproperty
 using Core: TypeofBottom
+using CSV: getcell, getfile, getrow, Row
 using IterTools: @ifsomething
 import MacroTools
 using MacroTools: @capture
