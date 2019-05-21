@@ -49,7 +49,7 @@ hash_pair(pair) = key(pair), hash(value(pair))
 """
     order(unordered, a_key; keywords...)
 
-Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. Relies on [`Enumerated`](@ref). For performance, consider using `hash ∘ a_key`.
+Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. Relies on [`Enumerated`](@ref). If the results of `a_key` are type unstable, consider using `hash ∘ a_key` instead.
 
 ```jldoctest
 julia> using LightQuery
