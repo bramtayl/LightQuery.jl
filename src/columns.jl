@@ -14,7 +14,6 @@ julia> Name(:a)
 ```
 """
 @inline Name(name) = Name{name}()
-
 export Name
 
 """
@@ -185,9 +184,9 @@ julia> @inferred named_tuple(MyType(1, 1.0, 1, 1.0, 1, 1.0))
 named_tuple(row) = row[to_Names(propertynames(row))]
 export named_tuple
 
-haskey(row::Some{Named}, name::Name) =
+@inline haskey(row::Some{Named}, name::Name) =
     isempty(if_not_in(map_unrolled(key, row), name))
-haskey(row, ::Name{name}) where {name} = hasproperty(row, name)
+@inline haskey(row, ::Name{name}) where {name} = hasproperty(row, name)
 
 """
     remove(row, old_names...)
@@ -337,8 +336,6 @@ iteration of rows. See example in [`to_Columns`](@ref).
 
 """
 struct Column{name, type, position}
-    Column{name, type, position}() where {name, type, position} =
-        new{name::Symbol, type::Type, position::Int}()
 end
 export Column
 

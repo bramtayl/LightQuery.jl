@@ -44,10 +44,12 @@ function iterate(enumerated::Enumerated, state)
 end
 export Enumerated
 
+hash_pair(pair) = key(pair), hash(value(pair))
+
 """
     order(unordered, a_key; keywords...)
 
-Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. Relies on [`Enumerated`](@ref).
+Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. Relies on [`Enumerated`](@ref). For performance, consider using `hash ∘ a_key`.
 
 ```jldoctest
 julia> using LightQuery
@@ -60,11 +62,11 @@ julia> order([-2, 1], abs)
  -2
 ```
 """
-order(unordered, a_key; keywords...) = view(unordered, mappedarray(key, sort!(
-    collect(Enumerated(Generator(a_key, unordered)));
-    by = value,
-    keywords...
-)))
+function order(unordered, a_key; keywords...)
+    result = collect(Enumerated(over(unordered, a_key)))
+    sort!(result, by = value; keywords...)
+    view(unordered, mappedarray(key, result))
+end
 export order
 
 struct Indexed{Key, Value, Iterator, Indices} <: AbstractDict{Key, Value}
@@ -133,7 +135,6 @@ function index(iterator, a_key)
         inner_indexes
     )
 end
-methods(collect_similar)
 export index
 
 """

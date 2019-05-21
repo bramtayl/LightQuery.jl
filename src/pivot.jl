@@ -12,9 +12,9 @@ julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
  ((`a`, 2), (`b`, 2.0))
 ```
 """
-to_rows(columns) = Generator(
-    Apply(map_unrolled(key, columns)),
-    zip(map_unrolled(value, columns)...)
+to_rows(columns) = over(
+    zip(map_unrolled(value, columns)...),
+    Apply(map_unrolled(key, columns))
 )
 export to_rows
 
