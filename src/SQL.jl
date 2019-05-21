@@ -7,9 +7,6 @@ struct Code
     filling::Expr
 end
 
-struct DummyRow
-end
-
 struct TableOperation
     function_name::Symbol
     arguments
