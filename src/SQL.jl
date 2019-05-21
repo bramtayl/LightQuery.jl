@@ -141,8 +141,7 @@ coalesce(code::Code, next) = coalesce(Expr(:call, coalesce, unwrap(code), next))
         code2
     end
 |(code1::Code, code2::Code) = Code(Expr(:||, unwrap(code1), unwrap(code2)))
-operation = row
-call = @name @_ rename(_, customer_id = :CustomerId)
+
 function over(operation::TableOperation, call)
     new_result = call(operation.result)
     TableOperation(
