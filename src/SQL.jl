@@ -1,13 +1,29 @@
-import SQLite
-
-get_table_names(database::SQLite.DB) = (SQLite.tables(database).name...,)
-get_column_names(database::SQLite.DB, table_name) =
-    (SQLite.columns(database, table_name).name...,)
-
 struct ExternalTable{Database}
     database::Database
-    name::String
+    name::Symbol
 end
+
+struct Code
+    filling::Expr
+end
+
+struct DummyRow
+end
+
+struct TableOperation
+    function_name::Symbol
+    arguments
+    result
+end
+
+import SQLite
+get_table_names(database::SQLite.DB) =
+    map_unrolled(Symbol, (SQLite.tables(database).name...,))
+get_column_names(table::ExternalTable{SQLite.DB}) =
+    map_unrolled(Symbol, (SQLite.columns(
+        table.database,
+        string(table.name)
+    ).name...,))
 
 function show(io::IO, table::ExternalTable)
     show(io, table.database)
@@ -15,40 +31,24 @@ function show(io::IO, table::ExternalTable)
     print(io, table.name)
 end
 
-struct ExternalColumn{Table}
-    table::Table
-    name::String
-end
-
-function show(io::IO, column::ExternalColumn)
-    show(io, column.table)
-    print(io, ".")
-    print(io, column.name)
-end
-
 get_table(database, table_name) = (
-    Name(Symbol(table_name)),
-    named_tuple(ExternalTable(database, table_name))
+    Name{table_name}(),
+    TableOperation(ExternalTable(database, table_name))
 )
 
-function named_tuple(database::SQLite.DB)
-    get_table_inner(table_name) = get_table(database, table_name)
-    map_unrolled(get_table_inner, get_table_names(database))
-end
+named_tuple(database::SQLite.DB) =
+    partial_map(get_table, database, get_table_names(database))
 
-get_column(table, column_name) = (
-    Name(Symbol(column_name)),
-    Code(ExternalColumn(table, column_name))
-)
+dummy_column(name::Symbol) = Name{name}(), Code(:(row.$name))
+dummy_column(::Name{name}) where {name} = Name{name}(), Code(:(row.$name))
+dummy_column((name, value)) = dummy_column(name)
 
-function named_tuple(table::ExternalTable)
-    get_column_inner(column_name) = get_column(table, column_name)
-    map_unrolled(get_column_inner, get_column_names(table.database, table.name))
-end
-
-struct Code
-    filling
-end
+TableOperation(table::ExternalTable) =
+    TableOperation(
+        :query,
+        (table,),
+        map_unrolled(dummy_column, get_column_names(table))
+    )
 
 unwrap(code::Code) = code.filling
 
@@ -144,32 +144,62 @@ coalesce(code::Code, next) = coalesce(Expr(:call, coalesce, unwrap(code), next))
         code2
     end
 |(code1::Code, code2::Code) = Code(Expr(:||, unwrap(code1), unwrap(code2)))
+operation = row
+call = @name @_ rename(_, customer_id = :CustomerId)
+function over(operation::TableOperation, call)
+    new_result = call(operation.result)
+    TableOperation(
+        :over,
+        (operation, new_result),
+        map_unrolled(dummy_column, new_result)
+    )
+end
 
-const NamedCode = Tuple{Vararg{Tuple{Name, Code}}}
+function when(operation::TableOperation, call)
+    new_result = call(operation.result)
+    TableOperation(
+        :when,
+        (operation, new_result),
+        operation.result
+    )
+end
 
-over(table::NamedCode, call) =
-    Code(Expr(:call, :over, table, unwrap(call(table))))
-when(table::NamedCode, call) =
-    Code(Expr(:call, :when, table, unwrap(call(table))))
-By(table::NamedCode, call) =
-    Code(Expr(:call, :By, table, unwrap(call(table))))
-order(table::NamedCode, call) =
-    Code(Expr(:call, :order, table, unwrap(call(table))))
-index(table::NamedCode, call) =
-    Code(Expr(:call, :index, table, unwrap(call(table))))
+By(operation::TableOperation, call) =
+    TableOperation(
+        :By,
+        operation,
+        (call(operation.model), operation.model)
+    )
+order(operation::TableOperation, call) =
+    TableOperation(
+        :order,
+        operation,
+        call(operation.model)
+    )
 
-Group(table::NamedCode) = Code(Expr(:call, :Group, table, unwrap(table)))
-InnerJoin(table1::NamedCode, table2::NamedCode) =
-    Code(Expr(:call, :InnerJoin, unwrap(table1), unwrap(table2)))
+Group(operation::TableOperation) =
+    TableOperation(
+        :Group,
+        operation,
+        operation.model
+    )
+InnerJoin(operation1::TableOperation, operation2::TableOperation) =
+    TableOperation(
+        :InnerJoin,
+        (operation1, operation2),
+        (operation1.model, operation2.model)
+    )
 
-to_rows(table::NamedCode) = table
-to_columns(table::NamedCode) = table
-make_columns(table::NamedCode) = table
-flatten(table::NamedCode) = table
+to_rows(operation::TableOperation) = operation
+to_columns(operation::TableOperation) = operation
+make_columns(operation::TableOperation) = operation
+flatten(operation::TableOperation) = operation
 
 cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
 database = named_tuple(SQLite.DB("Chinook_Sqlite.sqlite"))
-table = @name database.Customer
-result = @name when(table, code -> code.CustomerId >= 100)
-result.filling.args[3]
+
+row = @name database.Customer
+
+@name @> row |>
+    when(_, @_ _.CustomerId >= 100)
