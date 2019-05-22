@@ -65,6 +65,34 @@ function order(unordered, key_function; keywords...)
     sort!(index_keys, by = value; keywords...)
     view(unordered, mappedarray(key, index_keys))
 end
+
+"""
+    struct Descending{Increasing}
+
+Reverse sorting order.
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> @inferred order([1, 2], Descending)
+2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
+ 2
+ 1
+```
+"""
+struct Descending{Increasing}
+    increasing::Increasing
+end
+
+export Descending
+
+show(io::IO, descending::Descending) =
+    print(io, "Descending($(descending.increasing))")
+
+isless(x::Descending, y::Descending) = isless(y.increasing, x.increasing)
+
 export order
 
 struct Indexed{Key, Value, Unindexed, KeyToIndex} <: AbstractDict{Key, Value}

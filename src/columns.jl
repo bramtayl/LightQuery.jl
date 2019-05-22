@@ -59,6 +59,7 @@ getindex(row::Some{Named}, ::Tuple{}) = ()
 
 # to override recusion limit on constant propagation
 @pure to_Names(some_names::Some{Symbol}) = map_unrolled(Name, some_names)
+to_Names(them) = map_unrolled(Name, Tuple(them))
 
 NamedTuple(row::Some{Named}) = NamedTuple{map_unrolled(unname ∘ key, row)}(
     map_unrolled(value, row)

@@ -917,14 +917,24 @@ Showing at most 4 rows
 @_
 @>
 @if_known
+@name
+```
+
+## Values
+
+```@docs
+if_else
+key
+value
+Name
+unname
+Column
+Descending
 ```
 
 ## Columns
 
 ```@docs
-@name
-Name
-unname
 named_tuple
 rename
 transform
@@ -932,7 +942,6 @@ remove
 gather
 spread
 Apply
-Column
 to_Columns
 ```
 
@@ -946,8 +955,6 @@ when
 order
 By
 Group
-key
-value
 InnerJoin
 LeftJoin
 RightJoin
@@ -955,7 +962,7 @@ OuterJoin
 distinct
 ```
 
-## Pivot
+## Tables
 
 ```@docs
 to_rows

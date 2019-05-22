@@ -154,3 +154,21 @@ macro if_known(something)
     end
 end
 export @if_known
+
+"""
+    if_else(switch, yes, no)
+
+`ifelse` that you can add methods to.
+
+```jldoctest
+julia> using LightQuery
+
+julia> if_else(true, 1, 0)
+1
+
+julia> if_else(false, 1, 0)
+0
+```
+"""
+if_else(switch, yes, no) = ifelse(switch, yes, no)
+export if_else

@@ -32,9 +32,9 @@ function anonymous(location, body::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
     substituted_body = substitute_underscores!(underscores_to_gensyms, body)
     Expr(:function,
-        Expr(:call, gensym("@_"), Generator(
-            value,
-            sort!(collect(underscores_to_gensyms), by = first)
+        Expr(:call, gensym("@_"), over(
+            sort!(collect(underscores_to_gensyms), by = first),
+            value
         )...),
         Expr(:block, location, substituted_body)
     )

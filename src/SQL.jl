@@ -1,231 +1,185 @@
-struct ExternalTable{Database}
-    database::Database
-    name::Symbol
-end
-
 struct Code
-    filling::Expr
+    expression::Expr
 end
 
-struct ExternalCall
-    function_name::Symbol
-    arguments
-    result
+unwrap(code::Code) = code.expression
+unwrap(something) = something
+
+make_argument(number) = Symbol(string("argument", number))
+assert_argument(argument, type) = Expr(:(::), argument, type)
+unwrap_argument(argument) = Expr(:call, unwrap, argument)
+
+function lift(location, a_function, types...)
+    arguments = ntuple(make_argument, length(types))
+    Expr(:function,
+        Expr(:call,
+            a_function,
+            map_unrolled(assert_argument, arguments, types)...
+        ),
+        Expr(:block,
+            location,
+            Expr(:call,
+                Code,
+                Expr(:call,
+                    Expr,
+                    quot(:call),
+                    a_function,
+                    map_unrolled(unwrap_argument, arguments)...
+                )
+            )
+        )
+    )
 end
+
+macro lift(a_function, types...)
+    lift(__source__, a_function, types...) |> esc
+end
+
+@lift (==) Code Any
+@lift (==) Any Code
+@lift (==) Code Code
+
+@lift (!=) Code Any
+@lift (!=) Any Code
+@lift (!=) Code Code
+
+@lift (!) Code
+
+@lift (&) Code Any
+@lift (&) Any Code
+@lift (&) Code Code
+
+@lift (|) Code Any
+@lift (|) Any Code
+@lift (|) Code Code
+
+@lift By Code Any
+
+@lift coalesce Code Vararg{Any}
+
+@lift distinct Code
+@lift distinct Code Any
+
+@lift Drop
+
+@lift flatten
+
+@lift Group Code
+
+@lift if_else Code Any Any
+@lift if_else Any Code Any
+@lift if_else Any Any Code
+@lift if_else Any Code Code
+@lift if_else Code Any Code
+@lift if_else Code Code Any
+@lift if_else Code Code Code
+
+@lift in Code Any
+@lift in Any Code
+@lift in Code Code
+
+@lift InnerJoin Code Code
+
+@lift isequal Code Any
+@lift isequal Any Code
+@lift isequal Code Code
+
+@lift isless Code Any
+@lift isless Any Code
+@lift isless Code Code
+
+@lift ismissing Code
+
+@lift LeftJoin Code Code
+
+@lift occursin Code Any
+@lift occursin Any Code
+@lift occursin Code Code
+
+@lift order Code Any
+
+@lift OuterJoin Code Code
+
+@lift over Code Any
+
+@lift RightJoin Code Code
+
+@lift startswith Code Any
+@lift startswith Any Code
+@lift startswith Code Code
+
+@lift take
+
+@lift to_columns Code
+@lift to_rows Code
+
+@lift when Code Any
+
+# coalesce
+
+struct Database{External}
+    external::External
+end
+
+get_table(database, name) = name, Code(:($database[$name]))
+
+named_tuple(database::Database) =
+    partial_map(
+        get_table,
+        database,
+        get_tables(database.external)
+    )
+
+model_call(::typeof(when), outer, inner) = build_model(outer)
+model_call(::typeof(distinct), outer, inner) = build_model(outer)
+model_call(::typeof(distinct), outer) = build_model(outer)
+model_call(::typeof(to_rows), outer) = build_model(outer)
+model_call(::typeof(to_columns), outer) = build_model(outer)
+
+model_call(::typeof(over), outer, inner) = inner(build_model(outer))
+function model_call(::Type{By}, outer, inner)
+    outer_model = build_model(outer)
+    inner(outer_model), outer_model
+end
+
+model_call(::Type{InnerJoin}, source1, source2) = join_models(source1, source2)
+model_call(::Type{LeftJoin}, source1, source2) = join_models(source1, source2)
+model_call(::Type{RightJoin}, source1, source2) = join_models(source1, source2)
+model_call(::Type{OuterJoin}, source1, source2) = join_models(source1, source2)
+
+dummy_column(::Name{table_name}, name) where {table_name} =
+    get_table(table_name, name)
+
+function join_models(source1, source2)
+    key1, value1 = build_model(source1)
+    key2, value2 = build_model(source2)
+    value1, value2
+end
+
+build_model(expression::Expr) =
+    if @capture expression source_Database[name_]
+        partial_map(dummy_column, name, get_columns(source.external, name))
+    elseif @capture expression call_(args__)
+        model_call(call, args...)
+    else
+        error("Cannot build a model row for $expression")
+    end
 
 import SQLite
-get_table_names(database::SQLite.DB) =
-    map_unrolled(Symbol, (SQLite.tables(database).name...,))
-get_column_names(table::ExternalTable{SQLite.DB}) =
-    map_unrolled(Symbol, (SQLite.columns(
-        table.database,
-        string(table.name)
-    ).name...,))
 
-function show(io::IO, table::ExternalTable)
-    show(io, table.database)
-    print(io, ".")
-    print(io, table.name)
-end
+to_names(them) = map_unrolled(Name ∘ Symbol, (them...,))
 
-get_table(database, table_name) = (
-    Name{table_name}(),
-    ExternalCall(ExternalTable(database, table_name))
-)
-
-named_tuple(database::SQLite.DB) =
-    partial_map(get_table, database, get_table_names(database))
-
-dummy_column(name::Symbol) = Name{name}(), Code(:(row.$name))
-dummy_column(::Name{name}) where {name} = Name{name}(), Code(:(row.$name))
-dummy_column((name, value)) = dummy_column(name)
-
-ExternalCall(table::ExternalTable) =
-    ExternalCall(
-        :query,
-        (table,),
-        map_unrolled(dummy_column, get_column_names(table))
-    )
-
-unwrap(code::Code) = code.filling
-
-getindex(code::Code, a_name::Name) = getindex(unwrap(code), a_name)
-
-==(code1::Code, code2) = Code(Expr(:call, :(==), unwrap(code1), code2))
-==(code1, code2::Code) = Code(Expr(:call, :(==), code1, unwrap(code2)))
-==(code1::Code, code2::Code) =
-    Code(Expr(:call, :(==), unwrap(code1), unwrap(code2)))
-
-!=(code1::Code, code2) = Code(Expr(:call, :(!=), unwrap(code1), code2))
-!=(code1, code2::Code) = Code(Expr(:call, :(!=), code1, unwrap(code2)))
-!=(code1::Code, code2::Code) =
-    Code(Expr(:call, :(!=), unwrap(code1), unwrap(code2)))
-
-isless(code1::Code, code2) = Code(Expr(:call, :<, unwrap(code1), code2))
-isless(code1, code2::Code) = Code(Expr(:call, :<, code1, unwrap(code2)))
-isless(code1::Code, code2::Code) =
-    Code(Expr(:call, :<, unwrap(code1), unwrap(code2)))
-
-startswith(code1::Code, code2) =
-    Code(Expr(:call, :startswith, unwrap(code1), code2))
-startswith(code1, code2::Code) =
-    Code(Expr(:call, :startswith, code1, unwrap(code2)))
-startswith(code1::Code, code2::Code) =
-    Code(Expr(:call, startswith, unwrap(code1), unwrap(code2)))
-
-occursin(code1::Code, code2) =
-    Code(Expr(:call, :occursin, unwrap(code1), code2))
-occursin(code1, code2::Code) =
-    Code(Expr(:call, :occursin, code1, unwrap(code2)))
-occursin(code1::Code, code2::Code) =
-    Code(Expr(:call, occursin, unwrap(code1), unwrap(code2)))
-
-in(code1::Code, code2) = Code(Expr(:call, :in, unwrap(code1), code2))
-in(code1, code2::Code) = Code(Expr(:call, :in, code1, unwrap(code2)))
-in(code1::Code, code2::Code) =
-    Code(Expr(:call, :in, unwrap(code1), unwrap(code2)))
-
-ismissing(code::Code) = Code(Expr(:call, :ismissing, unwrap(code)))
-isequal(code1::Code, code2) = Code(Expr(:call, :isequal, unwrap(code1), code2))
-isequal(code1, code2::Code) = Code(Expr(:call, :isequal, code1, unwrap(code2)))
-isequal(code1::Code, code2::Code) =
-    Code(Expr(:call, :isequal, unwrap(code1), unwrap(code2)))
-
-if_else(switch, yes, no) = ifelse(switch, yes, no)
-if_else(code1::Code, code2, code3) =
-    Code(Expr(:if, unwrap(code1), code2, code3))
-if_else(code1::Code, code2::Code, code3) =
-    Code(Expr(:if, unwrap(code1), unwrap(code2), code3))
-if_else(code1::Code, code2, code3::Code) =
-    Code(Expr(:if, unwrap(code1), code2, unwrap(code3)))
-if_else(code1::Code, code2::Code, code3::Code) =
-    Code(Expr(:if, unwrap(code1), unwrap(code2), unwrap(code3)))
-
-export if_else
-
-coalesce(code::Code, next, rest...) = coalesce(code, coalesce(next, rest...))
-coalesce(code::Code, next::Code, rest...) = coalesce(
-    Expr(:call, coalesce, unwrap(code), unwrap(next)),
-    coalesce(rest...)
-)
-
-coalesce(code::Code, ::Missing) = code
-coalesce(code::Code, next) = coalesce(Expr(:call, coalesce, unwrap(code), next))
-
-!(code::Code) = Expr(:call, :!, code)
-
-(&)(code1::Code, code2) =
-    if code2
-        code1
-    else
-        false
-    end
-(&)(code1, code2::Code) =
-    if code1
-        true
-    else
-        code2
-    end
-(&)(code1::Code, code2::Code) = Code(Expr(:&&, unwrap(code1), unwrap(code2)))
-
-|(code1::Code, code2) =
-    if code2
-        true
-    else
-        code1
-    end
-|(code1, code2::Code) =
-    if code1
-        true
-    else
-        code2
-    end
-|(code1::Code, code2::Code) = Code(Expr(:||, unwrap(code1), unwrap(code2)))
-
-function over(call::ExternalCall, call)
-    new_result = call(call.result)
-    ExternalCall(
-        :over,
-        (call, new_result),
-        map_unrolled(dummy_column, new_result)
-    )
-end
-
-function when(call::ExternalCall, call)
-    new_result = call(call.result)
-    ExternalCall(
-        :when,
-        (call, new_result),
-        call.result
-    )
-end
-
-distinct(call::ExternalCall) =
-    ExternalCall(
-        :distinct,
-        (call,),
-        call.result
-    )
-
-function By(call::ExternalCall, call)
-    new_result = call(call.model)
-    ExternalCall(
-        :By,
-        (call, new_result),
-        (map(dummy_unrolled, new_result), call.model)
-    )
-end
-order(call::ExternalCall, call) =
-    ExternalCall(
-        :order,
-        (call, call(call.model)),
-        call.model
-    )
-
-Group(call::ExternalCall) =
-    ExternalCall(
-        :Group,
-        call,
-        call.model
-    )
-InnerJoin(call1::ExternalCall, call2::ExternalCall) =
-    ExternalCall(
-        :InnerJoin,
-        (call1, call2),
-        (call1.model, call2.model)
-    )
-
-LeftJoin(call1::ExternalCall, call2::ExternalCall) =
-    ExternalCall(
-        :LeftJoin,
-        (call1, call2),
-        (call1.model, call2.model)
-    )
-
-RightJoin(call1::ExternalCall, call2::ExternalCall) =
-    ExternalCall(
-        :RightJoin,
-        (call1, call2),
-        (call1.model, call2.model)
-    )
-
-OuterJoin(call1::ExternalCall, call2::ExternalCall) =
-    ExternalCall(
-        :OuterJoin,
-        (call1, call2),
-        (call1.model, call2.model)
-    )
-
-to_rows(call::ExternalCall) = call
-to_columns(call::ExternalCall) = call
-flatten(call::ExternalCall) = call
+get_tables(database::SQLite.DB) = to_names(SQLite.tables(database).name)
+get_columns(database::SQLite.DB, table) =
+    to_names(SQLite.columns(database, String(unname(table))).name)
 
 cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
-database = named_tuple(SQLite.DB("Chinook_Sqlite.sqlite"))
+database = SQLite.DB("Chinook_Sqlite.sqlite") |> Database |> named_tuple
 
-@name @> database.tracks |>
-    over(_, (:trackid, :name, :composer, :unitprice))
-
-@name @> row |>
-    when(_, @_ _.CustomerId >= 100)
+@name @> InnerJoin(
+    By(database.Album, :ArtistId),
+    By(database.Artist, :ArtistId)
+) |>
+    over(_, @_ merge(key(_), value(_))) |>
+    build_model(_.expression)
