@@ -7,7 +7,7 @@ struct Code
     filling::Expr
 end
 
-struct TableOperation
+struct ExternalCall
     function_name::Symbol
     arguments
     result
@@ -30,7 +30,7 @@ end
 
 get_table(database, table_name) = (
     Name{table_name}(),
-    TableOperation(ExternalTable(database, table_name))
+    ExternalCall(ExternalTable(database, table_name))
 )
 
 named_tuple(database::SQLite.DB) =
@@ -40,8 +40,8 @@ dummy_column(name::Symbol) = Name{name}(), Code(:(row.$name))
 dummy_column(::Name{name}) where {name} = Name{name}(), Code(:(row.$name))
 dummy_column((name, value)) = dummy_column(name)
 
-TableOperation(table::ExternalTable) =
-    TableOperation(
+ExternalCall(table::ExternalTable) =
+    ExternalCall(
         :query,
         (table,),
         map_unrolled(dummy_column, get_column_names(table))
@@ -142,87 +142,90 @@ coalesce(code::Code, next) = coalesce(Expr(:call, coalesce, unwrap(code), next))
     end
 |(code1::Code, code2::Code) = Code(Expr(:||, unwrap(code1), unwrap(code2)))
 
-function over(operation::TableOperation, call)
-    new_result = call(operation.result)
-    TableOperation(
+function over(call::ExternalCall, call)
+    new_result = call(call.result)
+    ExternalCall(
         :over,
-        (operation, new_result),
+        (call, new_result),
         map_unrolled(dummy_column, new_result)
     )
 end
 
-function when(operation::TableOperation, call)
-    new_result = call(operation.result)
-    TableOperation(
+function when(call::ExternalCall, call)
+    new_result = call(call.result)
+    ExternalCall(
         :when,
-        (operation, new_result),
-        operation.result
+        (call, new_result),
+        call.result
     )
 end
 
-function distinct(operation::TableOperation)
-    TableOperation(
+distinct(call::ExternalCall) =
+    ExternalCall(
         :distinct,
-        (operation,),
-        operation.result
+        (call,),
+        call.result
+    )
+
+function By(call::ExternalCall, call)
+    new_result = call(call.model)
+    ExternalCall(
+        :By,
+        (call, new_result),
+        (map(dummy_unrolled, new_result), call.model)
     )
 end
-
-By(operation::TableOperation, call) =
-    TableOperation(
-        :By,
-        operation,
-        (call(operation.model), operation.model)
-    )
-order(operation::TableOperation, call) =
-    TableOperation(
+order(call::ExternalCall, call) =
+    ExternalCall(
         :order,
-        operation,
-        call(operation.model)
+        (call, call(call.model)),
+        call.model
     )
 
-Group(operation::TableOperation) =
-    TableOperation(
+Group(call::ExternalCall) =
+    ExternalCall(
         :Group,
-        operation,
-        operation.model
+        call,
+        call.model
     )
-InnerJoin(operation1::TableOperation, operation2::TableOperation) =
-    TableOperation(
+InnerJoin(call1::ExternalCall, call2::ExternalCall) =
+    ExternalCall(
         :InnerJoin,
-        (operation1, operation2),
-        (operation1.model, operation2.model)
+        (call1, call2),
+        (call1.model, call2.model)
     )
 
-LeftJoin(operation1::TableOperation, operation2::TableOperation) =
-    TableOperation(
+LeftJoin(call1::ExternalCall, call2::ExternalCall) =
+    ExternalCall(
         :LeftJoin,
-        (operation1, operation2),
-        (operation1.model, operation2.model)
+        (call1, call2),
+        (call1.model, call2.model)
     )
 
-RightJoin(operation1::TableOperation, operation2::TableOperation) =
-    TableOperation(
+RightJoin(call1::ExternalCall, call2::ExternalCall) =
+    ExternalCall(
         :RightJoin,
-        (operation1, operation2),
-        (operation1.model, operation2.model)
+        (call1, call2),
+        (call1.model, call2.model)
     )
 
-OuterJoin(operation1::TableOperation, operation2::TableOperation) =
-    TableOperation(
+OuterJoin(call1::ExternalCall, call2::ExternalCall) =
+    ExternalCall(
         :OuterJoin,
-        (operation1, operation2),
-        (operation1.model, operation2.model)
+        (call1, call2),
+        (call1.model, call2.model)
     )
 
-to_rows(operation::TableOperation) = operation
-to_columns(operation::TableOperation) = operation
-make_columns(operation::TableOperation) = operation
-flatten(operation::TableOperation) = operation
+to_rows(call::ExternalCall) = call
+to_columns(call::ExternalCall) = call
+flatten(call::ExternalCall) = call
 
 cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
 database = named_tuple(SQLite.DB("Chinook_Sqlite.sqlite"))
+
+@name @> database.tracks |>
+    over(_, (:trackid, :name, :composer, :unitprice))
 
 @name @> row |>
     when(_, @_ _.CustomerId >= 100)

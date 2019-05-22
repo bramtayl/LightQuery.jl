@@ -490,7 +490,7 @@ iterate(joined::Join, (left_history, right_history, next_left, next_right)) =
     end
 
 """
-    distinct(it)
+    distinct(it, key_function = identity)
 
 Generalized version of `unique`.
 
@@ -504,8 +504,8 @@ julia> distinct([1, 2, missing, missing, 2, 1])
   missing
 ```
 """
-function distinct(it)
-    result = unique(value, Enumerate(Generator(hash, it)))
+function distinct(it, key_function = identity)
+    result = unique(value, Enumerate(Generator(hash ∘ key_function, it)))
     view(it, mappedarray(key, result))
 end
 

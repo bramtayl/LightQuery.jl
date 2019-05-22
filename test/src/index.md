@@ -769,11 +769,13 @@ Parse a day. `missing` is represented by `-9999`.
 julia> function get_day(line, day)
             start = 14 + 8 * day
             value = parse(Int, line[start:start + 4])
-            @name (day = day, value = if value == -9999
-                missing
-            else
-                value
-            end)
+            @name (day = day, value =
+                if value == -9999
+                    missing
+                else
+                    value
+                end
+            )
         end;
 
 julia> get_day(line, 1)
