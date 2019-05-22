@@ -32,21 +32,21 @@ size(rows::Rows, dimensions...) = size(model(rows.columns), dimensions...)
 @propagate_inbounds getindex(rows::Rows, an_index...) =
     partial_map(getindex_at, (to_columns(rows), an_index), rows.names)
 
-@propagate_inbounds function setindex_at!((columns, an_index), (name, value))
+@propagate_inbounds setindex_at!((columns, an_index), (name, value)) =
     if haskey(columns, name)
         columns[name][an_index...] = value
+    else
+        missing
     end
-    nothing
-end
 @propagate_inbounds setindex!(rows::Rows, row, an_index...) =
     partial_map(setindex_at!, (to_columns(rows), an_index), row)
 
-function push_at!(columns, (name, value))
+push_at!(columns, (name, value)) =
     if haskey(columns, name)
         push!(columns[name], value)
+    else
+        missing
     end
-    nothing
-end
 push!(rows::Rows, row) = partial_map(push_at!, to_columns(rows), row)
 
 val_fieldtypes_or_empty(something) = ()

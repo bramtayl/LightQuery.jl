@@ -160,6 +160,14 @@ function when(operation::TableOperation, call)
     )
 end
 
+function distinct(operation::TableOperation)
+    TableOperation(
+        :distinct,
+        (operation,),
+        operation.result
+    )
+end
+
 By(operation::TableOperation, call) =
     TableOperation(
         :By,
@@ -182,6 +190,27 @@ Group(operation::TableOperation) =
 InnerJoin(operation1::TableOperation, operation2::TableOperation) =
     TableOperation(
         :InnerJoin,
+        (operation1, operation2),
+        (operation1.model, operation2.model)
+    )
+
+LeftJoin(operation1::TableOperation, operation2::TableOperation) =
+    TableOperation(
+        :LeftJoin,
+        (operation1, operation2),
+        (operation1.model, operation2.model)
+    )
+
+RightJoin(operation1::TableOperation, operation2::TableOperation) =
+    TableOperation(
+        :RightJoin,
+        (operation1, operation2),
+        (operation1.model, operation2.model)
+    )
+
+OuterJoin(operation1::TableOperation, operation2::TableOperation) =
+    TableOperation(
+        :OuterJoin,
         (operation1, operation2),
         (operation1.model, operation2.model)
     )
