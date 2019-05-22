@@ -195,7 +195,5 @@ cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
 database = named_tuple(SQLite.DB("Chinook_Sqlite.sqlite"))
 
-row = @name database.Customer
-
 @name @> row |>
     when(_, @_ _.CustomerId >= 100)

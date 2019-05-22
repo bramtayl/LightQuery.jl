@@ -937,7 +937,7 @@ to_Columns
 ## Rows
 
 ```@docs
-Enumerated
+Enumerate
 over
 index
 when
@@ -947,7 +947,10 @@ Group
 key
 value
 InnerJoin
-Length
+LeftJoin
+RightJoin
+OuterJoin
+distinct
 ```
 
 ## Pivot
