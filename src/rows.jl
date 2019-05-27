@@ -166,8 +166,9 @@ export index
 """
     By(sorted, key_function)
 
-Mark that `sorted` has been pre-sorted by `key_function`. Use with [`Group`](@ref) or
-[`InnerJoin`](@ref).
+Mark that `sorted` has been pre-sorted by `key_function`. Use with
+[`Group`](@ref), [`InnerJoin`](@ref), [`LeftJoin`](@ref), [`RightJoin`](@ref),
+and [`OuterJoin`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -310,7 +311,8 @@ export InnerJoin
 """
     LeftJoin(left::By, right::By) <: Join{Left, Right}
 
-Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`.
+Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`,
+using `missing` when there is no right match.
 
 ```jldoctest LeftJoin
 julia> using LightQuery
@@ -358,7 +360,8 @@ export LeftJoin
 """
     RightJoin(left::By, right::By) <: Join{Left, Right}
 
-Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`.
+Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`,
+using `missing` when there is no left match.
 
 ```jldoctest RightJoin
 julia> using LightQuery
@@ -406,7 +409,8 @@ export RightJoin
 """
     OuterJoin(left::By, right::By) <: Join{Left, Right}
 
-Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`.
+Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`,
+using `missing` when there is no left or right match.
 
 ```jldoctest OuterJoin
 julia> using LightQuery
@@ -543,6 +547,7 @@ export distinct
 function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
     copyto_at!((a_key, a_value)) = dictionary[a_key] = a_value
     foreach(copyto_at!, dictionary)
+    nothing
 end
 similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
     Dict{Key, Value}(old)
