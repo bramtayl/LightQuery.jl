@@ -142,6 +142,12 @@ function model_call(::Type{By}, outer, inner)
     inner(outer_model), outer_model
 end
 
+function join_models(source1, source2)
+    key1, value1 = build_model(source1)
+    key2, value2 = build_model(source2)
+    value1, value2
+end
+
 model_call(::Type{InnerJoin}, source1, source2) = join_models(source1, source2)
 model_call(::Type{LeftJoin}, source1, source2) = join_models(source1, source2)
 model_call(::Type{RightJoin}, source1, source2) = join_models(source1, source2)
@@ -149,12 +155,6 @@ model_call(::Type{OuterJoin}, source1, source2) = join_models(source1, source2)
 
 dummy_column(::Name{table_name}, name) where {table_name} =
     get_table(table_name, name)
-
-function join_models(source1, source2)
-    key1, value1 = build_model(source1)
-    key2, value2 = build_model(source2)
-    value1, value2
-end
 
 build_model(expression::Expr) =
     if @capture expression source_Database[name_]
