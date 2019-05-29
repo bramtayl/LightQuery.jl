@@ -53,7 +53,7 @@ Convert the `schema` [`to_Columns`](@ref).
 julia> using Tables: schema
 
 julia> const Airport = to_Columns(schema(airports_file))
-(Column{:faa,String,1}(), Column{:name,String,2}(), Column{:lat,Float64,3}(), Column{:lon,Float64,4}(), Column{:alt,Int64,5}(), Column{:tz,Int64,6}(), Column{:dst,String,7}(), Column{:tzone,Union{Missing, String},8}())
+(Column{`faa`,String,1}(), Column{`name`,String,2}(), Column{`lat`,Float64,3}(), Column{`lon`,Float64,4}(), Column{`alt`,Int64,5}(), Column{`tz`,Int64,6}(), Column{`dst`,String,7}(), Column{`tzone`,Union{Missing, String},8}())
 ```
 
 Read the first row.
@@ -208,7 +208,7 @@ Get the first flight, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref
 
 ```jldoctest dplyr
 julia> const Flight = to_Columns(schema(flights_file))
-(Column{:year,Int64,1}(), Column{:month,Int64,2}(), Column{:day,Int64,3}(), Column{:dep_time,Union{Missing, Int64},4}(), Column{:sched_dep_time,Int64,5}(), Column{:dep_delay,Union{Missing, Int64},6}(), Column{:arr_time,Union{Missing, Int64},7}(), Column{:sched_arr_time,Int64,8}(), Column{:arr_delay,Union{Missing, Int64},9}(), Column{:carrier,String,10}(), Column{:flight,Int64,11}(), Column{:tailnum,Union{Missing, String},12}(), Column{:origin,String,13}(), Column{:dest,String,14}(), Column{:air_time,Union{Missing, Int64},15}(), Column{:distance,Int64,16}(), Column{:hour,Int64,17}(), Column{:minute,Int64,18}(), Column{:time_hour,String,19}())
+(Column{`year`,Int64,1}(), Column{`month`,Int64,2}(), Column{`day`,Int64,3}(), Column{`dep_time`,Union{Missing, Int64},4}(), Column{`sched_dep_time`,Int64,5}(), Column{`dep_delay`,Union{Missing, Int64},6}(), Column{`arr_time`,Union{Missing, Int64},7}(), Column{`sched_arr_time`,Int64,8}(), Column{`arr_delay`,Union{Missing, Int64},9}(), Column{`carrier`,String,10}(), Column{`flight`,Int64,11}(), Column{`tailnum`,Union{Missing, String},12}(), Column{`origin`,String,13}(), Column{`dest`,String,14}(), Column{`air_time`,Union{Missing, Int64},15}(), Column{`distance`,Int64,16}(), Column{`hour`,Int64,17}(), Column{`minute`,Int64,18}(), Column{`time_hour`,String,19}())
 
 julia> flight =
         @name @> flights_file |>
@@ -355,13 +355,6 @@ julia> get_flight(indexed_airports, first(flights_file))
 julia> flights =
         @> flights_file |>
         over(_, @_ get_flight(indexed_airports, _));
-```
-
-Check inference before collecting. Inference is optional, but speeds up performance.
-
-```jldoctest dplyr
-julia> Base.@default_eltype(flights)
-Tuple{Tuple{Name{:carrier},String},Tuple{Name{:flight},Int64},Tuple{Name{:origin},String},Tuple{Name{:destination},String},Tuple{Name{:tail_number},Union{Missing, String}},Tuple{Name{:air_time},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:distance},Unitful.Quantity{Int64,𝐋,Unitful.FreeUnits{(mi,),𝐋,nothing}}},Tuple{Name{:departure_delay},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:arrival_delay},Union{Missing, Quantity{Int64,𝐓,FreeUnits{(minute,),𝐓,nothing}}}},Tuple{Name{:scheduled_departure_time},Union{Missing, ZonedDateTime}},Tuple{Name{:scheduled_arrival_time},Union{Missing, ZonedDateTime}}}
 
 julia> flights =
         flights |>

@@ -8,51 +8,51 @@ Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, 
 get_model(columns) = first(columns)
 get_model(::Tuple{}) = 1:0
 
-named_column_Value(::Name, ::Column) where {Name, Column} =
+column_Value(::Name, ::Column) where {Name, Column} =
     Tuple{Name, eltype(Column)}
 
 function Rows(named_columns)
     column_names = map_unrolled(key, named_columns)
     columns = map_unrolled(value, named_columns)
     Rows{
-        Tuple{map_unrolled(named_column_Value, column_names, columns)...},
+        Tuple{map_unrolled(column_Value, column_names, columns)...},
         ndims(get_model(columns))
     }(columns, column_names)
 end
 
-get_named_columns(rows::Rows) = map_unrolled(tuple, rows.names, rows.columns)
+get_columns(rows::Rows) = map_unrolled(tuple, rows.names, rows.columns)
 
 axes(rows::Rows, dimensions...) = axes(get_model(rows.columns), dimensions...)
 size(rows::Rows, dimensions...) = size(get_model(rows.columns), dimensions...)
 
-@propagate_inbounds column_getindex((named_columns, an_index), name) =
-    name, if haskey(named_columns, name)
-        named_columns[name][an_index...]
+@propagate_inbounds column_getindex((columns, an_index), name) =
+    name, if haskey(columns, name)
+        columns[name][an_index...]
     else
         missing
     end
 @propagate_inbounds getindex(rows::Rows, an_index...) = partial_map(
     column_getindex,
-    (get_named_columns(rows), an_index),
+    (get_columns(rows), an_index),
     rows.names
 )
 
-@propagate_inbounds column_setindex!((named_columns, an_index), (name, value)) =
-    if haskey(named_columns, name)
-        named_columns[name][an_index...] = value
+@propagate_inbounds column_setindex!((columns, an_index), (name, value)) =
+    if haskey(columns, name)
+        columns[name][an_index...] = value
     else
         missing
     end
 @propagate_inbounds setindex!(rows::Rows, row, an_index...) =
-    partial_map(column_setindex!, (get_named_columns(rows), an_index), row)
+    partial_map(column_setindex!, (get_columns(rows), an_index), row)
 
-column_push!(named_columns, (name, value)) =
-    if haskey(named_columns, name)
-        push!(named_columns[name], value)
+column_push!(columns, (name, value)) =
+    if haskey(columns, name)
+        push!(columns[name], value)
     else
         missing
     end
-push!(rows::Rows, row) = partial_map(column_push!, get_named_columns(rows), row)
+push!(rows::Rows, row) = partial_map(column_push!, get_columns(rows), row)
 
 val_fieldtypes(something) = ()
 @pure val_fieldtypes(a_type::DataType) =
@@ -118,7 +118,7 @@ column_value((column_name, column), (value_name, value)) =
     column_name, column, value
 
 function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
-    named_columns = get_named_columns(rows)
+    named_columns = get_columns(rows)
     new_length = get_new_length(iterator_size, rows, an_index)
     column_names = map_unrolled(key, named_columns)
     value_names = map_unrolled(key, row)
@@ -173,7 +173,7 @@ julia> make_columns(when(over(1:4, unstable), row -> true))
 ((`d`, Union{Missing, String}["1", "2", missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, String}["1", "2", missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
 ```
 """
-make_columns(rows) = get_named_columns(_collect(
+make_columns(rows) = get_columns(_collect(
     Rows(()),
     rows,
     IteratorEltype(rows),

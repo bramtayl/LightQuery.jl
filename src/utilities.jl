@@ -52,7 +52,9 @@ Lazy `map` with the reverse argument order.
 ```jldoctest
 julia> using LightQuery
 
-julia> collect(over([1, -2, -3, 4], abs))
+julia> using Test: @inferred
+
+julia> @inferred collect(over([1, -2, -3, 4], abs))
 4-element Array{Int64,1}:
  1
  2
@@ -71,7 +73,9 @@ Lazy `filter` with the reverse argument order.
 ```jldoctest
 julia> using LightQuery
 
-julia> collect(when(1:4, iseven))
+julia> using Test: @inferred
+
+julia> @inferred collect(when(1:4, iseven))
 2-element Array{Int64,1}:
  2
  4
@@ -88,10 +92,12 @@ The `key` in a `key => value` `pair`.
 ```jldoctest
 julia> using LightQuery
 
-julia> key(:a => 1)
+julia> using Test: @inferred
+
+julia> @inferred key(:a => 1)
 :a
 
-julia> key((:a, 1))
+julia> @inferred key((:a, 1))
 :a
 ```
 """
@@ -110,10 +116,12 @@ The `value` in a `key => value` `pair`.
 ```jldoctest
 julia> using LightQuery
 
-julia> value(:a => 1)
+julia> using Test: @inferred
+
+julia> @inferred value(:a => 1)
 1
 
-julia> value((:a, 1))
+julia> @inferred value((:a, 1))
 1
 ```
 """
@@ -132,14 +140,16 @@ If `something` is `missing`, return `missing`, otherwise, `something`.
 ```jldoctest
 julia> using LightQuery
 
+julia> using Test: @inferred
+
 julia> function test(x)
             first(@if_known(x))
         end;
 
-julia> test((1, 2))
+julia> @inferred test((1, 2))
 1
 
-julia> test(missing)
+julia> @inferred test(missing)
 missing
 ```
 """

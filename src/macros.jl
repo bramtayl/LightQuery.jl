@@ -21,10 +21,10 @@ function substitute_underscores!(underscores_to_gensyms, code::Expr)
         else
             code
         end
-    Expr(expanded_code.head, map(
-        arg -> substitute_underscores!(underscores_to_gensyms, arg),
-        expanded_code.args
-    )...)
+    Expr(expanded_code.head, map(let underscores_to_gensyms = underscores_to_gensyms
+        substitute_capture!(code) =
+            substitute_underscores!(underscores_to_gensyms, code)
+    end, expanded_code.args)...)
 end
 
 anonymous(location, other) = other
@@ -48,10 +48,12 @@ Terser function syntax. The arguments are inside the `body`; the first argument 
 ```jldoctest
 julia> using LightQuery
 
-julia> (@_ _ + 1)(1)
+julia> using Test: @inferred
+
+julia> @inferred (@_ _ + 1)(1)
 2
 
-julia> map((@_ __ - _), (1, 2), (2, 1))
+julia> @inferred map((@_ __ - _), (1, 2), (2, 1))
 (1, -1)
 ```
 """

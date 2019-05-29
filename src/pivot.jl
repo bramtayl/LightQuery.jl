@@ -6,7 +6,9 @@ Iterator over `rows` of a table. Always lazy. Inverse of [`to_columns`](@ref). U
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
+julia> using Test: @inferred
+
+julia> @name @inferred collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
 2-element Array{Tuple{Tuple{Name{:a},Int64},Tuple{Name{:b},Float64}},1}:
  ((`a`, 1), (`b`, 1.0))
  ((`a`, 2), (`b`, 2.0))
@@ -32,7 +34,9 @@ Peek an iterator which returns named tuples. Will show no more than `maximum_len
 ```jldoctest Peek
 julia> using LightQuery
 
-julia> @name Peek(to_rows((a = 1:5, b = 5:-1:1)))
+julia> using Test: @inferred
+
+julia> @name @inferred Peek(to_rows((a = 1:5, b = 5:-1:1)))
 Showing 4 of 5 rows
 | `a` | `b` |
 | ---:| ---:|
@@ -56,10 +60,7 @@ function show(output::IO, peek::Peek)
     else
         println(output, "Showing at most $(maximum_length) rows")
     end
-    columns = make_columns(take(
-        rows,
-        maximum_length
-    ))
+    columns = make_columns(take(rows, maximum_length))
     rows = map(make_any, zip(map(value, columns)...))
     pushfirst!(rows, make_any(map_unrolled(key, columns)))
     show(output, MD(Table(rows, make_any(map_unrolled(default_side, columns)))))
@@ -73,7 +74,9 @@ Inverse of [`to_rows`](@ref). Always lazy, see [`make_columns`](@ref) for an eag
 ```jldoctest
 julia> using LightQuery
 
-julia> @name to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))
+julia> using Test: @inferred
+
+julia> @name @inferred to_columns(to_rows((a = [1, 2], b = [1.0, 2.0])))
 ((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 ```
 """

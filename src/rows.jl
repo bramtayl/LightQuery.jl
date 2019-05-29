@@ -13,7 +13,9 @@ Relies on the fact that iteration states can be converted to indices; thus, you 
 ```jldoctest
 julia> using LightQuery
 
-julia> collect(Enumerate(when([4, 3, 2, 1], iseven)))
+julia> using Test: @inferred
+
+julia> @inferred collect(Enumerate(when([4, 3, 2, 1], iseven)))
 2-element Array{Tuple{Int64,Int64},1}:
  (1, 4)
  (3, 2)
@@ -54,7 +56,7 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> order([-2, 1], abs)
+julia> @inferred order([-2, 1], abs)
 2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
   1
  -2
@@ -74,12 +76,10 @@ Reverse sorting order.
 ```jldoctest
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @inferred order([1, 2], Descending)
+julia> order([1, -2], Descending ∘ abs)
 2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
- 2
- 1
+ -2
+  1
 ```
 """
 struct Descending{Increasing}
@@ -137,6 +137,8 @@ IteratorEltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIn
 eltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex} =
     Pair{keytype(KeyToIndex), Union{Missing, eltype(Unindexed)}}
 
+key_index(key_function, index, item) = key_function(item) => index
+
 """
     index(unindexed, key_function)
 
@@ -154,10 +156,11 @@ LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,Int64}} with 2 entries:
 ```
 """
 function index(unindexed, key_function)
-    key_index((index, item)) = key_function(item) => index
     key_to_index = collect_similar(
         Dict{Union{}, Union{}}(),
-        Generator(key_index, Enumerate(unindexed))
+        Generator(let key_function = key_function
+            key_index_capture((index, item)) = key_index(key_function, index, item)
+        end, Enumerate(unindexed))
     )
     Indexed{keytype(key_to_index), eltype(unindexed)}(unindexed, key_to_index)
 end
@@ -173,7 +176,9 @@ and [`OuterJoin`](@ref).
 ```jldoctest
 julia> using LightQuery
 
-julia> By([1, -2], abs)
+julia> using Test: @inferred
+
+julia> @inferred By([1, -2], abs)
 By{Array{Int64,1},typeof(abs)}([1, -2], abs)
 ```
 """
@@ -196,13 +201,15 @@ Group consecutive keys in `ungrouped`. Requires a presorted object (see [`By`](@
 ```jldoctest
 julia> using LightQuery
 
-julia> collect(Group(By([1, -1, -2, 2, 3, -3], abs)))
+julia> using Test: @inferred
+
+julia> @inferred collect(Group(By([1, -1, -2, 2, 3, -3], abs)))
 3-element Array{Tuple{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
  (1, [1, -1])
  (2, [-2, 2])
  (3, [3, -3])
 
-julia> collect(Group(By(Int[], abs)))
+julia> @inferred collect(Group(By(Int[], abs)))
 0-element Array{Tuple{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}
 ```
 """
@@ -211,44 +218,51 @@ Group(sorted::By) = Group(sorted.sorted, sorted.key)
 IteratorSize(::Type{<: Group})  = SizeUnknown()
 IteratorEltype(::Type{<: Group}) = EltypeUnknown()
 
-function last_group(group, left_index, last_result)
+function get_group(group, state, left_index, right_index, last_result, result, is_last)
+    (last_result, (@inbounds view(
+        group.ungrouped,
+        left_index:right_index - 1
+    ))), (state, right_index, result, is_last)
+end
+
+get_last(group, state, last_result, left_index) =
     (last_result, (@inbounds view(
         group.ungrouped,
         left_index:length(group.ungrouped)
-    ))), nothing
-end
+    ))), (state, left_index, last_result, true)
 
-function next_result(group, item_state)
-    item, state = item_state
-    result = group.key(item)
-    result, state
-end
-
-iterate(group::Group, ::Nothing) = nothing
-function iterate(group::Group, (state, left_index, last_result))
-    item_state = iterate(group.ungrouped, state)
-    if item_state === nothing
-        return last_group(group, left_index, last_result)
-    end
-    result, state = next_result(group, item_state)
-    while isequal(result, last_result)
+iterate(group::Group, (state, left_index, last_result, is_last)) =
+    if is_last
+        nothing
+    else
         item_state = iterate(group.ungrouped, state)
         if item_state === nothing
-            return last_group(group, left_index, last_result)
+            return get_last(group, state, last_result, left_index)
         end
-        result, state = next_result(group, item_state)
+        item, state = item_state
+        result = group.key(item)
+        while isequal(result, last_result)
+            item_state = iterate(group.ungrouped, state)
+            if item_state === nothing
+                return get_last(group, state, last_result, left_index)
+            end
+            item, state = item_state
+            result = group.key(item)
+        end
+        right_index = state_to_index(group.ungrouped, state)
+        (last_result, (@inbounds view(
+            group.ungrouped,
+            left_index:right_index - 1
+        ))), (state, right_index, result, false)
     end
-    right_index = state_to_index(group.ungrouped, state)
-    (last_result, (@inbounds view(group.ungrouped,
-        left_index:right_index - 1
-    ))), (state, right_index, result)
-end
+
 function iterate(group::Group)
     item, state = @ifsomething iterate(group.ungrouped)
     iterate(group, (
         state,
         state_to_index(group.ungrouped, state),
-        group.key(item)
+        group.key(item),
+        false
     ))
 end
 export Group
@@ -260,13 +274,11 @@ combine_iterator_eltype(x, y) = EltypeUnknown()
 
 function next_history(side)
     item, state = @ifsomething iterate(side.sorted)
-    result = side.key(item)
-    (state, item, result)
+    (state, item, side.key(item))
 end
 function next_history(side, (state, item, result))
     new_item, new_state = @ifsomething iterate(side.sorted, state)
-    new_result = side.key(new_item)
-    (new_state, new_item, new_result)
+    (new_state, new_item, side.key(new_item))
 end
 
 """
@@ -277,18 +289,20 @@ Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`.
 ```jldoctest InnerJoin
 julia> using LightQuery
 
-julia> collect(InnerJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> using Test: @inferred
+
+julia> @inferred collect(InnerJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 2-element Array{Tuple{Int64,Int64},1}:
  (1, -1)
  (-6, 6)
 
-julia> collect(InnerJoin(By(Int[], abs), By(Int[], abs)))
+julia> @inferred collect(InnerJoin(By(Int[], abs), By(Int[], abs)))
 0-element Array{Tuple{Int64,Int64},1}
 
-julia> collect(InnerJoin(By([1], abs), By(Int[], abs)))
+julia> @inferred collect(InnerJoin(By([1], abs), By(Int[], abs)))
 0-element Array{Tuple{Int64,Int64},1}
 
-julia> collect(InnerJoin(By(Int[], abs), By([1], abs)))
+julia> @inferred collect(InnerJoin(By(Int[], abs), By([1], abs)))
 0-element Array{Tuple{Int64,Int64},1}
 ```
 
@@ -529,7 +543,9 @@ Generalized version of `unique`.
 ```jldoctest
 julia> using LightQuery
 
-julia> distinct([1, 2, missing, missing, 2, 1])
+julia> using Test: @inferred
+
+julia> @inferred distinct([1, 2, missing, missing, 2, 1])
 3-element view(::Array{Union{Missing, Int64},1}, [1, 2, 3]) with eltype Union{Missing, Int64}:
  1
  2
@@ -566,10 +582,3 @@ similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
 
 @propagate_inbounds view(filtered::Filter, index...) =
     view(filtered.itr, index...)
-
-# identical to Base except key, value
-@inline function iterate(g::Generator, s...)
-    y = iterate(g.iter, s...)
-    y === nothing && return nothing
-    return (g.f(key(y)), value(y))
-end
