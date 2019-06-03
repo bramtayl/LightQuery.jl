@@ -1,5 +1,8 @@
 const Some{AType} = Tuple{AType, Vararg{AType}}
 
+@inline is_empty(::Tuple{}) = true
+@inline is_empty(something) = false
+
 flatten_unrolled() = ()
 flatten_unrolled(item, rest...) = item..., flatten_unrolled(rest...)...
 

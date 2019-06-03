@@ -27,7 +27,7 @@ size(rows::Rows, dimensions...) = size(get_model(rows.columns), dimensions...)
 
 @propagate_inbounds column_getindex((columns, an_index), name) =
     name, if haskey(columns, name)
-        columns[name][an_index...]
+        name(columns)[an_index...]
     else
         missing
     end
@@ -39,7 +39,7 @@ size(rows::Rows, dimensions...) = size(get_model(rows.columns), dimensions...)
 
 @propagate_inbounds column_setindex!((columns, an_index), (name, value)) =
     if haskey(columns, name)
-        columns[name][an_index...] = value
+        name(columns)[an_index...] = value
     else
         missing
     end
@@ -48,7 +48,7 @@ size(rows::Rows, dimensions...) = size(get_model(rows.columns), dimensions...)
 
 column_push!(columns, (name, value)) =
     if haskey(columns, name)
-        push!(columns[name], value)
+        push!(name(columns), value)
     else
         missing
     end
@@ -129,13 +129,13 @@ function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
         widen_column,
         (iterator_size, get_new_length(iterator_size, rows, an_index), an_index),
         (
-            map_unrolled(lone_column, named_columns[just_column_names])...,
+            map_unrolled(lone_column, just_column_names(named_columns))...,
             map_unrolled(
                 column_value,
-                named_columns[in_both_names],
-                row[in_both_names]
+                in_both_names(named_columns),
+                in_both_names(row)
             )...,
-            map_unrolled(lone_value, row[just_value_names])...
+            map_unrolled(lone_value, just_value_names(row))...
         )
     ))
 end

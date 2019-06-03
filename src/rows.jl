@@ -76,7 +76,9 @@ Reverse sorting order.
 ```jldoctest
 julia> using LightQuery
 
-julia> order([1, -2], Descending ∘ abs)
+julia> using Test: @inferred
+
+julia> @inferred order([1, -2], x -> Descending(abs(x)))
 2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
  -2
   1
@@ -91,7 +93,8 @@ export Descending
 show(io::IO, descending::Descending) =
     print(io, "Descending($(descending.increasing))")
 
-isless(x::Descending, y::Descending) = isless(y.increasing, x.increasing)
+isless(descending_1::Descending, descending_2::Descending) =
+    isless(descending_2.increasing, descending_1.increasing)
 
 export order
 
@@ -184,13 +187,13 @@ By{Array{Int64,1},typeof(abs)}([1, -2], abs)
 """
 struct By{Iterator, Key}
     sorted::Iterator
-    key::Key
+    key_function::Key
 end
 export By
 
 struct Group{Iterator, Key}
     ungrouped::Iterator
-    key::Key
+    key_function::Key
 end
 
 """
@@ -213,16 +216,16 @@ julia> @inferred collect(Group(By(Int[], abs)))
 0-element Array{Tuple{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}
 ```
 """
-Group(sorted::By) = Group(sorted.sorted, sorted.key)
+Group(sorted::By) = Group(sorted.sorted, sorted.key_function)
 
 IteratorSize(::Type{<: Group})  = SizeUnknown()
 IteratorEltype(::Type{<: Group}) = EltypeUnknown()
 
-function get_group(group, state, left_index, right_index, last_result, result, is_last)
+function get_group(group, state, left_index, right_index, last_result, key_result, is_last)
     (last_result, (@inbounds view(
         group.ungrouped,
         left_index:right_index - 1
-    ))), (state, right_index, result, is_last)
+    ))), (state, right_index, key_result, is_last)
 end
 
 get_last(group, state, last_result, left_index) =
@@ -240,20 +243,20 @@ iterate(group::Group, (state, left_index, last_result, is_last)) =
             return get_last(group, state, last_result, left_index)
         end
         item, state = item_state
-        result = group.key(item)
-        while isequal(result, last_result)
+        key_result = group.key_function(item)
+        while isequal(key_result, last_result)
             item_state = iterate(group.ungrouped, state)
             if item_state === nothing
                 return get_last(group, state, last_result, left_index)
             end
             item, state = item_state
-            result = group.key(item)
+            key_result = group.key_function(item)
         end
         right_index = state_to_index(group.ungrouped, state)
         (last_result, (@inbounds view(
             group.ungrouped,
             left_index:right_index - 1
-        ))), (state, right_index, result, false)
+        ))), (state, right_index, key_result, false)
     end
 
 function iterate(group::Group)
@@ -261,7 +264,7 @@ function iterate(group::Group)
     iterate(group, (
         state,
         state_to_index(group.ungrouped, state),
-        group.key(item),
+        group.key_function(item),
         false
     ))
 end
@@ -274,17 +277,17 @@ combine_iterator_eltype(x, y) = EltypeUnknown()
 
 function next_history(side)
     item, state = @ifsomething iterate(side.sorted)
-    (state, item, side.key(item))
+    (state, item, side.key_function(item))
 end
-function next_history(side, (state, item, result))
+function next_history(side, (state, item, key_result))
     new_item, new_state = @ifsomething iterate(side.sorted, state)
-    (new_state, new_item, side.key(new_item))
+    (new_state, new_item, side.key_function(new_item))
 end
 
 """
     InnerJoin(left::By, right::By) <: Join{Left, Right}
 
-Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`.
+Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`.
 
 ```jldoctest InnerJoin
 julia> using LightQuery
@@ -325,7 +328,7 @@ export InnerJoin
 """
     LeftJoin(left::By, right::By) <: Join{Left, Right}
 
-Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`,
+Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no right match.
 
 ```jldoctest LeftJoin
@@ -374,7 +377,7 @@ export LeftJoin
 """
     RightJoin(left::By, right::By) <: Join{Left, Right}
 
-Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`,
+Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no left match.
 
 ```jldoctest RightJoin
@@ -423,7 +426,7 @@ export RightJoin
 """
     OuterJoin(left::By, right::By) <: Join{Left, Right}
 
-Find all pairs where `isequal(left.key(left.sorted), right.key(right.sorted))`,
+Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no left or right match.
 
 ```jldoctest OuterJoin
@@ -471,35 +474,35 @@ IteratorSize(::Type{AType}) where {AType <: Union{InnerJoin, OuterJoin}} = SizeU
 @inline next_left(joined::Union{InnerJoin, RightJoin}, left_history, right_history) =
     iterate(joined, (left_history, right_history, true, false))
 @inline function next_left(joined::Union{LeftJoin, OuterJoin}, left_history, right_history)
-    left_state, left_item, left_result = left_history
+    left_state, left_item, left_key_result = left_history
     (left_item, missing), (left_history, right_history, true, false)
 end
 
 @inline next_right(joined::Union{InnerJoin, LeftJoin}, left_history, right_history) =
     iterate(joined, (left_history, right_history, false, true))
 @inline function next_right(joined::Union{RightJoin, OuterJoin}, left_history, right_history)
-    right_state, right_item, right_result = right_history
+    right_state, right_item, right_key_result = right_history
     (missing, right_item), (left_history, right_history, false, true)
 end
 
 compare(joined::Union{InnerJoin, LeftJoin}, ::Nothing, right_history) = nothing
 @inline function compare(joined::Union{LeftJoin, OuterJoin}, left_history, ::Nothing)
-    left_state, left_item, left_result = left_history
+    left_state, left_item, left_key_result = left_history
     (left_item, missing), (left_history, nothing, true, false)
 end
 
 compare(joined::Union{InnerJoin, RightJoin}, left_history, ::Nothing) = nothing
 @inline function compare(joined::Union{RightJoin, OuterJoin}, ::Nothing, right_history)
-    right_state, right_item, right_result = right_history
+    right_state, right_item, right_key_result = right_history
     (missing, right_item), (nothing, right_history, false, true)
 end
 
 @inline function compare(joined, left_history, right_history)
-    left_state, left_item, left_result = left_history
-    right_state, right_item, right_result = right_history
-    if isless(left_result, right_result)
+    left_state, left_item, left_key_result = left_history
+    right_state, right_item, right_key_result = right_history
+    if isless(left_key_result, right_key_result)
         next_left(joined, left_history, right_history)
-    elseif isless(right_result, left_result)
+    elseif isless(right_key_result, left_key_result)
         next_right(joined, left_history, right_history)
     else
         (left_item, right_item), (left_history, right_history, true, true)
@@ -536,7 +539,7 @@ iterate(joined::Join, (left_history, right_history, next_left, next_right)) =
     end
 
 """
-    distinct(it, key_function = identity)
+    distinct(repeated, key_function = identity)
 
 Generalized version of `unique`.
 
@@ -552,17 +555,21 @@ julia> @inferred distinct([1, 2, missing, missing, 2, 1])
   missing
 ```
 """
-function distinct(it, key_function = identity)
-    result = unique(value, Enumerate(Generator(hash ∘ key_function, it)))
-    view(it, mappedarray(key, result))
+function distinct(repeated, key_function = identity)
+    location_hashes = unique(
+        value,
+        Enumerate(Generator(hash ∘ key_function, repeated))
+    )
+    view(repeated, mappedarray(key, location_hashes))
 end
 
 export distinct
 
 # piracy
 function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
-    copyto_at!((a_key, a_value)) = dictionary[a_key] = a_value
-    foreach(copyto_at!, dictionary)
+    foreach(let dictionary = dictionary
+        copyto_at!((a_key, a_value)) = dictionary[a_key] = a_value
+    end, dictionary)
     nothing
 end
 similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =

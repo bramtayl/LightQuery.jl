@@ -46,15 +46,13 @@ function recursive_get(initial, name, (check_name, value), rest...)
     end
 end
 
-getindex(data, ::Name{name}) where {name} = getproperty(data, name)
-getindex(data::Some{Named}, name::Name) = recursive_get(data, name, data...)
+(::Name{name})(object) where {name} = getproperty(object, name)
+(name::Name)(data::Some{Named}) = recursive_get(data, name, data...)
 
-get_pair(data, name) = name, data[name]
-getindex(data, some_names::Some{Name}) = partial_map(get_pair, data, some_names)
-getindex(data::Some{Named}, ::Tuple{}) = ()
+get_pair(data, name) = name, name(data)
 
-(name::Name)(data) = data[name]
-(some_names::Some{Name})(data) = data[some_names]
+(some_names::Some{Name})(data) = partial_map(get_pair, data, some_names)
+(::Tuple{})(::Some{Named}) = ()
 
 @inline isless(::Name{name1}, ::Name{name2}) where {name1, name2} =
     isless(name1, name2)
@@ -71,7 +69,7 @@ code_with_names(other) = other
 code_with_names(symbol::QuoteNode) = Name{symbol.value}()
 code_with_names(code::Expr) =
     if @capture code data_.name_
-        Expr(:ref, code_with_names(data), Name{name}())
+        Expr(:call, Name{name}(), code_with_names(data))
     elseif @capture code name_Symbol = value_
         Expr(:tuple, Name{name}(), code_with_names(value))
     else
@@ -110,13 +108,6 @@ ERROR: BoundsError: attempt to access ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0
 [...]
 ```
 
-indices
-
-```jldoctest name
-julia> @name @inferred data[:c]
-1
-```
-
 and selector functions.
 
 ```jldoctest name
@@ -124,14 +115,7 @@ julia> @name @inferred (:c)(data)
 1
 ```
 
-Multiple names can be used as indices
-
-```jldoctest name
-julia> @name @inferred data[(:c, :f)]
-((`c`, 1), (`f`, 1.0))
-```
-
-and selector functions
+Multiple names can be used as selector functions
 
 ```jldoctest name
 julia> @name @inferred (:c, :f)(data)
@@ -184,11 +168,11 @@ julia> @inferred named_tuple(MyType(1, 1.0, 1, 1.0, 1, 1.0))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-named_tuple(data) = data[to_Names(propertynames(data))]
+named_tuple(data) = to_Names(propertynames(data))(data)
 export named_tuple
 
 @inline haskey(data::Some{Named}, name::Name) =
-    isempty(if_not_in(map_unrolled(key, data), name))
+    is_empty(if_not_in(map_unrolled(key, data), name))
 @inline haskey(data, ::Name{name}) where {name} = hasproperty(data, name)
 
 """
@@ -209,7 +193,7 @@ julia> @name @inferred remove(data, :c, :f)
 ```
 """
 remove(data, old_names...) =
-    data[diff_unrolled(map_unrolled(key, data), old_names)]
+    diff_unrolled(map_unrolled(key, data), old_names)(data)
 
 export remove
 
@@ -237,7 +221,7 @@ export transform
 merge_2(data1, data2) = transform(data1, data2...)
 merge(datas::Some{Named}...) = reduce_unrolled(merge_2, datas...)
 
-rename_one(data, (new_name, old_name)) = new_name, data[old_name]
+rename_one(data, (new_name, old_name)) = new_name, old_name(data)
 """
     rename(data, new_name_old_names...)
 
@@ -304,7 +288,7 @@ julia> @name @inferred spread(gathered, :g, :h)
 """
 spread(data, some_names...) =
     remove(data, some_names...)...,
-    flatten_unrolled(map_unrolled(value, data[some_names])...)...
+    flatten_unrolled(map_unrolled(value, some_names(data))...)...
 export spread
 
 """
@@ -340,15 +324,12 @@ export Column
 
 @pure Column(name, type, position) = Column{name, type, position}()
 
-getindex(data::Row, ::Column{name, type, position}) where {name, type, position} =
+(a_column::Column{name, type, position})(data::Row) where {name, type, position} =
     getcell(getfile(data), type, position, getrow(data))::type
-get_pair(data::Row, column::Column{name}) where {name} =
-    name, data[column]
-getindex(data, some_columns::Some{Column}) =
-    partial_map(get_pair, data, some_columns)
 
-(a_column::Column)(data::Row) = data[a_column]
-(some_columns::Some{Column})(data) = data[some_columns]
+get_pair(data::Row, column::Column{name}) where {name} =
+    name, column(data)
+(columns::Some{Column})(data) = partial_map(get_pair, data, columns)
 
 @inline Column_at(::Schema{Names, Types}, index) where {Names, Types} =
     Column(Name{Names[index]}(), fieldtype(Types, index), index)
@@ -356,7 +337,7 @@ getindex(data, some_columns::Some{Column}) =
 """
     to_Columns(::Tables.Schema)
 
-Get the [`Column`](@ref)s in a schema. Useful for type stable iteration of rows.
+Get the [`Column`](@ref)s in a schema. [`Column`](@ref)s can be used as a type stable selector function.
 
 ```jldoctest
 julia> using LightQuery
@@ -380,9 +361,6 @@ Tables.Schema:
 
 julia> template = @inferred to_Columns(schema(test))
 (Column{`a`,Int64,1}(), Column{`b`,Float64,2}(), Column{`c`,Int64,3}(), Column{`d`,Float64,4}(), Column{`e`,Int64,5}(), Column{`f`,Float64,6}())
-
-julia> @inferred first(test)[template]
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 
 julia> @inferred template(first(test))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
