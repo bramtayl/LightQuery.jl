@@ -58,16 +58,19 @@ end
 
 # function library
 
-build_model_row_call(columns::Some{Name}, data::Database) =
+build_model_row_call(columns::Some{Name}, data) =
     columns(build_model_row(data))
 
 @code_instead (names::Some{Name}) Code
 function translate_code_call(columns::Some{Name}, data)
-    database_tables = seek_external_tables(database)
-    table_model_row = build_model_row_call(getindex, data, columns)
+    check_table = value(first(seek_external_tables(data)))
     string(
         "SELECT ",
-        join(partial_map(select_column, value(first(datbase_tables)), table_model_row), ", "),
+        join(partial_map(
+            select_column,
+            check_table,
+            build_model_row_call(columns, data)
+        ), ", "),
         " FROM ",
         check_table
     )
@@ -113,8 +116,8 @@ build_model_row_call(::typeof(distinct), repeated) = build_model_row(repeated)
 
 @code_instead flatten
 
-build_model_row_call(::typeof(getindex), source::Database, ::Name{name}) where {name} =
-    partial_map(named_code, name, get_columns(source.external, name))
+build_model_row_call(::Name{name}, source::Database, ) where {name} =
+    partial_map(named_code, name, get_column_names(source.external, name))
 
 @code_instead Group Code
 
@@ -153,16 +156,18 @@ build_model_row_call(::Type{LeftJoin}, left, right) = join_model_rows(left, righ
 @code_instead order Code Any
 
 build_model_row_call(::typeof(order), unordered, key_function) = build_model_row(unordered)
-translate_code_call(::typeof(order), unordered, key_function) =
+function translate_code_call(::typeof(order), unordered, key_function)
+    check_table = value(first(seek_external_tables(unordered)))
     string(
         translate_code(unordered),
         " ORDER BY ",
         join(partial_map(
             select_column,
-            source_table(unordered),
+            check_table,
             key_function(build_model_row(unordered))
         ), " ")
     )
+end
 
 @code_instead OuterJoin Code Code
 build_model_row_call(::Type{OuterJoin}, left, right) = join_model_rows(left, right)
@@ -193,7 +198,7 @@ build_model_row_call(::typeof(when), iterator, call) = build_model_row(iterator)
 function select_column(check_table, (new_name, old_data))
     expression = old_data.expression
     old_name =
-        if @capture expression $getindex(source_, oldname_)
+        if @capture expression oldname_Name(source_)
             if source == check_table
                 unname(oldname)
             else
@@ -213,7 +218,7 @@ using DataFrames: DataFrame
 to_symbols(them) = map_unrolled(Symbol, (them...,))
 
 get_tables(database::SQLite.DB) = to_symbols(SQLite.tables(database).name)
-get_columns(database::SQLite.DB, table_name) =
+get_column_names(database::SQLite.DB, table_name) =
     to_symbols(SQLite.columns(database, String(table_name)).name)
 submit_to(database::SQLite.DB, text) = DataFrame(SQLite.Query(database, text))
 
@@ -257,7 +262,7 @@ translate_code(expression) =
 function submit(code::Code)
     expression = code.expression
     submit_to(
-        key(first(seek_external_tables(expression))),
+        key(first(seek_external_tables(expression))).external,
         translate_code(expression)
     )
 end

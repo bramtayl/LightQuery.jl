@@ -174,6 +174,7 @@ export named_tuple
 @inline haskey(data::Some{Named}, name::Name) =
     is_empty(if_not_in(map_unrolled(key, data), name))
 @inline haskey(data, ::Name{name}) where {name} = hasproperty(data, name)
+@inline haskey(data::Dict, ::Name{name}) where {name} = hasproperty(data, name)
 
 """
     remove(data, old_names...)
