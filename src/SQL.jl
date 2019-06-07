@@ -62,15 +62,11 @@ build_model_row_call(columns::Some{Name}, data) =
     columns(build_model_row(data))
 
 @code_instead (names::Some{Name}) Code
-function translate_code_call(columns::Some{Name}, data)
+function translate_code_call(columns::Some{Name}, data; maybe_distinct = "")
     check_table = value(first(seek_external_tables(data)))
     string(
-        "SELECT ",
-        join(partial_map(
-            select_column,
-            check_table,
-            build_model_row_call(columns, data)
-        ), ", "),
+        "SELECT $maybe_distinct",
+        join(column_or_columns(check_table, build_model_row_call(columns, data)), ", "),
         " FROM ",
         check_table
     )
@@ -82,9 +78,15 @@ function join_model_rows(left, right)
     value1, value2
 end
 
+(Descending{Name{name}})(argument1::Code) where {name} =
+      Code(Expr, :call, Descending{Name{name}}, expression_inside(argument1))
+
 @code_instead (==) Code Any
 @code_instead (==) Any Code
 @code_instead (==) Code Code
+
+translate_code_call(::typeof(==), left, right) =
+    string(translate_code(left), " == ", translate_code(right))
 
 @code_instead (!=) Code Any
 @code_instead (!=) Any Code
@@ -95,6 +97,9 @@ end
 @code_instead (&) Code Any
 @code_instead (&) Any Code
 @code_instead (&) Code Code
+
+translate_code_call(::typeof(&), left, right) =
+    string(translate_code(left), " AND ", translate_code(right))
 
 @code_instead (|) Code Any
 @code_instead (|) Any Code
@@ -110,9 +115,17 @@ end
 
 @code_instead distinct Code
 build_model_row_call(::typeof(distinct), repeated) = build_model_row(repeated)
+translate_code_call(::typeof(distinct), repeated) =
+    replace(translate_code(repeated), r"\bSELECT\b" => "SELECT DISTINCT")
+
 @code_instead distinct Code Any
 
-@code_instead Drop
+@code_instead drop Code Integer
+build_model_row_call(::typeof(drop), iterator, number) =
+    build_model_row(unordered)
+
+translate_code_call(::typeof(drop), iterator, number) =
+    string(translate_code(iterator), " OFFSET ", number)
 
 @code_instead flatten
 
@@ -144,10 +157,15 @@ build_model_row_call(::Type{InnerJoin}, left, right) = join_model_rows(left, rig
 @code_instead isless Any Code
 @code_instead isless Code Code
 
+translate_code_call(::typeof(isless), left, right) =
+    string(translate_code(left), " < ", translate_code(right))
+
 @code_instead ismissing Code
 
 @code_instead LeftJoin Code Code
 build_model_row_call(::Type{LeftJoin}, left, right) = join_model_rows(left, right)
+
+translate_code_call(::Name{name}, table) where {name} = name
 
 @code_instead occursin Code Any
 @code_instead occursin Any Code
@@ -155,19 +173,16 @@ build_model_row_call(::Type{LeftJoin}, left, right) = join_model_rows(left, righ
 
 @code_instead order Code Any
 
-build_model_row_call(::typeof(order), unordered, key_function) = build_model_row(unordered)
-function translate_code_call(::typeof(order), unordered, key_function)
-    check_table = value(first(seek_external_tables(unordered)))
-    string(
-        translate_code(unordered),
-        " ORDER BY ",
-        join(partial_map(
-            select_column,
-            check_table,
-            key_function(build_model_row(unordered))
-        ), " ")
-    )
-end
+build_model_row_call(::typeof(order), unordered, key_function) =
+    build_model_row(unordered)
+translate_code_call(::typeof(order), unordered, key_function) = string(
+    translate_code(unordered),
+    " ORDER BY ",
+    join(column_or_columns(
+        value(first(seek_external_tables(unordered))),
+        key_function(build_model_row(unordered))
+    ), ", ")
+)
 
 @code_instead OuterJoin Code Code
 build_model_row_call(::Type{OuterJoin}, left, right) = join_model_rows(left, right)
@@ -182,8 +197,20 @@ build_model_row_call(::Type{RightJoin}, left, right) = join_model_rows(left, rig
 @code_instead startswith Any Code
 @code_instead startswith Code Code
 
-@code_instead take
+@code_instead take Code Integer
 build_model_row_call(::typeof(take), iterator, number) = build_model_row(iterator)
+translate_code_call(::typeof(take), iterator, number) =
+    if @capture iterator $drop(inneriterator_, offset_)
+        string(
+            translate_code(inneriterator),
+            " LIMIT ",
+            number,
+            " OFFSET ",
+            offset
+        )
+    else
+        string(translate_code(iterator), " LIMIT ", number)
+    end
 
 @code_instead to_columns Code
 build_model_row_call(::typeof(to_columns), rows) = build_model_row(rows)
@@ -192,23 +219,40 @@ build_model_row_call(::typeof(to_rows), columns) = build_model_row(columns)
 
 @code_instead when Code Any
 build_model_row_call(::typeof(when), iterator, call) = build_model_row(iterator)
+translate_code_call(::typeof(when), iterator, call) = string(
+    translate_code(iterator),
+    " WHEN ",
+    translate_code(call(build_model_row(iterator)).expression)
+)
 
 # utilities
 
-function select_column(check_table, (new_name, old_data))
-    expression = old_data.expression
-    old_name =
-        if @capture expression oldname_Name(source_)
-            if source == check_table
-                unname(oldname)
-            else
-                error("table mismatch between $source and $check_table")
-            end
+one_column(check_table, model::Descending) =
+    string(one_column(check_table, model.increasing), " DESC")
+
+function one_column(check_table, model)
+    expression = model.expression
+    if @capture expression oldname_Name(source_)
+        if source == check_table
+            unname(oldname)
         else
-            error("Error parsing simple column $expression")
+            error("table mismatch between $source and $check_table")
         end
-    string(unname(new_name), " = ", old_name)
+    else
+        error("Error parsing simple column $expression")
+    end
 end
+
+column_or_columns(check_table, model) = (one_column(check_table, model),)
+
+ignore_new_name(check_table, (new_name, model)) =
+    one_column(check_table, model)
+
+column_or_columns(check_table, row::Some{Named}) = partial_map(
+    ignore_new_name,
+    check_table,
+    row
+)
 
 # SQLite interface
 
@@ -250,9 +294,10 @@ build_model_row(expression::Expr) =
         error("Cannot build a model_row row for $expression")
     end
 
-translate_code(expression) =
+translate_code(something) = something
+translate_code(expression::Expr; options...) =
     if @capture expression call_(arguments__)
-        translate_code_call(call, arguments...)
+        translate_code_call(call, arguments...; options...)
     else
         error("Cannot translate code $expression")
     end
@@ -272,13 +317,46 @@ end
 cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
 database = SQLite.DB("Chinook_Sqlite.sqlite") |> Database |> named_tuple
+using Test
 
-code =
-    @name @> database.Track |>
+@test names(@name @> database.Track |>
     (:TrackId, :Name, :Composer, :UnitPrice)(_) |>
-    submit
+    submit) == [:TrackId, :Name, :Composer, :UnitPrice]
 
-@name @> database.Customer |>
+@test (@name @> database.Customer |>
     (:City, :Country)(_) |>
-    order(_, (:Country,)) |>
-    submit
+    order(_, :Country) |>
+    submit).Country[1] == "Argentina"
+
+@test length((@name @> database.Customer |>
+    (:City,)(_) |>
+    distinct |>
+    submit).City) == 53
+
+@test length((@name @> database.Track |>
+    (:TrackId, :Name,)(_) |>
+    take(_, 10) |>
+    submit).Name) == 10
+
+@test first((@name @> database.Track |>
+    (:TrackId, :Name,)(_) |>
+    drop(_, 10) |>
+    take(_, 10) |>
+    submit).Name) == "C.O.D."
+
+@test first((@name @> database.Track |>
+    (:TrackId, :Name, :Bytes)(_) |>
+    order(_, Descending ∘ :Bytes) |>
+    submit).Bytes) == 1059546140
+
+expression = @name @> database.Track |>
+    (:Name, :Milliseconds, :Bytes, :AlbumId)(_) |>
+    when(_, @_ _.AlbumId == 1) |>
+    _.expression |>
+    translate_code
+
+expression = @name @> database.Track |>
+    (:Name, :Milliseconds, :Bytes, :AlbumId)(_) |>
+    when(_, @_ (_.AlbumId == 1) & (_.Milliseconds > 250000)) |>
+    _.expression |>
+    translate_code

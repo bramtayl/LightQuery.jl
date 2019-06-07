@@ -11,7 +11,7 @@ end
 using Base: argument_datatype, _collect, @default_eltype, diff_names,
     EltypeUnknown, Generator, HasEltype, HasLength, HasShape, isvatuple, @pure,
     promote_typejoin, @propagate_inbounds, SizeUnknown, tail
-import Base.Iterators: flatten, take, drop
+import Base.Iterators: drop, flatten, take
 using Base.Iterators: Filter, Zip
 @static if VERSION < v"1.1"
     using Base.Iterators: Zip2

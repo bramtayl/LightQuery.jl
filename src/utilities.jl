@@ -84,7 +84,7 @@ julia> @inferred collect(when(1:4, iseven))
  4
 ```
 """
-when(iterator, call) = Filter(call, iterator)
+when(iterator, call) = Iterators.filter(call, iterator)
 export when
 
 """
