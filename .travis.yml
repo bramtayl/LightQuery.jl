@@ -10,4 +10,5 @@ matrix:
     - julia: nightly
 notifications:
   email: false
-codecov: true
+after_success:
+  - julia test/submit_coverage.jl
