@@ -30,8 +30,8 @@ export flatten
 
 include("utilities.jl")
 include("macros.jl")
-include("rows.jl")
 include("columns.jl")
+include("rows.jl")
 include("make_columns.jl")
 include("pivot.jl")
 include("compat.jl")

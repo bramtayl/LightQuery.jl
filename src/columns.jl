@@ -313,32 +313,25 @@ export Apply
 
 (apply::Apply)(them) = map_unrolled(tuple, apply.names, them)
 
-"""
-    struct Column{name, type, position}
-
-Contains the name, type, and position of each column. Useful for type stable
-iteration of rows. See example in [`to_Columns`](@ref).
-"""
-struct Column{name, type, position}
+struct InRow{name, type, position}
 end
-export Column
 
-@pure Column(name, type, position) = Column{name, type, position}()
+@pure InRow(name, type, position) = InRow{name, type, position}()
 
-(a_column::Column{name, type, position})(data::Row) where {name, type, position} =
+(a_column::InRow{name, type, position})(data::Row) where {name, type, position} =
     getcell(getfile(data), type, position, getrow(data))::type
 
-get_pair(data::Row, column::Column{name}) where {name} =
+get_pair(data::Row, column::InRow{name}) where {name} =
     name, column(data)
-(columns::Some{Column})(data) = partial_map(get_pair, data, columns)
+(columns::Some{InRow})(data) = partial_map(get_pair, data, columns)
 
-@inline Column_at(::Schema{Names, Types}, index) where {Names, Types} =
-    Column(Name{Names[index]}(), fieldtype(Types, index), index)
+@inline InRow_at(::Schema{Names, Types}, index) where {Names, Types} =
+    InRow(Name{Names[index]}(), fieldtype(Types, index), index)
 
 """
-    to_Columns(::Tables.Schema)
+    row_info(::Tables.Schema)
 
-Get the [`Column`](@ref)s in a schema. [`Column`](@ref)s can be used as a type stable selector function.
+Get row info for the schema. Can be used as a type stable selector function.
 
 ```jldoctest
 julia> using LightQuery
@@ -360,16 +353,16 @@ Tables.Schema:
  :e  Int64
  :f  Float64
 
-julia> template = @inferred to_Columns(schema(test))
-(Column{`a`,Int64,1}(), Column{`b`,Float64,2}(), Column{`c`,Int64,3}(), Column{`d`,Float64,4}(), Column{`e`,Int64,5}(), Column{`f`,Float64,6}())
+julia> template = @inferred row_info(schema(test))
+(LightQuery.InRow{`a`,Int64,1}(), LightQuery.InRow{`b`,Float64,2}(), LightQuery.InRow{`c`,Int64,3}(), LightQuery.InRow{`d`,Float64,4}(), LightQuery.InRow{`e`,Int64,5}(), LightQuery.InRow{`f`,Float64,6}())
 
 julia> @inferred template(first(test))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-to_Columns(a_schema::Schema{Names}) where Names =
+row_info(a_schema::Schema{Names}) where Names =
     ntuple(let a_schema = a_schema
-        @inline Column_at_capture(index) = Column_at(a_schema, index)
+        @inline InRow_at_capture(index) = InRow_at(a_schema, index)
     end, Val{length(Names)}())
 
-export to_Columns
+export row_info

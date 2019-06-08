@@ -47,13 +47,12 @@ Tables.Schema:
 
 For this package, I made [`named_tuple`](@ref)s to replace `NamedTuple`s. Use [`@name`](@ref) to work with them.
 
-Convert the `schema` [`to_Columns`](@ref).
+Convert the `schema` to [`row_info`](@ref).
 
 ```jldoctest dplyr
 julia> using Tables: schema
 
-julia> const Airport = to_Columns(schema(airports_file))
-(Column{`faa`,String,1}(), Column{`name`,String,2}(), Column{`lat`,Float64,3}(), Column{`lon`,Float64,4}(), Column{`alt`,Int64,5}(), Column{`tz`,Int64,6}(), Column{`dst`,String,7}(), Column{`tzone`,Union{Missing, String},8}())
+julia> const Airport = row_info(schema(airports_file));
 ```
 
 Read the first row.
@@ -207,8 +206,7 @@ Tables.Schema:
 Get the first flight, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
 
 ```jldoctest dplyr
-julia> const Flight = to_Columns(schema(flights_file))
-(Column{`year`,Int64,1}(), Column{`month`,Int64,2}(), Column{`day`,Int64,3}(), Column{`dep_time`,Union{Missing, Int64},4}(), Column{`sched_dep_time`,Int64,5}(), Column{`dep_delay`,Union{Missing, Int64},6}(), Column{`arr_time`,Union{Missing, Int64},7}(), Column{`sched_arr_time`,Int64,8}(), Column{`arr_delay`,Union{Missing, Int64},9}(), Column{`carrier`,String,10}(), Column{`flight`,Int64,11}(), Column{`tailnum`,Union{Missing, String},12}(), Column{`origin`,String,13}(), Column{`dest`,String,14}(), Column{`air_time`,Union{Missing, Int64},15}(), Column{`distance`,Int64,16}(), Column{`hour`,Int64,17}(), Column{`minute`,Int64,18}(), Column{`time_hour`,String,19}())
+julia> const Flight = row_info(schema(flights_file));
 
 julia> flight =
         @name @> flights_file |>
@@ -492,7 +490,7 @@ Tables.Schema:
  :visib       Float64
  :time_hour   String
 
-julia> const Weather = to_Columns(schema(weathers_file));
+julia> const Weather = row_info(schema(weathers_file));
 
 julia> function get_weather(indexed_airports, row)
             @name @> row |>
@@ -551,7 +549,7 @@ Showing 4 of 26115 rows
 
 I know that the weather data is already sorted by `airport_code` and `hour`.
 
-To [`InnerJoin`](@ref) it with flights, [`order`](@ref) and [`Group`](@ref) `flights` [`By`](@ref) matching variables. Only use data [`when`](@ref) the `departure_delay` is present.
+To [`mix`](@ref) it with flights, [`order`](@ref) and [`Group`](@ref) `flights` [`By`](@ref) matching variables. Only use data [`when`](@ref) the `departure_delay` is present.
 
 ```jldoctest dplyr
 julia> grouped_flights =
@@ -564,10 +562,10 @@ julia> key(first(grouped_flights))
 ("EWR", ZonedDateTime(2013, 1, 1, 5, tz"America/New_York"))
 ```
 
-Now [`InnerJoin`](@ref).
+Now [`mix`](@ref).
 
 ```jldoctest dplyr
-julia> weathers_to_flights = @name @> InnerJoin(
+julia> weathers_to_flights = @name @> mix(:inner,
             By(weathers, @_ (_.airport_code, _.date_time)),
             By(grouped_flights, key)
         );
@@ -921,8 +919,7 @@ key
 value
 Name
 unname
-Column
-Descending
+backwards
 ```
 
 ## Columns
@@ -935,7 +932,7 @@ remove
 gather
 spread
 Apply
-to_Columns
+row_info
 ```
 
 ## Rows
@@ -948,10 +945,7 @@ when
 order
 By
 Group
-InnerJoin
-LeftJoin
-RightJoin
-OuterJoin
+mix
 distinct
 ```
 
