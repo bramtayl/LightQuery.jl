@@ -65,15 +65,15 @@ function join_model_rows(left, right)
 end
 
 @code_instead backwards Code
-translate_call(::typeof(backwards), left, right) =
-    string(translate(left), " == ", translate(right))
+translate_call(::typeof(backwards), column) =
+    string(translate(column), " DESC")
 
 @code_instead (==) Code Any
 @code_instead (==) Any Code
 @code_instead (==) Code Code
 
 translate_call(::typeof(==), left, right) =
-    string(translate(left), " == ", translate(right))
+    string(translate(left), " = ", translate(right))
 
 @code_instead (!=) Code Any
 @code_instead (!=) Any Code
@@ -219,7 +219,7 @@ model_row_call(::typeof(to_rows), columns) = model_row(columns)
 model_row_call(::typeof(when), iterator, call) = model_row(iterator)
 translate_call(::typeof(when), iterator, call) = string(
     translate(iterator),
-    " WHEN ",
+    " WHERE ",
     translate(call(model_row(iterator)).expression)
 )
 
@@ -229,7 +229,7 @@ ignore_name((new_name, model)::Tuple{Name, Code}) =
     translate(model.expression)
 
 column_or_columns(row::Some{Named}) = map_unrolled(ignore_name, row)
-column_or_columns(expression) = (translate(expression),)
+column_or_columns(code::Code) = (translate(code.expression),)
 
 # SQLite interface
 
@@ -323,18 +323,15 @@ using Test
 
 @test first((@name @> database.Track |>
     (:TrackId, :Name, :Bytes)(_) |>
-    order(_, reverse ∘ :Bytes) |>
-    translate(_.expression)
+    order(_, backwards ∘ :Bytes) |>
     submit).Bytes) == 1059546140
 
-expression = @name @> database.Track |>
+@test (@name @> database.Track |>
     (:Name, :Milliseconds, :Bytes, :AlbumId)(_) |>
     when(_, @_ _.AlbumId == 1) |>
-    _.expression |>
-    translate
+    submit).AlbumId[1] == 1
 
-expression = @name @> database.Track |>
+@test (@name @> database.Track |>
     (:Name, :Milliseconds, :Bytes, :AlbumId)(_) |>
     when(_, @_ (_.AlbumId == 1) & (_.Milliseconds > 250000)) |>
-    _.expression |>
-    translate
+    submit).Milliseconds[1] == 343719
