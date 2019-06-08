@@ -27,7 +27,7 @@ expression_inside(something) = something
 
 numbered_argument(number) = Symbol(string("argument", number))
 assert_argument(argument, type) = Expr(:(::), argument, type)
-expression_inside_expression(argument) =
+call_expression_inside(argument) =
     Expr(:call, expression_inside, argument)
 
 function code_instead(location, a_function, types...)
@@ -45,7 +45,7 @@ function code_instead(location, a_function, types...)
                     Expr,
                     quot(:call),
                     a_function,
-                    map_unrolled(expression_inside_expression, arguments)...
+                    map_unrolled(call_expression_inside, arguments)...
                 )
             )
         )
@@ -79,18 +79,22 @@ translate_call(::typeof(==), left, right) =
 @code_instead (!=) Any Code
 @code_instead (!=) Code Code
 
+translate_call(::typeof(==), left, right) =
+    string(translate(left), " <> ", translate(right))
+
 @code_instead (!) Code
 
 @code_instead (&) Code Any
 @code_instead (&) Any Code
 @code_instead (&) Code Code
-
 translate_call(::typeof(&), left, right) =
     string(translate(left), " AND ", translate(right))
 
 @code_instead (|) Code Any
 @code_instead (|) Any Code
 @code_instead (|) Code Code
+translate_call(::typeof(&), left, right) =
+    string(translate(left), " OR ", translate(right))
 
 @code_instead By Code Any
 function model_row_call(::Type{By}, sorted, a_Key)
@@ -105,18 +109,14 @@ model_row_call(::typeof(distinct), repeated) = model_row(repeated)
 translate_call(::typeof(distinct), repeated) =
     replace(translate(repeated), r"\bSELECT\b" => "SELECT DISTINCT")
 
-@code_instead distinct Code Any
-
 @code_instead drop Code Integer
-model_row_call(::typeof(drop), iterator, number) =
-    model_row(unordered)
-
+model_row_call(::typeof(drop), iterator, number) = model_row(unordered)
 translate_call(::typeof(drop), iterator, number) =
     string(translate(iterator), " OFFSET ", number)
 
 @code_instead flatten
 
-model_row_call(::Name{name}, source::Database, ) where {name} =
+model_row_call(::Name{name}, source::Database) where {name} =
     partial_map(named_code, name, get_column_names(source.external, name))
 
 @code_instead Group Code
@@ -128,10 +128,21 @@ model_row_call(::Name{name}, source::Database, ) where {name} =
 @code_instead if_else Code Any Code
 @code_instead if_else Code Code Any
 @code_instead if_else Code Code Code
+translate_call(::typeof(ifelse), test, right, wrong) = string(
+    "CASE WHEN ",
+    translate(test),
+    " THEN ",
+    translate(right),
+    " ELSE ",
+    translate(wrong),
+    " END"
+)
 
 @code_instead in Code Any
 @code_instead in Any Code
 @code_instead in Code Code
+translate_call(::typeof(in), item, collection) =
+    string(translate(item), " IN ", collection)
 
 @code_instead InnerJoin Code Code
 model_row_call(::Type{InnerJoin}, left, right) = join_model_rows(left, right)
@@ -139,6 +150,9 @@ model_row_call(::Type{InnerJoin}, left, right) = join_model_rows(left, right)
 @code_instead isequal Code Any
 @code_instead isequal Any Code
 @code_instead isequal Code Code
+
+translate_call(::typeof(isequal), left, right) =
+    string(translate(left), " IS NOT DISTINCT FROM ", translate(right))
 
 @code_instead isless Code Any
 @code_instead isless Any Code
@@ -148,18 +162,23 @@ translate_call(::typeof(isless), left, right) =
     string(translate(left), " < ", translate(right))
 
 @code_instead ismissing Code
+translate_call(::typeof(ismissing), maybe) =
+    string(translate(maybe), " IS NULL")
 
 @code_instead LeftJoin Code Code
 model_row_call(::Type{LeftJoin}, left, right) = join_model_rows(left, right)
 
 translate_call(::Name{name}, table) where {name} = name
 
-@code_instead occursin Code Any
-@code_instead occursin Any Code
-@code_instead occursin Code Code
+@code_instead occursin Regex Code
+translate_call(::typeof(occursin), needle::String, haystack) = string(
+    translate(haystack),
+    " LIKE '%",
+    needle,
+    "%'"
+)
 
 @code_instead order Code Any
-
 model_row_call(::typeof(order), unordered, key_function) =
     model_row(unordered)
 translate_call(::typeof(order), unordered, key_function) = string(
@@ -194,6 +213,13 @@ end
 @code_instead startswith Code Any
 @code_instead startswith Any Code
 @code_instead startswith Code Code
+translate_call(::typeof(startswith), full, prefix) = string(
+    translate(full),
+    " LIKE '",
+    prefix,
+    "%'"
+)
+
 
 @code_instead take Code Integer
 model_row_call(::typeof(take), iterator, number) = model_row(iterator)
@@ -275,6 +301,8 @@ translate(something) = something
 translate(expression::Expr; options...) =
     if @capture expression call_(arguments__)
         translate_call(call, arguments...; options...)
+    elseif @capture expression left_ && right_
+        translate_call(&, left, right)
     else
         error("Cannot translate code $expression")
     end
@@ -291,10 +319,11 @@ end
 
 # test
 
+using Test
+
 cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
 database = SQLite.DB("Chinook_Sqlite.sqlite") |> Database |> named_tuple
-using Test
 
 @test names(@name @> database.Track |>
     (:TrackId, :Name, :Composer, :UnitPrice)(_) |>
@@ -335,3 +364,14 @@ using Test
     (:Name, :Milliseconds, :Bytes, :AlbumId)(_) |>
     when(_, @_ (_.AlbumId == 1) & (_.Milliseconds > 250000)) |>
     submit).Milliseconds[1] == 343719
+
+@test (@name @> database.Track |>
+    (:Name, :AlbumId, :Composer)(_) |>
+    when(_, @_ occursin(r".*Smith.*", _.Composer)) |>
+    submit).Composer[1] ==
+    "F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. Dirkscneider & W. Hoffman"
+
+@test (@name @> database.Track |>
+    (:Name, :AlbumId, :MediaTypeId)(_) |>
+    when(_, @_ in(_.MediaTypeId, (2, 3))) |>
+    submit).MediaTypeId[1] == 2

@@ -17,6 +17,8 @@ function substitute_underscores!(underscores_to_gensyms, code::Expr)
                 anonymous(location, body)
             elseif name === Symbol("@>")
                 make_chain(location, body)
+            else
+                code
             end
         else
             code
