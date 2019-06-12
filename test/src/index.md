@@ -905,58 +905,5 @@ Showing at most 4 rows
 
 # Interface
 
-## Macros
-
-```@docs
-@_
-@>
-@if_known
-@name
-```
-
-## Values
-
-```@docs
-if_else
-key
-value
-Name
-unname
-backwards
-```
-
-## Columns
-
-```@docs
-named_tuple
-rename
-transform
-remove
-gather
-spread
-Apply
-row_info
-```
-
-## Rows
-
-```@docs
-Enumerate
-over
-index
-when
-order
-By
-Group
-mix
-distinct
-```
-
-## Tables
-
-```@docs
-to_rows
-Peek
-to_columns
-make_columns
+```@autodocs
 ```
