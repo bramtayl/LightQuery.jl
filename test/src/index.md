@@ -905,6 +905,10 @@ Showing at most 4 rows
 
 # Interface
 
+```@index
+Modules = [LightQuery]
+```
+
 ```@autodocs
 Modules = [LightQuery]
 ```
