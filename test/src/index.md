@@ -1,3 +1,6 @@
+```@contents
+```
+
 # Tutorial
 
 I'm using the data from the [dplyr tutorial](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html). The data is in the test folder of this package.
