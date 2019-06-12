@@ -467,9 +467,9 @@ similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
     view(filtered.itr, index...)
 
 """
-    mix(::Name{:inner}, left, right)
+    mix(::Name{:inner},  left::By, right::By)
 
-Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`.
+Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`. See [`By`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -494,7 +494,7 @@ julia> @name @inferred collect(mix(:inner, By(Int[], abs), By([1], abs)))
 mix(::Name{:inner}, left, right) = InnerMix(left, right)
 
 """
-    mix(::Name{:left}, left::By, right::By) <: Mix{Left, Right}
+    mix(::Name{:left}, left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no right match.
@@ -524,7 +524,7 @@ mix(::Name{:left}, left, right) = LeftMix(left, right)
 
 
 """
-    mix(::Name{:right}, left::By, right::By) <: Mix{Left, Right}
+    mix(::Name{:right}, left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no left match.
@@ -553,7 +553,7 @@ julia> @name collect(mix(:right, By(Int[], abs), By([1], abs)))
 mix(::Name{:right}, left, right) = RightMix(left, right)
 
 """
-    mix(::Name{:outer}, left, right)
+    mix(::Name{:outer}, left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no left or right match.
