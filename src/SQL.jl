@@ -1,35 +1,67 @@
-struct Code
-    expression::Expr
+struct OutsideCode{Outside}
+    outside::Outside
+    code::Expr
 end
 
 # database import
 
-struct Database{External}
-    external::External
+"""
+    abstract type OutsideTables{Connection} end
+
+`Connection` must support [`get_table_names`](@ref), [`get_column_names`](@ref), and [`evaluate`](@ref).
+"""
+struct OutsideTables{Outside}
+    outside::Outside
 end
 
-function named_code(outer, inner)
-    name = Name{inner}()
-    name, Code(Expr(:call, name, outer))
+struct OutsideTable{Outside}
+    outside::Outside
+    table_name::Symbol
 end
 
-named_tuple(database::Database) =
-    partial_map(
-        named_code,
-        database,
-        get_tables(database.external)
+struct OutsideRow{Outside}
+    outside::Outside
+    table_name::Symbol
+end
+
+OutsideRow(outside_table::OutsideTable) =
+    OutsideRow(outside_table.outside, outside_table.table_name)
+
+make_outside_table(outside_tables, table_name) =
+    Name(table_name), OutsideCode(
+        outside_tables.outside,
+        Expr(:call, Name(table_name), outside_tables)
     )
+
+named_tuple(outside_tables::OutsideTables) = partial_map(
+    make_outside_table,
+    outside_tables,
+    get_table_names(outside_tables.outside)
+)
 
 # code_insteading
 
-expression_inside(code::Code) = code.expression
-expression_inside(something) = something
+function unwrap!(outsides, outside_code::OutsideCode)
+    push!(outsides, outside_code.outside)
+    outside_code.code
+end
+unwrap!(outsides, something) = something
+function one_outside(a_function, arguments...)
+    outsides = Set(Any[])
+    unwrapped_arguments = partial_map(unwrap!, outsides, arguments)
+    OutsideCode(
+        if length(outsides) == 0
+            error("No outside")
+        elseif length(outsides) > 1
+            error("Too many outsides")
+        else
+            first(outsides)
+        end, Expr(:call, a_function, unwrapped_arguments...)
+    )
+end
 
 numbered_argument(number) = Symbol(string("argument", number))
 assert_argument(argument, type) = Expr(:(::), argument, type)
-call_expression_inside(argument) =
-    Expr(:call, expression_inside, argument)
-
 function code_instead(location, a_function, types...)
     arguments = ntuple(numbered_argument, length(types))
     Expr(:function,
@@ -40,13 +72,9 @@ function code_instead(location, a_function, types...)
         Expr(:block,
             location,
             Expr(:call,
-                Code,
-                Expr(:call,
-                    Expr,
-                    quot(:call),
-                    a_function,
-                    map_unrolled(call_expression_inside, arguments)...
-                )
+                one_outside,
+                a_function,
+                arguments...
             )
         )
     )
@@ -64,71 +92,64 @@ function join_model_rows(left, right)
     value1, value2
 end
 
-@code_instead backwards Code
-translate_call(::typeof(backwards), column) =
-    string(translate(column), " DESC")
-
-@code_instead (==) Code Any
-@code_instead (==) Any Code
-@code_instead (==) Code Code
+@code_instead (==) OutsideCode Any
+@code_instead (==) Any OutsideCode
+@code_instead (==) OutsideCode OutsideCode
 
 translate_call(::typeof(==), left, right) =
     string(translate(left), " = ", translate(right))
 
-@code_instead (!=) Code Any
-@code_instead (!=) Any Code
-@code_instead (!=) Code Code
+@code_instead (!=) OutsideCode Any
+@code_instead (!=) Any OutsideCode
+@code_instead (!=) OutsideCode OutsideCode
 
-translate_call(::typeof(==), left, right) =
+translate_call(::typeof(!=), left, right) =
     string(translate(left), " <> ", translate(right))
 
-@code_instead (!) Code
+@code_instead (!) OutsideCode
 
-@code_instead (&) Code Any
-@code_instead (&) Any Code
-@code_instead (&) Code Code
+@code_instead (&) OutsideCode Any
+@code_instead (&) Any OutsideCode
+@code_instead (&) OutsideCode OutsideCode
 translate_call(::typeof(&), left, right) =
     string(translate(left), " AND ", translate(right))
 
-@code_instead (|) Code Any
-@code_instead (|) Any Code
-@code_instead (|) Code Code
-translate_call(::typeof(&), left, right) =
+@code_instead (|) OutsideCode Any
+@code_instead (|) Any OutsideCode
+@code_instead (|) OutsideCode OutsideCode
+translate_call(::typeof(|), left, right) =
     string(translate(left), " OR ", translate(right))
 
-@code_instead By Code Any
-function model_row_call(::Type{By}, sorted, a_Key)
+@code_instead backwards OutsideCode
+translate_call(::typeof(backwards), column) =
+    string(translate(column), " DESC")
+
+@code_instead By OutsideCode Any
+function change_row(::Type{By}, sorted, call)
     outer_model_row = model_row(sorted)
-    a_Key(outer_model_row), outer_model_row
+    call(outer_model_row), outer_model_row
 end
 
-@code_instead coalesce Code Vararg{Any}
+@code_instead coalesce OutsideCode Vararg{Any}
 
-@code_instead distinct Code
-model_row_call(::typeof(distinct), repeated) = model_row(repeated)
+@code_instead distinct OutsideCode
 translate_call(::typeof(distinct), repeated) =
     replace(translate(repeated), r"\bSELECT\b" => "SELECT DISTINCT")
 
-@code_instead drop Code Integer
-model_row_call(::typeof(drop), iterator, number) = model_row(unordered)
-translate_call(::typeof(drop), iterator, number) =
-    string(translate(iterator), " OFFSET ", number)
+@code_instead drop OutsideCode Integer
 
 @code_instead flatten
 
-model_row_call(::Name{name}, source::Database) where {name} =
-    partial_map(named_code, name, get_column_names(source.external, name))
+@code_instead Group OutsideCode
 
-@code_instead Group Code
-
-@code_instead if_else Code Any Any
-@code_instead if_else Any Code Any
-@code_instead if_else Any Any Code
-@code_instead if_else Any Code Code
-@code_instead if_else Code Any Code
-@code_instead if_else Code Code Any
-@code_instead if_else Code Code Code
-translate_call(::typeof(ifelse), test, right, wrong) = string(
+@code_instead if_else OutsideCode Any Any
+@code_instead if_else Any OutsideCode Any
+@code_instead if_else Any Any OutsideCode
+@code_instead if_else Any OutsideCode OutsideCode
+@code_instead if_else OutsideCode Any OutsideCode
+@code_instead if_else OutsideCode OutsideCode Any
+@code_instead if_else OutsideCode OutsideCode OutsideCode
+translate_call(::typeof(if_else), test, right, wrong) = string(
     "CASE WHEN ",
     translate(test),
     " THEN ",
@@ -138,81 +159,128 @@ translate_call(::typeof(ifelse), test, right, wrong) = string(
     " END"
 )
 
-@code_instead in Code Any
-@code_instead in Any Code
-@code_instead in Code Code
+@code_instead in OutsideCode Any
+@code_instead in Any OutsideCode
+@code_instead in OutsideCode OutsideCode
 translate_call(::typeof(in), item, collection) =
-    string(translate(item), " IN ", collection)
+    string(translate(item), " IN ", translate(collection))
 
-@code_instead InnerJoin Code Code
-model_row_call(::Type{InnerJoin}, left, right) = join_model_rows(left, right)
+@code_instead InnerJoin OutsideCode OutsideCode
+change_row(::Type{InnerJoin}, left, right) = join_model_rows(left, right)
 
-@code_instead isequal Code Any
-@code_instead isequal Any Code
-@code_instead isequal Code Code
+@code_instead isequal OutsideCode Any
+@code_instead isequal Any OutsideCode
+@code_instead isequal OutsideCode OutsideCode
 
 translate_call(::typeof(isequal), left, right) =
     string(translate(left), " IS NOT DISTINCT FROM ", translate(right))
 
-@code_instead isless Code Any
-@code_instead isless Any Code
-@code_instead isless Code Code
+@code_instead isless OutsideCode Any
+@code_instead isless Any OutsideCode
+@code_instead isless OutsideCode OutsideCode
 
 translate_call(::typeof(isless), left, right) =
     string(translate(left), " < ", translate(right))
 
-@code_instead ismissing Code
+@code_instead ismissing OutsideCode
 translate_call(::typeof(ismissing), maybe) =
     string(translate(maybe), " IS NULL")
 
-@code_instead LeftJoin Code Code
-model_row_call(::Type{LeftJoin}, left, right) = join_model_rows(left, right)
+@code_instead LeftJoin OutsideCode OutsideCode
+change_row(::Type{LeftJoin}, left, right) = join_model_rows(left, right)
 
-translate_call(::Name{name}, table) where {name} = name
+outside_column(outside_row, column_name) =
+    Name(column_name), OutsideCode(
+        outside_row.outside,
+        Expr(:call, Name(column_name), outside_row)
+    )
 
-@code_instead occursin Regex Code
-translate_call(::typeof(occursin), needle::String, haystack) = string(
+change_row(::Name{table_name}, outside_tables::OutsideTables) where {table_name} =
+    partial_map(
+        outside_column,
+        OutsideRow(outside_tables.outside, table_name),
+        get_column_names(outside_tables.outside, table_name)
+    )
+translate_call(::Name{column_name}, ouside_tables::OutsideTables) where {column_name} =
+    string("SELECT * FROM ", column_name)
+
+translate_call(::Name{column_name}, ::OutsideRow) where {column_name} =
+    column_name
+
+make_outside_column(outside_table, column_name) =
+    Name{column_name}(), OutsideCode(
+        outside_table.outside,
+        Expr(:call, Name{column_name}(), OutsideRow(outside_table))
+    )
+
+model_row(outside_table::OutsideTable) where {column_name} =
+    partial_map(
+        make_outside_column,
+        outside_table,
+        get_column_names(outside_table.outside, outside_table.table_name)
+    )
+
+
+
+
+@code_instead occursin AbstractString OutsideCode
+@code_instead occursin Regex OutsideCode
+translate_call(::typeof(occursin), needle::AbstractString, haystack) = string(
     translate(haystack),
     " LIKE '%",
     needle,
     "%'"
 )
+translate_call(::typeof(occursin), needle::Regex, haystack) = string(
+    translate(haystack),
+    " LIKE ",
+    replace(replace(needle.pattern, r"(?<!\\)\.\*" => "%"), r"(?<!\\)\." => "_")
+)
+translate_call(::typeof(occursin), needle, haystack) = string(
+    translate(haystack),
+    " LIKE ",
+    translate(needle)
+)
 
-@code_instead order Code Any
-model_row_call(::typeof(order), unordered, key_function) =
-    model_row(unordered)
+@code_instead order OutsideCode Any
 translate_call(::typeof(order), unordered, key_function) = string(
     translate(unordered),
     " ORDER BY ",
     join(column_or_columns(key_function(model_row(unordered))), ", ")
 )
 
-@code_instead OuterJoin Code Code
-model_row_call(::Type{OuterJoin}, left, right) = join_model_rows(left, right)
+@code_instead OuterJoin OutsideCode OutsideCode
+change_row(::Type{OuterJoin}, left, right) = join_model_rows(left, right)
 
-@code_instead over Code Any
-model_row_call(::typeof(over), iterator, call) =
+@code_instead over OutsideCode Any
+change_row(::typeof(over), iterator, call) =
     call(model_row(iterator))
 
-@code_instead RightJoin Code Code
-model_row_call(::Type{RightJoin}, left, right) = join_model_rows(left, right)
+select_as((new_name, model)::Tuple{Name{name}, OutsideCode}) where name=
+    string(translate(model.code), " AS ", name)
+translate_call(::typeof(over), select_table, call) =
+    if @capture select_table name_Name(outsidetables_OutsideTables)
+        string(
+            "SELECT ",
+            join(map_unrolled(select_as, call(model_row(select_table))), ", "),
+            " FROM ",
+            unname(name)
+        )
+    else
+        error("over can only be called directly on SQL tables")
+    end
 
-@code_instead (names::Some{Name}) Code
-model_row_call(the_names::Some{Name}, iterator) =
-    the_names(model_row(iterator))
-function translate_call(columns::Some{Name}, data; maybe_distinct = "")
-    check_table = value(first(seek_external_tables(data)))
-    string(
-        "SELECT $maybe_distinct",
-        join(map(ignore_name, columns(model_row(data))), ", "),
-        " FROM ",
-        check_table
-    )
-end
+@code_instead RightJoin OutsideCode OutsideCode
+change_row(::Type{RightJoin}, left, right) = join_model_rows(left, right)
 
-@code_instead startswith Code Any
-@code_instead startswith Any Code
-@code_instead startswith Code Code
+change_row(arbitrary_function, iterator, arguments...) = model_row(iterator)
+
+translate(outside_table::OutsideTable) =
+    string("SELECT * FROM ", check_table)
+
+@code_instead startswith OutsideCode Any
+@code_instead startswith Any OutsideCode
+@code_instead startswith OutsideCode OutsideCode
 translate_call(::typeof(startswith), full, prefix) = string(
     translate(full),
     " LIKE '",
@@ -220,9 +288,8 @@ translate_call(::typeof(startswith), full, prefix) = string(
     "%'"
 )
 
+@code_instead take OutsideCode Integer
 
-@code_instead take Code Integer
-model_row_call(::typeof(take), iterator, number) = model_row(iterator)
 translate_call(::typeof(take), iterator, number) =
     if @capture iterator $drop(inneriterator_, offset_)
         string(
@@ -236,26 +303,21 @@ translate_call(::typeof(take), iterator, number) =
         string(translate(iterator), " LIMIT ", number)
     end
 
-@code_instead to_columns Code
-model_row_call(::typeof(to_columns), rows) = model_row(rows)
-@code_instead to_rows Code
-model_row_call(::typeof(to_rows), columns) = model_row(columns)
+@code_instead when OutsideCode Any
 
-@code_instead when Code Any
-model_row_call(::typeof(when), iterator, call) = model_row(iterator)
 translate_call(::typeof(when), iterator, call) = string(
     translate(iterator),
     " WHERE ",
-    translate(call(model_row(iterator)).expression)
+    translate(call(model_row(iterator)).code)
 )
 
 # utilities
 
-ignore_name((new_name, model)::Tuple{Name, Code}) =
-    translate(model.expression)
+ignore_name((new_name, model)::Tuple{Name, OutsideCode}) =
+    translate(model.code)
 
 column_or_columns(row::Some{Named}) = map_unrolled(ignore_name, row)
-column_or_columns(code::Code) = (translate(code.expression),)
+column_or_columns(outside_code::OutsideCode) = (translate(outside_code.code),)
 
 # SQLite interface
 
@@ -264,58 +326,42 @@ using DataFrames: DataFrame
 
 to_symbols(them) = map_unrolled(Symbol, (them...,))
 
-get_tables(database::SQLite.DB) = to_symbols(SQLite.tables(database).name)
+get_table_names(database::SQLite.DB) = to_symbols(SQLite.tables(database).name)
 get_column_names(database::SQLite.DB, table_name) =
     to_symbols(SQLite.columns(database, String(table_name)).name)
 submit_to(database::SQLite.DB, text) = DataFrame(SQLite.Query(database, text))
 
 # dispatch
 
-seek_external_tables!(tables, something) = nothing
-function seek_external_tables!(tables, expression::Expr)
-    if @capture expression name_Name(source_Database)
-        push!(tables, (source, unname(name)))
+model_row(code::Expr) =
+    if @capture code call_(arguments__)
+        change_row(call, arguments...)
     else
-        foreach(let tables = tables
-            seek_external_tables_capture!(argument) =
-                seek_external_tables!(tables, argument)
-        end, expression.args)
-    end
-    nothing
-end
-
-function seek_external_tables(expression)
-    tables = Set{Tuple{Database, Symbol}}()
-    seek_external_tables!(tables, expression)
-    tables
-end
-
-model_row(expression::Expr) =
-    if @capture expression call_(arguments__)
-        model_row_call(call, arguments...)
-    else
-        error("Cannot build a model_row row for $expression")
+        error("Cannot build a model_row row for $code")
     end
 
 translate(something) = something
-translate(expression::Expr; options...) =
-    if @capture expression call_(arguments__)
-        translate_call(call, arguments...; options...)
-    elseif @capture expression left_ && right_
+
+translate(code::Expr) =
+    if @capture code call_(arguments__)
+        translate_call(call, arguments...)
+    elseif @capture code left_ && right_
         translate_call(&, left, right)
+    elseif @capture code left_ | right_
+        translate_call(|, left, right)
+    elseif @capture code if condition_ yes_ else no_ end
+        translate_call(if_else, condition, left, right)
     else
-        error("Cannot translate code $expression")
+        error("Cannot translate code $code")
     end
 
 # submit
 
-function submit(code::Code)
-    expression = code.expression
+make_columns(outside_code::OutsideCode) =
     submit_to(
-        key(first(seek_external_tables(expression))).external,
-        translate(expression)
+        outside_code.outside,
+        translate(outside_code.code)
     )
-end
 
 # test
 
@@ -323,55 +369,59 @@ using Test
 
 cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
-database = SQLite.DB("Chinook_Sqlite.sqlite") |> Database |> named_tuple
+database = SQLite.DB("Chinook_Sqlite.sqlite") |> OutsideTables |> named_tuple
 
 @test names(@name @> database.Track |>
-    (:TrackId, :Name, :Composer, :UnitPrice)(_) |>
-    submit) == [:TrackId, :Name, :Composer, :UnitPrice]
+    over(_, (:TrackId, :Name, :Composer, :UnitPrice)) |>
+    make_columns) == [:TrackId, :Name, :Composer, :UnitPrice]
 
 @test (@name @> database.Customer |>
-    (:City, :Country)(_) |>
+    over(_, (:City, :Country)) |>
     order(_, :Country) |>
-    submit).Country[1] == "Argentina"
+    make_columns).Country[1] == "Argentina"
 
 @test length((@name @> database.Customer |>
-    (:City,)(_) |>
+    over(_, (:City,)) |>
     distinct |>
-    submit).City) == 53
+    make_columns).City) == 53
 
 @test length((@name @> database.Track |>
-    (:TrackId, :Name,)(_) |>
+    over(_, (:TrackId, :Name,)) |>
     take(_, 10) |>
-    submit).Name) == 10
+    make_columns).Name) == 10
 
 @test first((@name @> database.Track |>
-    (:TrackId, :Name,)(_) |>
+    over(_, (:TrackId, :Name,)) |>
     drop(_, 10) |>
     take(_, 10) |>
-    submit).Name) == "C.O.D."
+    make_columns).Name) == "C.O.D."
 
 @test first((@name @> database.Track |>
-    (:TrackId, :Name, :Bytes)(_) |>
+    over(_, (:TrackId, :Name, :Bytes)) |>
     order(_, backwards ∘ :Bytes) |>
-    submit).Bytes) == 1059546140
+    make_columns).Bytes) == 1059546140
+z = @name @> database.Track |>
+    over(_, (:Name, :Milliseconds, :Bytes, :AlbumId)) |>
+    when(_, @_ _.AlbumId == 1)
 
-@test (@name @> database.Track |>
-    (:Name, :Milliseconds, :Bytes, :AlbumId)(_) |>
+@test length((@name @> database.Track |>
+    over(_, (:Name, :Milliseconds, :Bytes, :AlbumId)) |>
     when(_, @_ _.AlbumId == 1) |>
-    submit).AlbumId[1] == 1
+    make_columns).AlbumId) == 10
 
 @test (@name @> database.Track |>
-    (:Name, :Milliseconds, :Bytes, :AlbumId)(_) |>
+    over(_, (:Name, :Milliseconds, :Bytes, :AlbumId)) |>
     when(_, @_ (_.AlbumId == 1) & (_.Milliseconds > 250000)) |>
-    submit).Milliseconds[1] == 343719
+    make_columns).Milliseconds[1] == 343719
 
 @test (@name @> database.Track |>
-    (:Name, :AlbumId, :Composer)(_) |>
-    when(_, @_ occursin(r".*Smith.*", _.Composer)) |>
-    submit).Composer[1] ==
+    over(_, (:Name, :AlbumId, :Composer)) |>
+    when(_, @_ occursin("Smith", _.Composer)) |>
+    make_columns).Composer[1] ==
     "F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. Dirkscneider & W. Hoffman"
 
+methods(startswith)
 @test (@name @> database.Track |>
-    (:Name, :AlbumId, :MediaTypeId)(_) |>
+    over(_, (:Name, :AlbumId, :MediaTypeId)) |>
     when(_, @_ in(_.MediaTypeId, (2, 3))) |>
-    submit).MediaTypeId[1] == 2
+    make_columns).MediaTypeId[1] == 2
