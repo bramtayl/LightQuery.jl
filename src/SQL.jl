@@ -220,9 +220,6 @@ model_row(outside_table::OutsideTable) where {column_name} =
         get_column_names(outside_table.outside, outside_table.table_name)
     )
 
-
-
-
 @code_instead occursin AbstractString OutsideCode
 @code_instead occursin Regex OutsideCode
 translate_call(::typeof(occursin), needle::AbstractString, haystack) = string(
@@ -420,7 +417,6 @@ z = @name @> database.Track |>
     make_columns).Composer[1] ==
     "F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. Dirkscneider & W. Hoffman"
 
-methods(startswith)
 @test (@name @> database.Track |>
     over(_, (:Name, :AlbumId, :MediaTypeId)) |>
     when(_, @_ in(_.MediaTypeId, (2, 3))) |>
