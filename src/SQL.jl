@@ -397,9 +397,6 @@ database = SQLite.DB("Chinook_Sqlite.sqlite") |> OutsideTables |> named_tuple
     over(_, (:TrackId, :Name, :Bytes)) |>
     order(_, backwards ∘ :Bytes) |>
     make_columns).Bytes) == 1059546140
-z = @name @> database.Track |>
-    over(_, (:Name, :Milliseconds, :Bytes, :AlbumId)) |>
-    when(_, @_ _.AlbumId == 1)
 
 @test length((@name @> database.Track |>
     over(_, (:Name, :Milliseconds, :Bytes, :AlbumId)) |>
