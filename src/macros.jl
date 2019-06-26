@@ -24,8 +24,7 @@ function substitute_underscores!(underscores_to_gensyms, code::Expr)
             code
         end
     Expr(expanded_code.head, map(let underscores_to_gensyms = underscores_to_gensyms
-        substitute_capture!(code) =
-            substitute_underscores!(underscores_to_gensyms, code)
+        code -> substitute_underscores!(underscores_to_gensyms, code)
     end, expanded_code.args)...)
 end
 

@@ -38,13 +38,12 @@ show(output::IO, ::Name{name}) where {name} = print(output, '`', name, '`')
 const Named{name} = Tuple{Name{name}, Any}
 
 recursive_get(initial, name) = throw(BoundsError(initial, (name,)))
-function recursive_get(initial, name, (check_name, value), rest...)
+recursive_get(initial, name, (check_name, value), rest...) =
     if name === check_name
         value
     else
         recursive_get(initial, name, rest...)
     end
-end
 
 (::Name{name})(object) where {name} = getproperty(object, name)
 (name::Name)(data::Some{Named}) = recursive_get(data, name, data...)
@@ -362,7 +361,7 @@ julia> @inferred template(first(test))
 """
 row_info(a_schema::Schema{Names}) where Names =
     ntuple(let a_schema = a_schema
-        @inline InRow_at_capture(index) = InRow_at(a_schema, index)
+        @inline InnRow_at_capture(index) = InRow_at(a_schema, index)
     end, Val{length(Names)}())
 
 export row_info

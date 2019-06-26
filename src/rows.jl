@@ -164,7 +164,7 @@ function index(unindexed, key_function)
     key_to_index = collect_similar(
         Dict{Union{}, Union{}}(),
         Generator(let key_function = key_function
-            key_index_capture((index, item)) = key_index(key_function, index, item)
+            ((index, item),) -> key_index(key_function, index, item)
         end, Enumerate(unindexed))
     )
     Indexed{keytype(key_to_index), eltype(unindexed)}(unindexed, key_to_index)
@@ -444,7 +444,7 @@ export distinct
 # piracy
 function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
     foreach(let dictionary = dictionary
-        copyto_at!((a_key, a_value)) = dictionary[a_key] = a_value
+        ((a_key, a_value),) -> dictionary[a_key] = a_value
     end, dictionary)
     nothing
 end
