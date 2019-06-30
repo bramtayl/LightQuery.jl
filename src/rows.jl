@@ -74,7 +74,7 @@ struct Backwards{Increasing}
 end
 
 """
-    struct Backwards{Increasing}
+    backwards(something)
 
 Reverse sorting order.
 

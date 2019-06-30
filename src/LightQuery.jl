@@ -2,15 +2,15 @@ module LightQuery
 
 import Base: ==, !=, !, &, |, axes, coalesce, collect_similar, collect_to!,
     copyto!, eltype, empty, first, get, getindex, getproperty, grow_to!, haskey,
-    isequal, ifelse, in, IndexStyle, IteratorEltype, IteratorSize, isless,
-    ismissing, length, iterate, merge, NamedTuple, occursin, push!, setindex!,
-    size, show, similar, startswith, view, zip
+    isequal, in, IndexStyle, IteratorEltype, IteratorSize, isless, ismissing,
+    length, iterate, merge, NamedTuple, occursin, push!, setindex!, size, show,
+    similar, startswith, view, zip
 @static if VERSION >= v"1.1"
     import Base: push_widen, setindex_widen_up_to
 end
-using Base: argument_datatype, _collect, @default_eltype, diff_names,
-    EltypeUnknown, Generator, HasEltype, HasLength, HasShape, isvatuple, @pure,
-    promote_typejoin, @propagate_inbounds, SizeUnknown, tail
+using Base: _collect, @default_eltype, diff_names, EltypeUnknown, Generator,
+    HasEltype, HasLength, HasShape, isvatuple, @pure, promote_typejoin,
+    @propagate_inbounds, SizeUnknown, tail
 import Base.Iterators: drop, flatten, take
 using Base.Iterators: Filter, Zip
 @static if VERSION < v"1.1"

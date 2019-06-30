@@ -136,7 +136,7 @@ value(pair::Pair) = pair.second
 export value
 
 """
-    if_known(something)
+    @if_known(something)
 
 If `something` is `missing`, return `missing`, otherwise, `something`.
 
