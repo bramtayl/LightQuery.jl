@@ -1,7 +1,7 @@
 name = "LightQuery"
 uuid = "a6f99520-0501-547d-81af-dc7bed1e4d5a"
 repo = "https://github.com/bramtayl/LightQuery.jl.git"
-version = "0.2.3"
+version = "0.3.0"
 author = ["Brandon Taylor <brandon.taylor221@gmail.com>"]
 
 [deps]
