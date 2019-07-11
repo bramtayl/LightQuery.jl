@@ -469,7 +469,9 @@ similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
 """
     mix(::Name{:inner},  left::By, right::By)
 
-Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`. See [`By`](@ref).
+Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`.
+Assumes `left` and `right` are both strictly sorted (no repeats). If there are
+repeats, [`Group`](@ref) first. See [`By`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -497,7 +499,9 @@ mix(::Name{:inner}, left, right) = InnerMix(left, right)
     mix(::Name{:left}, left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
-using `missing` when there is no right match.
+using `missing` when there is no right match. Assumes `left` and `right` are
+both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first.
+See [`By`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -527,7 +531,9 @@ mix(::Name{:left}, left, right) = LeftMix(left, right)
     mix(::Name{:right}, left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
-using `missing` when there is no left match.
+using `missing` when there is no left match. Assumes `left` and `right` are both
+strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. See
+[`By`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -556,7 +562,9 @@ mix(::Name{:right}, left, right) = RightMix(left, right)
     mix(::Name{:outer}, left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
-using `missing` when there is no left or right match.
+using `missing` when there is no left or right match. Assumes `left` and `right`
+are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref)
+first. See [`By`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -581,8 +589,6 @@ julia> @name collect(mix(:outer, By(Int[], abs), By([1], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (missing, 1)
 ```
-
-Assumes `left` and `right` are both strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first.
 """
 mix(::Name{:outer}, left, right) = OuterMix(left, right)
 

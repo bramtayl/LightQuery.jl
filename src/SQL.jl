@@ -6,9 +6,9 @@ end
 # database import
 
 """
-    abstract type OutsideTables{Connection} end
+    abstract type OutsideTables{Outside} end
 
-`Connection` must support [`get_table_names`](@ref), [`get_column_names`](@ref), and [`evaluate`](@ref).
+`Outside` must support [`get_table_names`](@ref), [`get_column_names`](@ref), and [`submit_to`](@ref).
 """
 struct OutsideTables{Outside}
     outside::Outside
@@ -62,6 +62,13 @@ end
 
 numbered_argument(number) = Symbol(string("argument", number))
 assert_argument(argument, type) = Expr(:(::), argument, type)
+maybe_splat(argument, a_type) =
+    if @capture a_type Vararg{AType_}
+        Expr(:(...), argument)
+    else
+        argument
+    end
+
 function code_instead(location, a_function, types...)
     arguments = ntuple(numbered_argument, length(types))
     Expr(:function,
@@ -74,7 +81,7 @@ function code_instead(location, a_function, types...)
             Expr(:call,
                 one_outside,
                 a_function,
-                arguments...
+                map_unrolled(maybe_splat, arguments, types)...
             )
         )
     )
@@ -86,27 +93,20 @@ end
 
 # function library
 
-function join_model_rows(left, right)
-    key1, value1 = model_row(left)
-    key2, value2 = model_row(right)
-    value1, value2
-end
-
 @code_instead (==) OutsideCode Any
 @code_instead (==) Any OutsideCode
 @code_instead (==) OutsideCode OutsideCode
-
 translate_call(::typeof(==), left, right) =
     string(translate(left), " = ", translate(right))
 
 @code_instead (!=) OutsideCode Any
 @code_instead (!=) Any OutsideCode
 @code_instead (!=) OutsideCode OutsideCode
-
 translate_call(::typeof(!=), left, right) =
     string(translate(left), " <> ", translate(right))
 
 @code_instead (!) OutsideCode
+translate_call(::typeof(!), wrong) = string("NOT ", translate(wrong))
 
 @code_instead (&) OutsideCode Any
 @code_instead (&) Any OutsideCode
@@ -124,12 +124,6 @@ translate_call(::typeof(|), left, right) =
 translate_call(::typeof(backwards), column) =
     string(translate(column), " DESC")
 
-@code_instead By OutsideCode Any
-function change_row(::Type{By}, sorted, call)
-    outer_model_row = model_row(sorted)
-    call(outer_model_row), outer_model_row
-end
-
 @code_instead coalesce OutsideCode Vararg{Any}
 
 @code_instead distinct OutsideCode
@@ -137,10 +131,8 @@ translate_call(::typeof(distinct), repeated) =
     replace(translate(repeated), r"\bSELECT\b" => "SELECT DISTINCT")
 
 @code_instead drop OutsideCode Integer
-
-@code_instead flatten
-
-@code_instead Group OutsideCode
+translate_call(::typeof(drop), iterator, number) =
+    string(translate(iterator), " OFFSET ", number)
 
 @code_instead if_else OutsideCode Any Any
 @code_instead if_else Any OutsideCode Any
@@ -164,9 +156,6 @@ translate_call(::typeof(if_else), test, right, wrong) = string(
 @code_instead in OutsideCode OutsideCode
 translate_call(::typeof(in), item, collection) =
     string(translate(item), " IN ", translate(collection))
-
-@code_instead InnerJoin OutsideCode OutsideCode
-change_row(::Type{InnerJoin}, left, right) = join_model_rows(left, right)
 
 @code_instead isequal OutsideCode Any
 @code_instead isequal Any OutsideCode
@@ -213,7 +202,7 @@ make_outside_column(outside_table, column_name) =
         Expr(:call, Name{column_name}(), OutsideRow(outside_table))
     )
 
-model_row(outside_table::OutsideTable) where {column_name} =
+model_row(outside_table::OutsideTable) =
     partial_map(
         make_outside_column,
         outside_table,
@@ -246,14 +235,9 @@ translate_call(::typeof(order), unordered, key_function) = string(
     join(column_or_columns(key_function(model_row(unordered))), ", ")
 )
 
-@code_instead OuterJoin OutsideCode OutsideCode
-change_row(::Type{OuterJoin}, left, right) = join_model_rows(left, right)
-
 @code_instead over OutsideCode Any
-change_row(::typeof(over), iterator, call) =
-    call(model_row(iterator))
-
-select_as((new_name, model)::Tuple{Name{name}, OutsideCode}) where name=
+change_row(::typeof(over), iterator, call) = call(model_row(iterator))
+select_as((new_name, model)::Tuple{Name{name}, OutsideCode}) where name =
     string(translate(model.code), " AS ", name)
 translate_call(::typeof(over), select_table, call) =
     if @capture select_table name_Name(outsidetables_OutsideTables)
@@ -267,18 +251,13 @@ translate_call(::typeof(over), select_table, call) =
         error("over can only be called directly on SQL tables")
     end
 
-@code_instead RightJoin OutsideCode OutsideCode
-change_row(::Type{RightJoin}, left, right) = join_model_rows(left, right)
-
-change_row(arbitrary_function, iterator, arguments...) = model_row(iterator)
-
 translate(outside_table::OutsideTable) =
     string("SELECT * FROM ", check_table)
 
 @code_instead startswith OutsideCode Any
 @code_instead startswith Any OutsideCode
 @code_instead startswith OutsideCode OutsideCode
-translate_call(::typeof(startswith), full, prefix) = string(
+translate_call(::typeof(startswith), full, prefix::AbstractString) = string(
     translate(full),
     " LIKE '",
     prefix,
@@ -286,7 +265,6 @@ translate_call(::typeof(startswith), full, prefix) = string(
 )
 
 @code_instead take OutsideCode Integer
-
 translate_call(::typeof(take), iterator, number) =
     if @capture iterator $drop(inneriterator_, offset_)
         string(
@@ -301,7 +279,6 @@ translate_call(::typeof(take), iterator, number) =
     end
 
 @code_instead when OutsideCode Any
-
 translate_call(::typeof(when), iterator, call) = string(
     translate(iterator),
     " WHERE ",
@@ -309,6 +286,8 @@ translate_call(::typeof(when), iterator, call) = string(
 )
 
 # utilities
+
+change_row(arbitrary_function, iterator, arguments...) = model_row(iterator)
 
 ignore_name((new_name, model)::Tuple{Name, OutsideCode}) =
     translate(model.code)
@@ -318,15 +297,15 @@ column_or_columns(outside_code::OutsideCode) = (translate(outside_code.code),)
 
 # SQLite interface
 
-import SQLite
+import SQLite: DB
 using DataFrames: DataFrame
 
 to_symbols(them) = map_unrolled(Symbol, (them...,))
 
-get_table_names(database::SQLite.DB) = to_symbols(SQLite.tables(database).name)
-get_column_names(database::SQLite.DB, table_name) =
+get_table_names(database::DB) = to_symbols(SQLite.tables(database).name)
+get_column_names(database::DB, table_name) =
     to_symbols(SQLite.columns(database, String(table_name)).name)
-submit_to(database::SQLite.DB, text) = DataFrame(SQLite.Query(database, text))
+submit_to(database::DB, text) = DataFrame(SQLite.Query(database, text))
 
 # dispatch
 
@@ -366,7 +345,9 @@ using Test
 
 cd("C:/Users/hp/.julia/packages/SQLite/yKARA/test")
 
-database = SQLite.DB("Chinook_Sqlite.sqlite") |> OutsideTables |> named_tuple
+database = DB("Chinook_Sqlite.sqlite") |> OutsideTables |> named_tuple
+
+using Query
 
 @test names(@name @> database.Track |>
     over(_, (:TrackId, :Name, :Composer, :UnitPrice)) |>
