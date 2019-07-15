@@ -90,18 +90,18 @@ similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow} =
 empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow} =
     similar(column, NewRow)
 
-function widen_column(::HasLength, new_length, an_index, name, column::Array{Element}, item::Item) where {Element, Item <: Element}
+function widen_column(::HasLength, new_length, an_index, name, column::AbstractArray{Element}, item::Item) where {Element, Item <: Element}
     @inbounds column[an_index] = item
     name, column
 end
-widen_column(::HasLength, new_length, an_index, name, column::Array, item) =
+widen_column(::HasLength, new_length, an_index, name, column::AbstractArray, item) =
     name, setindex_widen_up_to(column, item, an_index)
 
-function widen_column(::SizeUnknown, new_length, an_index, name, column::Array{Element}, item::Item) where {Element, Item <: Element}
+function widen_column(::SizeUnknown, new_length, an_index, name, column::AbstractArray{Element}, item::Item) where {Element, Item <: Element}
     push!(column, item)
     name, column
 end
-widen_column(::SizeUnknown, new_length, an_index, name, column::Array, item) =
+widen_column(::SizeUnknown, new_length, an_index, name, column::AbstractArray, item) =
     name, push_widen(column, item)
 
 function widen_column(iterator_size, new_length, an_index, name, ::Missing, item::Item) where {Item}
