@@ -8,14 +8,14 @@ Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, 
 get_model(columns) = first(columns)
 get_model(::Tuple{}) = 1:0
 
-column_Value(::Name, ::Column) where {Name, Column} =
+name_eltype(::Name, ::Column) where {Name, Column} =
     Tuple{Name, eltype(Column)}
 
 function Rows(named_columns)
     column_names = map_unrolled(key, named_columns)
     columns = map_unrolled(value, named_columns)
     Rows{
-        Tuple{map_unrolled(column_Value, column_names, columns)...},
+        Tuple{map_unrolled(name_eltype, column_names, columns)...},
         ndims(get_model(columns))
     }(columns, column_names)
 end
@@ -67,13 +67,13 @@ val_fieldtypes(something) = ()
         map_unrolled(Val, (a_type.types...,))
     end
 
-val_Value(::Val{Tuple{Name{name}, Value}}) where {name, Value} =
+decompose_named_type(::Val{Tuple{Name{name}, Value}}) where {name, Value} =
     Name{name}(), Val{Value}()
-val_Value(type) = missing
+decompose_named_type(type) = missing
 
-val_Row(Row) = filter_unrolled(
+decompose_row_type(Row) = filter_unrolled(
     !ismissing,
-    map_unrolled(val_Value, val_fieldtypes(Row))...
+    map_unrolled(decompose_named_type, val_fieldtypes(Row))...
 )
 
 similar_val(model, ::Val{Value}, dimensions) where {Value} =
@@ -84,7 +84,7 @@ similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow} =
     Rows(partial_map(
         similar_column,
         (get_model(rows.columns), dimensions),
-        val_Row(ARow)
+        decompose_row_type(ARow)
     ))
 
 empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow} =
