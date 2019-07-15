@@ -37,22 +37,27 @@ size(rows::Rows, dimensions...) = size(get_model(rows.columns), dimensions...)
     rows.names
 )
 
-@propagate_inbounds column_setindex!((columns, an_index), (name, value)) =
+@propagate_inbounds function column_setindex!((columns, an_index), (name, value))
     if haskey(columns, name)
         name(columns)[an_index...] = value
-    else
-        missing
     end
-@propagate_inbounds setindex!(rows::Rows, row, an_index...) =
+    nothing
+end
+@propagate_inbounds function setindex!(rows::Rows, row, an_index...)
     partial_map(column_setindex!, (get_columns(rows), an_index), row)
+    nothing
+end
 
-column_push!(columns, (name, value)) =
+function column_push!(columns, (name, value))
     if haskey(columns, name)
         push!(name(columns), value)
-    else
-        missing
     end
-push!(rows::Rows, row) = partial_map(column_push!, get_columns(rows), row)
+    nothing
+end
+function push!(rows::Rows, row)
+    partial_map(column_push!, get_columns(rows), row)
+    nothing
+end
 
 val_fieldtypes(something) = ()
 @pure val_fieldtypes(a_type::DataType) =
@@ -107,7 +112,7 @@ end
 widen_column(iterator_size, new_length, an_index, name, ::Missing, ::Missing) =
     name, Array{Missing}(missing, new_length)
 
-widen_column(fixeds, variables) = widen_column(fixeds..., variables...)
+widen_column_clumped(fixeds, variables) = widen_column(fixeds..., variables...)
 
 get_new_length(::SizeUnknown, rows, an_index) = an_index
 get_new_length(::HasLength, rows, an_index) = length(rows)
@@ -119,15 +124,17 @@ column_value((column_name, column), (value_name, value)) =
 
 function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
     named_columns = get_columns(rows)
-    new_length = get_new_length(iterator_size, rows, an_index)
     column_names = map_unrolled(key, named_columns)
     value_names = map_unrolled(key, row)
     just_column_names = diff_unrolled(column_names, value_names)
-    just_value_names = diff_unrolled(value_names, column_names)
     in_both_names = diff_unrolled(column_names, just_column_names)
     Rows(partial_map(
-        widen_column,
-        (iterator_size, get_new_length(iterator_size, rows, an_index), an_index),
+        widen_column_clumped,
+        (
+            iterator_size,
+            get_new_length(iterator_size, rows, an_index),
+            an_index
+        ),
         (
             map_unrolled(lone_column, just_column_names(named_columns))...,
             map_unrolled(
@@ -135,7 +142,10 @@ function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
                 in_both_names(named_columns),
                 in_both_names(row)
             )...,
-            map_unrolled(lone_value, just_value_names(row))...
+            map_unrolled(
+                lone_value,
+                diff_unrolled(value_names, column_names)(row)
+            )...
         )
     ))
 end

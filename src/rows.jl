@@ -67,6 +67,7 @@ function order(unordered, key_function; keywords...)
     sort!(index_keys, by = value; keywords...)
     view(unordered, mappedarray(key, index_keys))
 end
+export order
 
 
 struct Backwards{Increasing}
@@ -98,8 +99,6 @@ show(io::IO, descending::Backwards) =
 isless(descending_1::Backwards, descending_2::Backwards) =
     isless(descending_2.increasing, descending_1.increasing)
 
-export order
-
 struct Indexed{Key, Value, Unindexed, KeyToIndex} <: AbstractDict{Key, Value}
     unindexed::Unindexed
     key_to_index::KeyToIndex
@@ -122,13 +121,9 @@ end
 
 haskey(indexed::Indexed, a_key) = haskey(indexed.key_to_index, a_key)
 
-function iterate(indexed::Indexed)
-    key_index, state = @ifsomething iterate(indexed.key_to_index)
-    (key(key_index) => indexed.unindexed[value(key_index)]), state
-end
-function iterate(indexed::Indexed, state)
-    key_index, state = @ifsomething iterate(indexed.key_to_index, state)
-    (key(key_index) => indexed.unindexed[value(key_index)]), state
+function iterate(indexed::Indexed, state...)
+    key_index, next_state = @ifsomething iterate(indexed.key_to_index, state...)
+    (key(key_index) => indexed.unindexed[value(key_index)]), next_state
 end
 
 IteratorSize(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex} =

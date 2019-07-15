@@ -34,9 +34,7 @@ Peek an iterator which returns named tuples. Will show no more than `maximum_len
 ```jldoctest Peek
 julia> using LightQuery
 
-julia> using Test: @inferred
-
-julia> @name @inferred Peek(to_rows((a = 1:5, b = 5:-1:1)))
+julia> @name Peek(to_rows((a = 1:5, b = 5:-1:1)))
 Showing 4 of 5 rows
 | `a` | `b` |
 | ---:| ---:|
@@ -49,7 +47,7 @@ Showing 4 of 5 rows
 Peek(rows) = Peek(rows, 4)
 
 make_any(values) = Any[values...]
-default_side(column) = :r
+justification(column) = :r
 function show(output::IO, peek::Peek)
     rows = peek.rows
     maximum_length = peek.maximum_length
@@ -63,7 +61,10 @@ function show(output::IO, peek::Peek)
     columns = make_columns(take(rows, maximum_length))
     rows = map(make_any, zip(map(value, columns)...))
     pushfirst!(rows, make_any(map_unrolled(key, columns)))
-    show(output, MD(Table(rows, make_any(map_unrolled(default_side, columns)))))
+    show(output, MD(Table(
+        rows,
+        make_any(map_unrolled(justification, columns))
+    )))
 end
 
 """
