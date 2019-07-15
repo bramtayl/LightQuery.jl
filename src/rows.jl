@@ -1,14 +1,12 @@
-state_to_index(::AbstractArray, state) = value(state)
-state_to_index(::Array, state) = state - 1
-state_to_index(filtered::Filter, state) = state_to_index(filtered.itr, state)
-state_to_index(mapped::Generator, state) = state_to_index(mapped.iter, state)
-state_to_index(zipped::Zip, state) =
-    state_to_index(first(get_columns(zipped)), first(state))
+struct Redirect{Old, IndexToIndex}
+    old::Old
+    index_to_index::IndexToIndex
+end
 
 """
     Enumerate{Unenumerated}
 
-Relies on the fact that iteration states can be converted to indices; thus, you might have to define `LightQuery.state_to_index` for unrecognized types. "Sees through" some iterators like [`when`](@ref).
+"Sees through" most iterators into their `parent`.
 
 ```jldoctest
 julia> using LightQuery
@@ -16,9 +14,9 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 julia> @inferred collect(Enumerate(when([4, 3, 2, 1], iseven)))
-2-element Array{Tuple{Int64,Int64},1}:
- (1, 4)
- (3, 2)
+2-element Array{Tuple{LightQuery.Index{Int64},Int64},1}:
+ (LightQuery.Index{Int64}(1), 4)
+ (LightQuery.Index{Int64}(3), 2)
 ```
 """
 struct Enumerate{Unenumerated}
@@ -26,9 +24,7 @@ struct Enumerate{Unenumerated}
 end
 
 IteratorEltype(::Type{Enumerate{Unenumerated}}) where {Unenumerated} =
-    IteratorEltype(Unenumerated)
-eltype(::Type{Enumerate{Unenumerated}}) where {Unenumerated} =
-    Tuple{Int, eltype(Unenumerated)}
+    EltypeUnknown()
 
 IteratorSize(::Type{Enumerate{Unenumerated}}) where {Unenumerated} =
     IteratorSize(Unenumerated)
@@ -38,26 +34,35 @@ axes(enumerated::Enumerate) = axes(enumerated.unenumerated)
 
 function iterate(enumerated::Enumerate)
     item, state = @ifsomething iterate(enumerated.unenumerated)
-    (state_to_index(enumerated.unenumerated, state), item), state
+    (make_index(enumerated.unenumerated, state), item), state
 end
 function iterate(enumerated::Enumerate, state)
     item, state = @ifsomething iterate(enumerated.unenumerated, state)
-    (state_to_index(enumerated.unenumerated, state), item), state
+    (make_index(enumerated.unenumerated, state), item), state
 end
 export Enumerate
+
+at_index(unordered, (index, key)) = unordered[index]
+
+key_view(unordered, index_keys) = Generator(
+    let unordered = unordered
+        index_key -> at_index(unordered, index_key)
+    end,
+    index_keys
+)
 
 """
     order(unordered, key_function; keywords...)
 
-Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. Relies on [`Enumerate`](@ref). If the results of `key_function` are type unstable, consider using `hash ∘ key_function` instead.
+Generalized sort. `keywords` will be passed to `sort!`; see the documentation there for options. Use [`By`](@ref) to mark that an object has been sorted. If the results of `key_function` are type unstable, consider using `hash ∘ key_function` instead.
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @inferred order([-2, 1], abs)
-2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
+julia> collect(@inferred order([-2, 1], abs))
+2-element Array{Int64,1}:
   1
  -2
 ```
@@ -65,10 +70,9 @@ julia> @inferred order([-2, 1], abs)
 function order(unordered, key_function; keywords...)
     index_keys = collect(Enumerate(over(unordered, key_function)))
     sort!(index_keys, by = value; keywords...)
-    view(unordered, mappedarray(key, index_keys))
+    key_view(unordered, index_keys)
 end
 export order
-
 
 struct Backwards{Increasing}
     increasing::Increasing
@@ -84,10 +88,10 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @inferred order([1, -2], x -> backwards(abs(x)))
-2-element view(::Array{Int64,1}, [2, 1]) with eltype Int64:
- -2
+julia> collect(@inferred order([1, -2], backwards))
+2-element Array{Int64,1}:
   1
+ -2
 ```
 """
 backwards(something) = Backwards(something)
@@ -137,29 +141,32 @@ IteratorEltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIn
 eltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex} =
     Pair{keytype(KeyToIndex), Union{Missing, eltype(Unindexed)}}
 
-key_index(key_function, index, item) = key_function(item) => index
+key_index(key_function, (index, item)) = key_function(item) => index
 
 """
     index(unindexed, key_function)
 
-Index `unindexed` by the results of `key_function`. Relies on [`Enumerate`](@ref). Results of `key_function` must be unique.
+Index `unindexed` by the results of `key_function`. Results of `key_function` must be unique.
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @inferred index([-2, 1], abs)
-LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,Int64}} with 2 entries:
+julia> result = @inferred index([-2, 1], abs)
+LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,LightQuery.Index{Int64}}} with 2 entries:
   2 => -2
   1 => 1
+
+julia> @inferred result[2]
+-2
 ```
 """
 function index(unindexed, key_function)
     key_to_index = collect_similar(
         Dict{Union{}, Union{}}(),
         Generator(let key_function = key_function
-            ((index, item),) -> key_index(key_function, index, item)
+            index_item -> key_index(key_function, index_item)
         end, Enumerate(unindexed))
     )
     Indexed{keytype(key_to_index), eltype(unindexed)}(unindexed, key_to_index)
@@ -195,7 +202,7 @@ end
 """
     Group(ungrouped::By)
 
-Group consecutive keys in `ungrouped`. Requires a presorted object (see [`By`](@ref)). Relies on [`Enumerate`](@ref).
+Group consecutive keys in `ungrouped`. Requires a presorted object (see [`By`](@ref)).
 
 ```jldoctest
 julia> using LightQuery
@@ -217,49 +224,50 @@ Group(sorted::By) = Group(sorted.sorted, sorted.key_function)
 IteratorSize(::Type{<: Group})  = SizeUnknown()
 IteratorEltype(::Type{<: Group}) = EltypeUnknown()
 
-function get_group(group, state, left_index, right_index, last_result, key_result, is_last)
-    (last_result, (@inbounds view(
+function get_group(group, state, old_key_result, old_left_index,
+    right_index = last_index(group.ungrouped),
+    new_left_index = old_left_index,
+    new_key_result = old_key_result,
+    is_last = true
+)
+    (old_key_result, (@inbounds view(
         group.ungrouped,
-        left_index:right_index - 1
-    ))), (state, right_index, key_result, is_last)
+        old_left_index:right_index,
+    ))), (state, new_left_index, new_key_result, is_last)
 end
 
-get_last(group, state, last_result, left_index) =
-    (last_result, (@inbounds view(
-        group.ungrouped,
-        left_index:length(group.ungrouped)
-    ))), (state, left_index, last_result, true)
-
-iterate(group::Group, (state, left_index, last_result, is_last)) =
+iterate(group::Group, (state, old_left_index, old_key_result, is_last)) =
     if is_last
         nothing
     else
         item_state = iterate(group.ungrouped, state)
         if item_state === nothing
-            return get_last(group, state, last_result, left_index)
+            return get_group(group, state, old_key_result, old_left_index)
         end
         item, state = item_state
-        key_result = group.key_function(item)
-        while isequal(key_result, last_result)
+        new_key_result = group.key_function(item)
+        while isequal(new_key_result, old_key_result)
             item_state = iterate(group.ungrouped, state)
             if item_state === nothing
-                return get_last(group, state, last_result, left_index)
+                return get_group(group, state, old_key_result, old_left_index)
             end
             item, state = item_state
-            key_result = group.key_function(item)
+            new_key_result = group.key_function(item)
         end
-        right_index = state_to_index(group.ungrouped, state)
-        (last_result, (@inbounds view(
-            group.ungrouped,
-            left_index:right_index - 1
-        ))), (state, right_index, key_result, false)
+        new_left_index = make_index(group.ungrouped, state)
+        get_group(group, state, old_key_result, old_left_index,
+            previous_index(group.ungrouped, new_left_index),
+            new_left_index,
+            new_key_result,
+            false
+        )
     end
 
 function iterate(group::Group)
     item, state = @ifsomething iterate(group.ungrouped)
     iterate(group, (
         state,
-        state_to_index(group.ungrouped, state),
+        make_index(group.ungrouped, state),
         group.key_function(item),
         false
     ))
@@ -410,58 +418,6 @@ iterate(mixed::Mix, (left_history, right_history, next_left, next_right)) =
     end
 
 """
-    distinct(repeated, key_function = identity)
-
-Generalized version of `unique`.
-
-```jldoctest
-julia> using LightQuery
-
-julia> using Test: @inferred
-
-julia> @inferred distinct([1, 2, missing, missing, 2, 1])
-3-element view(::Array{Union{Missing, Int64},1}, [1, 2, 3]) with eltype Union{Missing, Int64}:
- 1
- 2
-  missing
-```
-"""
-function distinct(repeated, key_function = identity)
-    location_hashes = unique(
-        value,
-        Enumerate(Generator(hash ∘ key_function, repeated))
-    )
-    view(repeated, mappedarray(key, location_hashes))
-end
-
-export distinct
-
-# piracy
-function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
-    foreach(let dictionary = dictionary
-        ((a_key, a_value),) -> dictionary[a_key] = a_value
-    end, dictionary)
-    nothing
-end
-similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
-    Dict{Key, Value}(old)
-
-@propagate_inbounds getindex(mapped::Generator, index...) =
-    mapped.f(mapped.iter[index...])
-@propagate_inbounds view(mapped::Generator, index...) =
-    Generator(mapped.f, view(mapped.iter, index...))
-
-@propagate_inbounds getindex_reverse(index, column) = column[index...]
-@propagate_inbounds getindex(zipped::Zip, index...) =
-    partial_map(getindex_reverse, index, get_columns(zipped))
-@propagate_inbounds view_reverse(index, column) = view(column, index...)
-@propagate_inbounds view(zipped::Zip, index...) =
-    zip(partial_map(view_reverse, index, get_columns(zipped))...)
-
-@propagate_inbounds view(filtered::Filter, index...) =
-    view(filtered.itr, index...)
-
-"""
     mix(::Name{:inner},  left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`.
@@ -520,7 +476,6 @@ julia> @name collect(mix(:left, By(Int[], abs), By([1], abs)))
 ```
 """
 mix(::Name{:left}, left, right) = LeftMix(left, right)
-
 
 """
     mix(::Name{:right}, left::By, right::By)
@@ -588,3 +543,13 @@ julia> @name collect(mix(:outer, By(Int[], abs), By([1], abs)))
 mix(::Name{:outer}, left, right) = OuterMix(left, right)
 
 export mix
+
+# piracy
+function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
+    foreach(let dictionary = dictionary
+        ((a_key, a_value),) -> dictionary[a_key] = a_value
+    end, dictionary)
+    nothing
+end
+similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value} =
+    Dict{Key, Value}(old)

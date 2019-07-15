@@ -115,7 +115,7 @@ widen_column(iterator_size, new_length, an_index, name, ::Missing, ::Missing) =
 widen_column_clumped(fixeds, variables) = widen_column(fixeds..., variables...)
 
 get_new_length(::SizeUnknown, rows, an_index) = an_index
-get_new_length(::HasLength, rows, an_index) = length(rows)
+get_new_length(::HasLength, rows, an_index) = length(LinearIndices(rows))
 
 lone_column((name, column)) = name, column, missing
 lone_value((name, value)) = name, missing, value
@@ -157,7 +157,7 @@ setindex_widen_up_to(rows::Rows, row, an_index) =
 """
     make_columns(rows)
 
-Collect into columns. Always eager, see [`to_columns`](@ref) for a lazy version.
+Collect into columns.
 
 ```jldoctest make_columns
 julia> using LightQuery

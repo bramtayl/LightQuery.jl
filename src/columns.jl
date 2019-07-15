@@ -171,7 +171,7 @@ named_tuple(data) = to_Names(propertynames(data))(data)
 export named_tuple
 
 @inline haskey(data::Some{Named}, name::Name) =
-    is_empty(if_not_in(map_unrolled(key, data), name))
+    is_empty(if_not_in(name, map_unrolled(key, data)...))
 @inline haskey(data, ::Name{name}) where {name} = hasproperty(data, name)
 @inline haskey(data::Dict, ::Name{name}) where {name} = hasproperty(data, name)
 
@@ -317,11 +317,10 @@ end
 
 @pure InRow(name, type, position) = InRow{name, type, position}()
 
-(a_column::InRow{name, type, position})(data::Row) where {name, type, position} =
-    getcell(getfile(data), type, position, getrow(data))::type
-
-get_pair(data::Row, column::InRow{name}) where {name} =
-    name, column(data)
+(::InRow{name, type, position})(row::Row) where {name, type, position} =
+    getcell(getfile(row), type, position, getrow(row))::type
+get_pair(row::Row, column::InRow{name}) where {name} =
+    name, column(row)
 (columns::Some{InRow})(data) = partial_map(get_pair, data, columns)
 
 @inline InRow_at(::Schema{Names, Types}, index) where {Names, Types} =
@@ -361,7 +360,7 @@ julia> @inferred template(first(test))
 """
 row_info(a_schema::Schema{Names}) where Names =
     ntuple(let a_schema = a_schema
-        @inline InnRow_at_capture(index) = InRow_at(a_schema, index)
+        @inline InRow_at_capture(index) = InRow_at(a_schema, index)
     end, Val{length(Names)}())
 
 export row_info

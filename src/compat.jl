@@ -3,15 +3,14 @@
     get_columns(zipped::Zip) = zipped.a, get_columns(zipped.z)...
     get_columns(zipped::Zip2) = zipped.a, zipped.b
 
+    parent(zipped::Zip2) = zipped.a
+
     @inline getindex(zipped::Zip2, index...) =
         partial_map(getindex_reverse, index, get_columns(zipped))
     @inline view(zipped::Zip2, index...) =
         zip(partial_map(view_reverse, index, get_columns(zipped))...)
     state_to_index(zipped::Zip2, state) =
         state_to_index(first(get_columns(zipped)), first(state))
-
-    to_columns(rows::Generator{<: Zip2, <: Apply}) =
-        rows.f(get_columns(rows.iter))
 
     # backport #30076 just for Rows
     function collect_to!(destination::Rows{Item}, iterator, offset, state) where Item

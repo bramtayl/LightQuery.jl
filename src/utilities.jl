@@ -36,16 +36,17 @@ filter_unrolled(call, item, rest...) =
         rest
     end
 
-if_not_in(::Tuple{}, it) = (it,)
-if_not_in(them, it) =
-    if first(them) === it
+if_not_in(it) = (it,)
+if_not_in(it, item, rest...) =
+    if item === it
         ()
     else
-        if_not_in(tail(them), it)
+        if_not_in(it, rest...)
     end
+if_not_in_clump(them, it) = if_not_in(it, them...)
 
 diff_unrolled(more, less) =
-    flatten_unrolled(partial_map(if_not_in, less, more)...)
+    flatten_unrolled(partial_map(if_not_in_clump, less, more)...)
 
 """
     over(iterator, call)
