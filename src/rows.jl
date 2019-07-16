@@ -1,8 +1,3 @@
-struct Redirect{Old, IndexToIndex}
-    old::Old
-    index_to_index::IndexToIndex
-end
-
 """
     Enumerate{Unenumerated}
 
@@ -25,7 +20,6 @@ end
 
 IteratorEltype(::Type{Enumerate{Unenumerated}}) where {Unenumerated} =
     EltypeUnknown()
-
 IteratorSize(::Type{Enumerate{Unenumerated}}) where {Unenumerated} =
     IteratorSize(Unenumerated)
 length(enumerated::Enumerate) = length(enumerated.unenumerated)
@@ -43,7 +37,6 @@ end
 export Enumerate
 
 at_index(unordered, (index, key)) = unordered[index]
-
 key_view(unordered, index_keys) = Generator(
     let unordered = unordered
         index_key -> at_index(unordered, index_key)
