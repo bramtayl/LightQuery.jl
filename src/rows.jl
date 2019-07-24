@@ -132,7 +132,7 @@ axes(indexed::Indexed) = axes(indexed.key_to_index)
 IteratorEltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex} =
     combine_iterator_eltype(IteratorEltype(Unindexed), IteratorEltype(KeyToIndex))
 eltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex} =
-    Pair{keytype(KeyToIndex), Union{Missing, eltype(Unindexed)}}
+    Pair{keytype(KeyToIndex), eltype(Unindexed)}
 
 key_index(key_function, (index, item)) = key_function(item) => index
 
