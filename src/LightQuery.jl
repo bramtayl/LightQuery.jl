@@ -3,8 +3,8 @@ module LightQuery
 import Base: ==, !=, !, &, |, :, axes, coalesce, collect_similar, collect_to!,
     copyto!, eltype, empty, first, get, getindex, getproperty, grow_to!, haskey,
     isequal, in, IndexStyle, IteratorEltype, IteratorSize, isless, ismissing,
-    length, iterate, merge, NamedTuple, occursin, parent, push!, setindex!,
-    size, show, similar, startswith, view, zip
+    length, iterate, merge, NamedTuple, ndims, occursin, parent, push!,
+    setindex!, size, show, similar, startswith, view, zip
 @static if VERSION >= v"1.1"
     import Base: push_widen, setindex_widen_up_to
 end

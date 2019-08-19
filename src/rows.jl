@@ -36,13 +36,39 @@ function iterate(enumerated::Enumerate, state)
 end
 export Enumerate
 
-at_index(unordered, (index, key)) = unordered[index]
-key_view(unordered, index_keys) = Generator(
-    let unordered = unordered
-        index_key -> at_index(unordered, index_key)
-    end,
-    index_keys
-)
+struct OrderView{Unordered, IndexKeys}
+    unordered::Unordered
+    index_keys::IndexKeys
+end
+
+parent(order_view::OrderView) = order_view.index_keys
+
+IteratorEltype(::Type{OrderView{Unordered, IndexKeys}}) where {Unordered, IndexKeys} =
+    IteratorEltype(Unordered)
+eltype(::Type{OrderView{Unordered, IndexKeys}}) where  {Unordered, IndexKeys} =
+    eltype(Unordered)
+
+IteratorSize(::Type{OrderView{Unordered, IndexKeys}}) where {Unordered, IndexKeys} =
+    IteratorSize(IndexKeys)
+axes(order_view::OrderView, dimensions...) =
+    axes(order_view.index_keys, dimensions...)
+size(order_view::OrderView, dimensions...) =
+    size(order_view.index_keys, dimensions...)
+length(order_view::OrderView) = length(order_view.index_keys)
+ndims(order_view::OrderView) = ndims(order_view.index_keys)
+
+@propagate_inbounds function getindex(order_view::OrderView, index::Int...)
+    order_view.unordered[key(order_view.index_keys[index...])]
+end
+
+@propagate_inbounds function view(order_view::OrderView, indices...)
+    OrderView(order_view.unordered, view(order_view.index_keys, indices...))
+end
+
+function iterate(order_view::OrderView, state...)
+    index_key, state = @ifsomething iterate(order_view.index_keys, state...)
+    order_view.unordered[key(index_key)], state
+end
 
 """
     order(unordered, key_function; keywords...)
@@ -63,7 +89,7 @@ julia> collect(@inferred order([-2, 1], abs))
 function order(unordered, key_function; keywords...)
     index_keys = collect(Enumerate(over(unordered, key_function)))
     sort!(index_keys, by = value; keywords...)
-    key_view(unordered, index_keys)
+    OrderView(unordered, index_keys)
 end
 export order
 
@@ -195,7 +221,7 @@ end
 """
     Group(ungrouped::By)
 
-Group consecutive keys in `ungrouped`. Requires a presorted object (see [`By`](@ref)).
+Group consecutive keys in `ungrouped`.
 
 ```jldoctest
 julia> using LightQuery
@@ -210,6 +236,28 @@ julia> @inferred collect(Group(By([1, -1, -2, 2, 3, -3], abs)))
 
 julia> @inferred collect(Group(By(Int[], abs)))
 0-element Array{Tuple{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}
+```
+
+Requires a presorted object (see [`By`](@ref)); [`order`](@ref) first if not.
+
+```jldoctest
+julia> using LightQuery
+
+julia> using Test: @inferred
+
+julia> first_group =
+        @> [2, 1, 2, 1] |>
+        order(_, identity) |>
+        Group(By(_, identity)) |>
+        first;
+
+julia> key(first_group)
+1
+
+julia> collect(value(first_group))
+2-element Array{Int64,1}:
+ 1
+ 1
 ```
 """
 Group(sorted::By) = Group(sorted.sorted, sorted.key_function)

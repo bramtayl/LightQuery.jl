@@ -15,7 +15,8 @@ write.csv(flights, "flights.csv", na = "", row.names = FALSE)
 write.csv(weathers, "weather.csv", na = "", row.names = FALSE)
 ```
 
-Import tools from `Dates`, `TimeZones`, and `Unitful`.
+Import tools from `Dates`, `TimeZones`, and `Unitful` and change the working
+directory.
 
 ```jldoctest dplyr
 julia> using LightQuery
@@ -25,6 +26,8 @@ julia> using Dates: Date, DateTime, Hour
 julia> using TimeZones: Class, Local, TimeZone, VariableTimeZone, ZonedDateTime
 
 julia> using Unitful: °, °F, ft, hr, inch, mbar, mi, minute
+
+julia> cd(dirname(@__DIR__));
 ```
 
 ## Airports cleaning
@@ -152,10 +155,10 @@ julia> first(airports)
 ((`name`, "Lansdowne Airport"), (`airport_code`, "04G"), (`altitude`, 1044 ft), (`latitude`, 41.1304722°), (`longitude`, -80.6195833°), (`time_zone`, tz"America/New_York"))
 ```
 
-Call [`make_columns`](@ref) then [`to_rows`](@ref) to store the data column-wise but view it row-wise. [`Peek`](@ref) to view.
+Call [`make_columns`](@ref) then [`Rows`](@ref) to store the data column-wise but view it row-wise. [`Peek`](@ref) to view.
 
 ```jldoctest dplyr
-julia> airports = to_rows(make_columns(airports));
+julia> airports = Rows(make_columns(airports));
 
 julia> Peek(airports)
 Showing 4 of 1458 rows
@@ -360,7 +363,7 @@ julia> flights =
 julia> flights =
         flights |>
         make_columns |>
-        to_rows;
+        Rows;
 
 julia> Peek(flights)
 Showing 4 of 336776 rows
@@ -408,7 +411,7 @@ julia> paths =
         @> paths_grouped |>
         over(_, key) |>
         make_columns |>
-        to_rows;
+        Rows;
 
 julia> Peek(paths)
 Showing 4 of 226 rows
@@ -638,7 +641,7 @@ julia> data =
         over(_, interested_in) |>
         flatten |>
         make_columns |>
-        to_rows;
+        Rows;
 
 julia> Peek(data)
 Showing 4 of 326993 rows
@@ -675,14 +678,15 @@ Showing 4 of 87 rows
 |       0.0 mi |         -7 minute |
 ```
 
-Calculate the mean `departure_delay`.
+Calculate the mean `departure_delay` using [`to_columns`](@ref).
 
 ```jldoctest dplyr
 julia> using Statistics: mean
 
 julia> @name @> visibility_group |>
         value |>
-        over(_, :departure_delay) |>
+        to_columns |>
+        _.departure_delay |>
         mean
 32.252873563218394 minute
 ```
@@ -694,9 +698,10 @@ julia> get_mean_departure_delay(visibility_group) = @name (
             visibility = key(visibility_group),
             mean_departure_delay =
                 (@> visibility_group |>
-                value |>
-                over(_, :departure_delay) |>
-                mean),
+                    value |>
+                    to_columns |>
+                    _.departure_delay |>
+                    mean),
             count = length(value(visibility_group))
         );
 
@@ -836,7 +841,7 @@ julia> climate_data =
         over(_, get_month_variable) |>
         flatten |>
         make_columns |>
-        to_rows;
+        Rows;
 
 julia> Peek(climate_data)
 Showing 4 of 1231 rows

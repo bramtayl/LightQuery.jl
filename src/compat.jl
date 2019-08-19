@@ -5,6 +5,9 @@
     head(zipped::Zip) = zipped.a
     tail_or_end(zipped::Zip) = zipped.z
 
+    get_columns(zipped::Zip2) = zipped.a, zipped.b
+    get_columns(zipped::Zip) = zipped.a, get_columns(zipped.b)...
+
     make_index(zipped::Union{Zip2, Zip}, (head_state, tail_state)) =
         Index((
             make_index(head(zipped), head_state),
