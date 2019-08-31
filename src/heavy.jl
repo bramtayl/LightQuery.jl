@@ -49,28 +49,39 @@ function order_columns(columns, a_function)
 end
 export order_columns
 
-function one_to_many(one_row, many_rows)
+function merge_left(left_row, right_row, both_names)
+    remove(left_row, both_names...)...,
+    both_names(left_row)...,
+    remove(right_row, both_names...)...
+end
+function merge_right(left_row, right_row, both_names)
+    remove(left_row, both_names...)...,
+    both_names(right_row)...,
+    remove(right_row, both_names...)...
+end
+
+function over_merge_left(one_row, many_rows, both_names)
     over(many_rows,
-        let one_row = one_row
+        let one_row = one_row, both_names = both_names
             function merge_capture(many_row)
-                merge(one_row, many_row)
+                merge_left(one_row, many_row, both_names)
             end
         end
     )
 end
 
-function many_to_one(one_row, many_rows)
+function over_merge_right(one_row, many_rows, both_names)
     over(many_rows,
         let one_row = one_row
             function merge_capture(many_row)
-                merge(many_row, one_row)
+                merge_right(one_row, many_row, both_names)
             end
         end
     )
 end
 
-function inner_join_pair((one_row, (key2, many_rows)))
-    one_to_many(one_row, many_rows)
+function inner_join_pair((one_row, (key2, many_rows)), both_names)
+    over_merge_left(one_row, many_rows, both_names)
 end
 
 """
@@ -90,22 +101,38 @@ function inner_join(one_columns, many_columns)
     one_names = map_unrolled(key, one_columns)
     many_names = map_unrolled(key, many_columns)
     both_names = diff_unrolled(one_names, diff_unrolled(one_names, many_names))
-    make_columns(flatten(over(mix((Name{:inner}()),
-        By(Rows(one_columns), both_names),
-        By(Group(By(Rows(many_columns), both_names)), first)
-    ), inner_join_pair)))
+    make_columns(flatten(over(
+        mix((Name{:inner}()),
+            By(Rows(one_columns), both_names),
+            By(Group(By(Rows(many_columns), both_names)), first)
+        ),
+        let both_names = both_names
+            function inner_join_pair_capture(nested)
+                inner_join_pair(nested, both_names)
+            end
+        end
+    )))
 end
 export inner_join
 
-function left_join_pair((one_row, (key2, many_rows)), dummy_many_rows)
-    many_to_one(one_row, many_rows)
+function left_join_pair((one_row, (key2, many_rows)), dummy_many_rows, both_names)
+    over_merge_left(one_row, many_rows, both_names)
 end
 
-function left_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_many_rows)
-    many_to_one(one_row, dummy_many_rows)
+function left_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_many_rows, both_names)
+    over_merge_left(one_row, dummy_many_rows, both_names)
 end
 
-make_dummy((name, value)) = (name, missing)
+dummy_many_column((name, column)) =
+    name, push!(similar(column, Missing, 0), missing)
+
+function make_dummy_many_rows(many_columns, both_names)
+    (a_key, rows) = first(Group(By(
+        Rows(map_unrolled(dummy_many_column, many_columns)),
+        both_names
+    )))
+    rows
+end
 
 """
     left_join(one_columns, many_columns)
@@ -117,34 +144,41 @@ columns. One-to-many.
 julia> using LightQuery
 
 julia> @name left_join((a = [1, 2], b = [1, 2]), (a = [1, 1, 3], c = [1, 1, 3]))
-((`c`, Union{Missing, Int64}[1, 1, missing]), (`a`, [1, 1, 2]), (`b`, [1, 1, 2]))
+((`b`, [1, 1, 2]), (`a`, [1, 1, 2]), (`c`, Union{Missing, Int64}[1, 1, missing]))
 ```
 """
 function left_join(one_columns, many_columns)
     one_names = map_unrolled(key, one_columns)
     many_names = map_unrolled(key, many_columns)
     both_names = diff_unrolled(one_names, diff_unrolled(one_names, many_names))
+    (dummy_key, dummy_many_rows) =
+        first(Group(By(
+            Rows(map_unrolled(dummy_many_column, many_columns)),
+            both_names
+        )))
     make_columns(flatten(over(
         mix(Name{:left}(),
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
-        let dummy_many_rows = (map_unrolled(make_dummy, many_columns),)
+        let dummy_many_rows = make_dummy_many_rows(many_columns, both_names)
             function left_join_pair_capture(nested)
-                left_join_pair(nested, dummy_many_rows)
+                left_join_pair(nested, dummy_many_rows, both_names)
             end
         end
     )))
 end
 export left_join
 
-function right_join_pair((one_row, (key2, many_rows)), dummy_one_row)
-    one_to_many(one_row, many_rows)
+function right_join_pair((one_row, (key2, many_rows)), dummy_one_row, both_names)
+    over_merge_right(one_row, many_rows, both_names)
 end
 
-function right_join_pair((zilch, (key2, many_rows))::Tuple{Missing, Any}, dummy_one_row)
-    one_to_many(dummy_one_row, many_rows)
+function right_join_pair((zilch, (key2, many_rows))::Tuple{Missing, Any}, dummy_one_row, both_names)
+    over_merge_right(dummy_one_row, many_rows, both_names)
 end
+
+make_dummy_one_column((name, value)) = (name, missing)
 
 """
     right_join(one_columns, many_columns)
@@ -168,29 +202,29 @@ function right_join(one_columns, many_columns)
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
-        let dummy_one_row = map_unrolled(make_dummy, one_columns)
+        let dummy_one_row = map_unrolled(make_dummy_one_column, one_columns)
             function right_join_pair_capture(nested)
-                right_join_pair(nested, dummy_one_row)
+                right_join_pair(nested, dummy_one_row, both_names)
             end
         end
     )))
 end
 export right_join
 
-function outer_join_pair((one_row, (key2, many_rows)), dummy_one_row, dummy_many_rows)
-    one_to_many(one_row, many_rows)
+function outer_join_pair((one_row, (key2, many_rows)), dummy_one_row, dummy_many_rows, both_names)
+    over_merge_left(one_row, many_rows, both_names)
 end
 
-function outer_join_pair((zilch, (key2, many_rows))::Tuple{Missing, Any}, dummy_one_row, dummy_many_rows)
-    one_to_many(dummy_one_row, many_rows)
+function outer_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_one_row, dummy_many_rows, both_names)
+    over_merge_left(one_row, dummy_many_rows, both_names)
 end
 
-function outer_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_one_row, dummy_many_rows)
-    many_to_one(one_row, dummy_many_rows)
+function outer_join_pair((zilch, (key2, many_rows))::Tuple{Missing, Any}, dummy_one_row, dummy_many_rows, both_names)
+    over_merge_right(dummy_one_row, many_rows, both_names)
 end
 
-function outer_join((zilch, zilch)::Tuple{Missing, Missing}, dummy_one_row, dummy_many_rows)
-    one_to_many(dummy_one_row, dummy_many_rows)
+function outer_join_pair((zilch, zilch)::Tuple{Missing, Missing}, dummy_one_row, dummy_many_rows, both_names)
+    over_merge_left(dummy_one_row, dummy_many_rows, both_names)
 end
 
 """
@@ -204,21 +238,25 @@ julia> using LightQuery
 
 julia> @name outer_join((a = [1, 2], b = [1, 2]), (a = [1, 1, 3], c = [1, 1, 3]))
 ((`b`, Union{Missing, Int64}[1, 1, 2, missing]), (`a`, [1, 1, 2, 3]), (`c`, Union{Missing, Int64}[1, 1, missing, 3]))
-```
 """
 function outer_join(one_columns, many_columns)
     one_names = map_unrolled(key, one_columns)
     many_names = map_unrolled(key, many_columns)
     both_names = diff_unrolled(one_names, diff_unrolled(one_names, many_names))
+    (dummy_key, dummy_many_rows) =
+        first(Group(By(
+            Rows(map_unrolled(dummy_many_column, many_columns)),
+            both_names
+        )))
     make_columns(flatten(over(
         mix(Name{:outer}(),
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
-        let dummy_one_row = map_unrolled(make_dummy, one_columns),
-            dummy_many_rows = (map_unrolled(make_dummy, many_columns),)
+        let dummy_one_row = map_unrolled(make_dummy_one_column, one_columns),
+            dummy_many_rows = make_dummy_many_rows(many_columns, both_names)
             function outer_join_pair_capture(nested)
-                outer_join_pair(nested, dummy_one_row, dummy_many_rows)
+                outer_join_pair(nested, dummy_one_row, dummy_many_rows, both_names)
             end
         end
     )))
