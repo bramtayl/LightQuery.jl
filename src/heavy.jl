@@ -97,12 +97,12 @@ function inner_join(one_columns, many_columns)
 end
 export inner_join
 
-function left_join_pair((one_row, (key2, many_rows)), dummy_many_row)
+function left_join_pair((one_row, (key2, many_rows)), dummy_many_rows)
     many_to_one(one_row, many_rows)
 end
 
-function left_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_many_row)
-    (merge(dummy_many_row, one_row),)
+function left_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_many_rows)
+    many_to_one(one_row, dummy_many_rows)
 end
 
 make_dummy((name, value)) = (name, missing)
@@ -129,9 +129,9 @@ function left_join(one_columns, many_columns)
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
-        let dummy_many_row = map_unrolled(make_dummy, many_columns)
+        let dummy_many_rows = (map_unrolled(make_dummy, many_columns),)
             function left_join_pair_capture(nested)
-                left_join_pair(nested, dummy_many_row)
+                left_join_pair(nested, dummy_many_rows)
             end
         end
     )))
@@ -177,20 +177,20 @@ function right_join(one_columns, many_columns)
 end
 export right_join
 
-function outer_join_pair((one_row, (key2, many_rows)), dummy_one_row, dummy_many_row)
+function outer_join_pair((one_row, (key2, many_rows)), dummy_one_row, dummy_many_rows)
     one_to_many(one_row, many_rows)
 end
 
-function outer_join_pair((zilch, (key2, many_rows))::Tuple{Missing, Any}, dummy_one_row, dummy_many_row)
+function outer_join_pair((zilch, (key2, many_rows))::Tuple{Missing, Any}, dummy_one_row, dummy_many_rows)
     one_to_many(dummy_one_row, many_rows)
 end
 
-function outer_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_one_row, dummy_many_row)
-    (merge(dummy_many_row, one_row),)
+function outer_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_one_row, dummy_many_rows)
+    many_to_one(one_row, dummy_many_rows)
 end
 
-function outer_join((zilch, zilch)::Tuple{Missing, Missing}, dummy_one_row, dummy_many_row)
-    (merge(dummy_many_row, dummy_one_row),)
+function outer_join((zilch, zilch)::Tuple{Missing, Missing}, dummy_one_row, dummy_many_rows)
+    one_to_many(dummy_one_row, dummy_many_rows)
 end
 
 """
@@ -216,9 +216,9 @@ function outer_join(one_columns, many_columns)
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
         let dummy_one_row = map_unrolled(make_dummy, one_columns),
-            dummy_many_row = map_unrolled(make_dummy, many_columns)
+            dummy_many_rows = (map_unrolled(make_dummy, many_columns),)
             function outer_join_pair_capture(nested)
-                outer_join_pair(nested, dummy_one_row, dummy_many_row)
+                outer_join_pair(nested, dummy_one_row, dummy_many_rows)
             end
         end
     )))
