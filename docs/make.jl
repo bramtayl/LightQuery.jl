@@ -1,4 +1,4 @@
-import LightQUery
+import LightQuery
 import Documenter: makedocs, deploydocs
 
 makedocs(sitename = "LightQuery.jl", modules = [LightQuery])

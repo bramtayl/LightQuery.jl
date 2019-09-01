@@ -4,10 +4,12 @@ os:
 julia:
   - 1.0
   - 1.1
+  - 1.2
   - nightly
 matrix:
   allow_failures:
     - julia: 1.0
+    - julia: 1.2
     - julia: nightly
 notifications:
   email: false
@@ -15,10 +17,8 @@ script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia --project --code-coverage=tracefile-%p.info --code-coverage=user --eval 'using Pkg; Pkg.build(); Pkg.test(; coverage=true)';
 after_success:
-  - if [[ $TRAVIS_JULIA_VERSION = 1.1 ]] && [[ $TRAVIS_OS_NAME = linux ]]; then
-      julia --project=coverage/ -e 'using Pkg; Pkg.instantiate();
-          using Coverage; Codecov.submit(Codecov.process_folder())';
-    fi
+  - julia -e 'using Pkg; Pkg.add("Coverage"); import Codecov: sumbit, process_folder;
+              submit(process_folder())'
 jobs:
   include:
     - stage: "Documentation"
