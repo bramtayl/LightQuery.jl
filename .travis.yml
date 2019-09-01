@@ -17,8 +17,7 @@ script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia --project --code-coverage=tracefile-%p.info --code-coverage=user --eval 'using Pkg; Pkg.build(); Pkg.test(; coverage=true)';
 after_success:
-  - julia -e 'using Pkg; Pkg.add("Coverage"); import Codecov: sumbit, process_folder;
-              submit(process_folder())'
+  - julia -e 'using Pkg; Pkg.add("Coverage"); import Codecov; Codecov.submit(Codecov.process_folder())'
 jobs:
   include:
     - stage: "Documentation"
