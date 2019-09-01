@@ -17,10 +17,12 @@ julia> @name @inferred collect(to_rows((a = [1, 2], b = [1.0, 2.0])))
  ((`a`, 2), (`b`, 2.0))
 ```
 """
-to_rows(columns) = over(
-    zip(map_unrolled(value, columns)...),
-    Apply(map_unrolled(key, columns))
-)
+function to_rows(columns)
+    over(
+        zip(map_unrolled(value, columns)...),
+        Apply(map_unrolled(key, columns))
+    )
+end
 export to_rows
 
 struct Peek{Rows}
@@ -47,10 +49,16 @@ Showing 4 of 5 rows
 |   4 |   2 |
 ```
 """
-Peek(rows) = Peek(rows, 4)
+function Peek(rows)
+    Peek(rows, 4)
+end
 
-make_any(values) = Any[values...]
-justification(column) = :r
+function make_any(values)
+    Any[values...]
+end
+function justification(column)
+    :r
+end
 function show(output::IO, peek::Peek)
     rows = peek.rows
     maximum_length = peek.maximum_length
@@ -97,9 +105,13 @@ julia> result =
  1.0
  2.0
 """
-to_columns(rows::Generator) = rows.f(get_columns(parent(rows)))
+function to_columns(rows::Generator)
+    rows.f(get_columns(parent(rows)))
+end
 
-OrderView_backwards(index_key, unordered) = OrderView(unordered, index_key)
+function OrderView_backwards(index_key, unordered)
+    OrderView(unordered, index_key)
+end
 
 # OrderView(Rows) => Rows(OrderView)
 function to_columns(order_view::OrderView{Iterator}) where {Iterator <: Rows}

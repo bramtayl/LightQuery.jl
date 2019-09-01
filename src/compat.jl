@@ -1,18 +1,31 @@
 @static if VERSION < v"1.1"
 
-    head(zipped::Zip2) = zipped.a
-    tail_or_end(zipped::Zip2) = zipped.a
-    head(zipped::Zip) = zipped.a
-    tail_or_end(zipped::Zip) = zipped.z
+    function head(zipped::Zip2)
+        zipped.a
+    end
+    function tail_or_end(zipped::Zip2)
+        zipped.a
+    end
+    function head(zipped::Zip)
+        zipped.a
+    end
+    function tail_or_end(zipped::Zip)
+        zipped.z
+    end
 
-    get_columns(zipped::Zip2) = zipped.a, zipped.b
-    get_columns(zipped::Zip) = zipped.a, get_columns(zipped.b)...
+    function get_columns(zipped::Zip2)
+        zipped.a, zipped.b
+    end
+    function get_columns(zipped::Zip)
+        zipped.a, get_columns(zipped.b)...
+    end
 
-    make_index(zipped::Union{Zip2, Zip}, (head_state, tail_state)) =
+    function make_index(zipped::Union{Zip2, Zip}, (head_state, tail_state))
         Index((
             make_index(head(zipped), head_state),
             make_index(tail_or_end(zipped), tail_state)
         ))
+    end
 
     function previous_index(zipped::Union{Zip2, Zip}, index::Index)
         head_state, tail_state = index.inner
@@ -21,10 +34,9 @@
             previous_index(tail_or_end(zipped), tail_state)
         ))
     end
-    last_index(zipped::Union{Zip2, Zip}) = Index((
-        last_index(head(zipped)),
-        last_index(tail_or_end(zipped))
-    ))
+    function last_index(zipped::Union{Zip2, Zip})
+        Index((last_index(head(zipped)), last_index(tail_or_end(zipped))))
+    end
     @propagate_inbounds function getindex(zipped::Zip2, index::Index)
         head_state, tail_state = index.inner
         getindex(zipped.a, head_state), getindex(zipped.b, tail_state)
@@ -108,23 +120,30 @@
         new
     end
 else
-    get_columns(zipped::Zip) = zipped.is
-    make_index(zipped::Zip, states) =
+    function get_columns(zipped::Zip)
+        zipped.is
+    end
+    function make_index(zipped::Zip, states)
         Index(map_unrolled(make_index, get_columns(zipped), states))
-    previous_index(zipped::Zip, index::Index) =
+    end
+    function previous_index(zipped::Zip, index::Index)
         Index(map_unrolled(previous_index, get_columns(zipped), index.inner))
-    last_index(zipped::Zip) =
+    end
+    function last_index(zipped::Zip)
         Index(map_unrolled(last_index, get_columns(zipped)))
-    @propagate_inbounds getindex(zipped::Zip, index::Index) =
+    end
+    @propagate_inbounds function getindex(zipped::Zip, index::Index)
         map_unrolled(
             getindex,
             get_columns(zipped),
             index.inner
         )
-    @propagate_inbounds view(zipped::Zip, indexes::IndexRange) =
+    end
+    @propagate_inbounds function view(zipped::Zip, indexes::IndexRange)
         zip(map_unrolled(
             view,
             get_columns(zipped),
             map_unrolled(:, indexes.start, indexes.stop)
         )...)
+    end
 end

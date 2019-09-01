@@ -13,7 +13,9 @@ julia> Name(:a)
 `a`
 ```
 """
-@pure Name(name) = Name{name}()
+@pure function Name(name)
+    Name{name}()
+end
 export Name
 
 """
@@ -30,43 +32,71 @@ julia> @inferred unname(Name(:a))
 :a
 ```
 """
-@inline unname(::Name{name}) where name = name
+@inline function unname(::Name{name}) where {name}
+    name
+end
 export unname
 
-show(output::IO, ::Name{name}) where {name} = print(output, '`', name, '`')
+function show(output::IO, ::Name{name}) where {name}
+    print(output, '`', name, '`')
+end
 
 const Named{name} = Tuple{Name{name}, Any}
 
-recursive_get(initial, name) = throw(BoundsError(initial, (name,)))
-recursive_get(initial, name, (check_name, value), rest...) =
+function recursive_get(initial, name)
+    throw(BoundsError(initial, (name,)))
+end
+function recursive_get(initial, name, (check_name, value), rest...)
     if name === check_name
         value
     else
         recursive_get(initial, name, rest...)
     end
+end
 
-(::Name{name})(object) where {name} = getproperty(object, name)
-(name::Name)(data::Some{Named}) = recursive_get(data, name, data...)
+function (::Name{name})(object) where {name}
+    getproperty(object, name)
+end
+function (name::Name)(data::Some{Named})
+    recursive_get(data, name, data...)
+end
 
-get_pair(data, name) = name, name(data)
+function get_pair(data, name)
+    name, name(data)
+end
 
-(some_names::Some{Name})(data) = partial_map(get_pair, data, some_names)
-(::Tuple{})(::Some{Named}) = ()
+function (some_names::Some{Name})(data)
+    partial_map(get_pair, data, some_names)
+end
+function (::Tuple{})(::Some{Named})
+    ()
+end
 
-@inline isless(::Name{name1}, ::Name{name2}) where {name1, name2} =
+@inline function isless(::Name{name1}, ::Name{name2}) where {name1, name2}
     isless(name1, name2)
+end
 
 # to override recusion limit on constant propagation
-@pure to_Names(some_names::Some{Symbol}) = map_unrolled(Name, some_names)
-to_Names(them) = map_unrolled(Name, Tuple(them))
+@pure function to_Names(some_names::Some{Symbol})
+    map_unrolled(Name, some_names)
+end
+function to_Names(them)
+    map_unrolled(Name, Tuple(them))
+end
 
-NamedTuple(data::Some{Named}) = NamedTuple{map_unrolled(unname ∘ key, data)}(
-    map_unrolled(value, data)
-)
+function NamedTuple(data::Some{Named})
+    NamedTuple{map_unrolled(unname ∘ key, data)}(
+        map_unrolled(value, data)
+    )
+end
 
-code_with_names(other) = other
-code_with_names(symbol::QuoteNode) = Name{symbol.value}()
-code_with_names(code::Expr) =
+function code_with_names(other)
+    other
+end
+function code_with_names(symbol::QuoteNode)
+    Name{symbol.value}()
+end
+function code_with_names(code::Expr)
     if @capture code data_.name_
         Expr(:call, Name{name}(), code_with_names(data))
     elseif @capture code name_Symbol = value_
@@ -74,6 +104,7 @@ code_with_names(code::Expr) =
     else
         Expr(code.head, map(code_with_names, code.args)...)
     end
+end
 
 """
     macro name(code)
@@ -167,13 +198,20 @@ julia> @inferred named_tuple(MyType(1, 1.0, 1, 1.0, 1, 1.0))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-named_tuple(data) = to_Names(propertynames(data))(data)
+function named_tuple(data)
+    to_Names(propertynames(data))(data)
+end
 export named_tuple
 
-@inline haskey(data::Some{Named}, name::Name) =
+@inline function haskey(data::Some{Named}, name::Name)
     is_empty(if_not_in(name, map_unrolled(key, data)...))
-@inline haskey(data, ::Name{name}) where {name} = hasproperty(data, name)
-@inline haskey(data::Dict, ::Name{name}) where {name} = hasproperty(data, name)
+end
+@inline function haskey(data, ::Name{name}) where {name}
+    hasproperty(data, name)
+end
+@inline function haskey(data::Dict, ::Name{name}) where {name}
+    hasproperty(data, name)
+end
 
 """
     remove(data, old_names...)
@@ -192,8 +230,9 @@ julia> @name @inferred remove(data, :c, :f)
 ((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1))
 ```
 """
-remove(data, old_names...) =
+function remove(data, old_names...)
     diff_unrolled(map_unrolled(key, data), old_names)(data)
+end
 
 export remove
 
@@ -214,14 +253,21 @@ julia> @name @inferred transform(data, c = 2.0, f = 2, g = 1, h = 1.0)
 ((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1), (`c`, 2.0), (`f`, 2), (`g`, 1), (`h`, 1.0))
 ```
 """
-transform(data, assignments...) =
+function transform(data, assignments...)
     remove(data, map_unrolled(key, assignments)...)..., assignments...
+end
 export transform
 
-merge_2(data1, data2) = transform(data1, data2...)
-merge(datas::Some{Named}...) = reduce_unrolled(merge_2, datas...)
+function merge_2(data1, data2)
+    transform(data1, data2...)
+end
+function merge(datas::Some{Named}...)
+    reduce_unrolled(merge_2, datas...)
+end
 
-rename_one(data, (new_name, old_name)) = new_name, old_name(data)
+function rename_one(data, (new_name, old_name))
+    new_name, old_name(data)
+end
 """
     rename(data, new_name_old_names...)
 
@@ -239,9 +285,10 @@ julia> @name @inferred rename(data, c2 = :c, f2 = :f)
 ((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1), (`c2`, 1), (`f2`, 1.0))
 ```
 """
-rename(data, new_name_old_names...) =
+function rename(data, new_name_old_names...)
     remove(data, map_unrolled(value, new_name_old_names)...)...,
     partial_map(rename_one, data, new_name_old_names)...
+end
 export rename
 
 """
@@ -261,12 +308,13 @@ julia> @name @inferred gather(data, g = (:b, :e), h = (:c, :f))
 ((`a`, 1), (`d`, 1.0), (`g`, ((`b`, 1.0), (`e`, 1))), (`h`, ((`c`, 1), (`f`, 1.0))))
 ```
 """
-gather(data, new_name_old_names...) =
+function gather(data, new_name_old_names...)
     remove(
         data,
         flatten_unrolled(map_unrolled(value, new_name_old_names)...)...
     )...,
     partial_map(rename_one, data, new_name_old_names)...
+end
 export gather
 
 """
@@ -286,9 +334,10 @@ julia> @name @inferred spread(gathered, :g, :h)
 ((`a`, 1), (`d`, 1.0), (`b`, 1.0), (`e`, 1), (`c`, 1), (`f`, 1.0))
 ```
 """
-spread(data, some_names...) =
+function spread(data, some_names...)
     remove(data, some_names...)...,
     flatten_unrolled(map_unrolled(value, some_names(data))...)...
+end
 export spread
 
 """
@@ -310,21 +359,29 @@ struct Apply{Names <: Some{Name}}
 end
 export Apply
 
-(apply::Apply)(them) = map_unrolled(tuple, apply.names, them)
+function (apply::Apply)(them)
+    map_unrolled(tuple, apply.names, them)
+end
 
 struct InRow{name, type, position}
 end
 
-@pure InRow(name, type, position) = InRow{name, type, position}()
-
-(::InRow{name, type, position})(row::Row) where {name, type, position} =
+@pure function InRow(name, type, position)
+    InRow{name, type, position}()
+end
+function (::InRow{name, type, position})(row::Row) where {name, type, position}
     getcell(getfile(row), type, position, getrow(row))::type
-get_pair(row::Row, column::InRow{name}) where {name} =
+end
+function get_pair(row::Row, column::InRow{name}) where {name}
     name, column(row)
-(columns::Some{InRow})(data) = partial_map(get_pair, data, columns)
+end
+function (columns::Some{InRow})(data)
+    partial_map(get_pair, data, columns)
+end
 
-@inline InRow_at(::Schema{Names, Types}, index) where {Names, Types} =
+@inline function InRow_at(::Schema{Names, Types}, index) where {Names, Types}
     InRow(Name{Names[index]}(), fieldtype(Types, index), index)
+end
 
 """
     row_info(::Tables.Schema)
@@ -358,9 +415,10 @@ julia> @inferred template(first(test))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-row_info(a_schema::Schema{Names}) where Names =
+function row_info(a_schema::Schema{Names}) where {Names}
     ntuple(let a_schema = a_schema
         @inline InRow_at_capture(index) = InRow_at(a_schema, index)
     end, Val{length(Names)}())
+end
 
 export row_info

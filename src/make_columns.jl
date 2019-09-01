@@ -2,23 +2,33 @@ struct Rows{Row, Dimensions, Columns, Names} <: AbstractArray{Row, Dimensions}
     columns::Columns
     names::Names
 end
-Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, Columns, Names} =
+function Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, Columns, Names}
     Rows{Row, Dimension, Columns, Names}(columns, the_names)
+end
 
-Rows(columns, the_names) = Rows{
-    Tuple{map_unrolled(name_eltype, the_names, columns)...},
-    ndims(get_model(columns))
-}(columns, the_names)
+function get_model(columns)
+    first(columns)
+end
+function get_model(::Tuple{})
+    1:0
+end
+
+function parent(rows::Rows)
+    get_model(rows.columns)
+end
+
+function name_eltype(::Name, ::Column) where {Name, Column}
+    Tuple{Name, eltype(Column)}
+end
+
+function Rows(columns, the_names)
+    Rows{
+        Tuple{map_unrolled(name_eltype, the_names, columns)...},
+        ndims(get_model(columns))
+    }(columns, the_names)
+end
 
 export Rows
-
-get_model(columns) = first(columns)
-get_model(::Tuple{}) = 1:0
-
-parent(rows::Rows) = get_model(rows.columns)
-
-name_eltype(::Name, ::Column) where {Name, Column} =
-    Tuple{Name, eltype(Column)}
 
 """
     Rows(named_columns)
@@ -48,22 +58,31 @@ function Rows(named_columns)
     Rows(map_unrolled(value, named_columns), map_unrolled(key, named_columns))
 end
 
-to_columns(rows::Rows) = map_unrolled(tuple, rows.names, rows.columns)
+function to_columns(rows::Rows)
+    map_unrolled(tuple, rows.names, rows.columns)
+end
 
-axes(rows::Rows, dimensions...) = axes(get_model(rows.columns), dimensions...)
-size(rows::Rows, dimensions...) = size(get_model(rows.columns), dimensions...)
+function axes(rows::Rows, dimensions...)
+    axes(parent(rows), dimensions...)
+end
+function size(rows::Rows, dimensions...)
+    size(parent(rows), dimensions...)
+end
 
-@propagate_inbounds column_getindex((columns, an_index), name) =
+@propagate_inbounds function column_getindex((columns, an_index), name)
     name, if haskey(columns, name)
         name(columns)[an_index...]
     else
         missing
     end
-@propagate_inbounds getindex(rows::Rows, an_index::Int...) = partial_map(
-    column_getindex,
-    (to_columns(rows), an_index),
-    rows.names
-)
+end
+@propagate_inbounds function getindex(rows::Rows, an_index::Int...)
+    partial_map(
+        column_getindex,
+        (to_columns(rows), an_index),
+        rows.names
+    )
+end
 
 @propagate_inbounds function column_setindex!((columns, an_index), (name, value))
     if haskey(columns, name)
@@ -87,68 +106,91 @@ function push!(rows::Rows, row)
     nothing
 end
 
-val_fieldtypes(something) = ()
-@pure val_fieldtypes(a_type::DataType) =
+function val_fieldtypes(something)
+    ()
+end
+@pure function val_fieldtypes(a_type::DataType)
     if a_type.abstract || (a_type.name == Tuple.name && isvatuple(a_type))
         ()
     else
         map_unrolled(Val, (a_type.types...,))
     end
+end
 
-decompose_named_type(::Val{Tuple{Name{name}, Value}}) where {name, Value} =
+function decompose_named_type(::Val{Tuple{Name{name}, Value}}) where {name, Value}
     Name{name}(), Val{Value}()
-decompose_named_type(type) = missing
+end
+function decompose_named_type(type)
+    missing
+end
 
-decompose_row_type(Row) = filter_unrolled(
-    !ismissing,
-    map_unrolled(decompose_named_type, val_fieldtypes(Row))...
-)
+function decompose_row_type(Row)
+    filter_unrolled(
+        !ismissing,
+        map_unrolled(decompose_named_type, val_fieldtypes(Row))...
+    )
+end
 
-similar_val(model, ::Val{Value}, dimensions) where {Value} =
+function similar_val(model, ::Val{Value}, dimensions) where {Value}
     similar(model, Value, dimensions)
-similar_column((model, dimensions), (name, val_Value)) =
+end
+function similar_column((model, dimensions), (name, val_Value))
     name, similar_val(model, val_Value, dimensions)
-similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow} =
+end
+function similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow}
     Rows(partial_map(
         similar_column,
-        (get_model(rows.columns), dimensions),
+        (parent(rows), dimensions),
         decompose_row_type(ARow)
     ))
+end
 
-empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow} =
+function empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow}
     similar(column, NewRow)
+end
 
 function widen_column(::HasLength, new_length, an_index, name, column::AbstractArray{Element}, item::Item) where {Element, Item <: Element}
     @inbounds column[an_index] = item
     name, column
 end
-widen_column(::HasLength, new_length, an_index, name, column::AbstractArray, item) =
+function widen_column(::HasLength, new_length, an_index, name, column::AbstractArray, item)
     name, setindex_widen_up_to(column, item, an_index)
-
+end
 function widen_column(::SizeUnknown, new_length, an_index, name, column::AbstractArray{Element}, item::Item) where {Element, Item <: Element}
     push!(column, item)
     name, column
 end
-widen_column(::SizeUnknown, new_length, an_index, name, column::AbstractArray, item) =
+function widen_column(::SizeUnknown, new_length, an_index, name, column::AbstractArray, item)
     name, push_widen(column, item)
-
+end
 function widen_column(iterator_size, new_length, an_index, name, ::Missing, item::Item) where {Item}
     new_column = Array{Union{Missing, Item}}(missing, new_length)
     @inbounds new_column[an_index] = item
     name, new_column
 end
-widen_column(iterator_size, new_length, an_index, name, ::Missing, ::Missing) =
+function widen_column(iterator_size, new_length, an_index, name, ::Missing, ::Missing)
     name, Array{Missing}(missing, new_length)
+end
+function widen_column_clumped(fixeds, variables)
+    widen_column(fixeds..., variables...)
+end
 
-widen_column_clumped(fixeds, variables) = widen_column(fixeds..., variables...)
+function get_new_length(::SizeUnknown, rows, an_index)
+    an_index
+end
+function get_new_length(::HasLength, rows, an_index)
+    length(LinearIndices(rows))
+end
 
-get_new_length(::SizeUnknown, rows, an_index) = an_index
-get_new_length(::HasLength, rows, an_index) = length(LinearIndices(rows))
-
-lone_column((name, column)) = name, column, missing
-lone_value((name, value)) = name, missing, value
-column_value((column_name, column), (value_name, value)) =
+function lone_column((name, column))
+    name, column, missing
+end
+function lone_value((name, value))
+    name, missing, value
+end
+function column_value((column_name, column), (value_name, value))
     column_name, column, value
+end
 
 function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
     named_columns = to_columns(rows)
@@ -178,9 +220,12 @@ function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
     ))
 end
 
-push_widen(rows::Rows, row) = widen_named(SizeUnknown(), rows, row)
-setindex_widen_up_to(rows::Rows, row, an_index) =
+function push_widen(rows::Rows, row)
+    widen_named(SizeUnknown(), rows, row)
+end
+function setindex_widen_up_to(rows::Rows, row, an_index)
     widen_named(HasLength(), rows, row, an_index)
+end
 
 """
     make_columns(rows)
@@ -212,19 +257,27 @@ julia> make_columns(when(over(1:4, unstable), row -> true))
 ((`d`, Union{Missing, String}["1", "2", missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, String}["1", "2", missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
 ```
 """
-make_columns(rows) = to_columns(_collect(
-    Rows(()),
-    rows,
-    IteratorEltype(rows),
-    IteratorSize(rows)
-))
+function make_columns(rows)
+    to_columns(_collect(
+        Rows(()),
+        rows,
+        IteratorEltype(rows),
+        IteratorSize(rows)
+    ))
+end
 
 export make_columns
 
-get_columns(rows::Rows) = rows.columns
+function get_columns(rows::Rows)
+    rows.columns
+end
 
-view_backwards(indexes, column) = view(column, indexes)
-@propagate_inbounds view(rows::Rows, indexes::IndexRange) = Rows(
-    partial_map(view_backwards, indexes, rows.columns),
-    rows.names
-)
+function view_backwards(indexes, column)
+    view(column, indexes)
+end
+@propagate_inbounds function view(rows::Rows, indexes::IndexRange)
+    Rows(
+        partial_map(view_backwards, indexes, rows.columns),
+        rows.names
+    )
+end

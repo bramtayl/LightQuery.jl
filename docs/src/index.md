@@ -27,7 +27,7 @@ julia> using TimeZones: Class, Local, TimeZone, VariableTimeZone, ZonedDateTime
 
 julia> using Unitful: °, °F, ft, hr, inch, mbar, mi, minute
 
-julia> cd(dirname(@__DIR__));
+julia> cd(joinpath(Base.pathof(LightQuery) |> dirname |> dirname, "test"));
 ```
 
 ## Airports cleaning

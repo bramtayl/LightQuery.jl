@@ -1,5 +1,7 @@
-substitute_underscores!(underscores_to_gensyms, other) = other
-substitute_underscores!(underscores_to_gensyms, maybe_argument::Symbol) =
+function substitute_underscores!(underscores_to_gensyms, other)
+    other
+end
+function substitute_underscores!(underscores_to_gensyms, maybe_argument::Symbol)
     if all(isequal('_'), string(maybe_argument))
         if !haskey(underscores_to_gensyms, maybe_argument)
             underscores_to_gensyms[maybe_argument] = gensym(maybe_argument)
@@ -8,6 +10,7 @@ substitute_underscores!(underscores_to_gensyms, maybe_argument::Symbol) =
     else
         maybe_argument
     end
+end
 function substitute_underscores!(underscores_to_gensyms, code::Expr)
     # have to do this the old fashioned way because _ has a special meaning in MacroTools
     expanded_code =
@@ -28,7 +31,9 @@ function substitute_underscores!(underscores_to_gensyms, code::Expr)
     end, expanded_code.args)...)
 end
 
-anonymous(location, other) = other
+function anonymous(location, other)
+    other
+end
 function anonymous(location, body::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
     substituted_body = substitute_underscores!(underscores_to_gensyms, body)
@@ -74,14 +79,17 @@ function link(location, object, call::Expr)
         )
     )
 end
-link(location, object, call) = Expr(:call, call, object)
+function link(location, object, call)
+    Expr(:call, call, object)
+end
 
-make_chain(location, maybe_chain) =
+function make_chain(location, maybe_chain)
     if @capture maybe_chain object_ |> call_
         link(location, make_chain(location, object), call)
     else
         maybe_chain
     end
+end
 
 """
     macro >(body)

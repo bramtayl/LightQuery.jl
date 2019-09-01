@@ -11,7 +11,9 @@ julia> @name when_columns((a = [1, 2], b = [1, 2]), @_ _.a > 1)
 ```
 """
 function when_columns(columns, a_function)
-    make_columns(when(Rows(columns), a_function))
+    rows = Rows(columns)
+    the_length = count(over(rows, a_function))
+    make_columns(Length(when(Rows(columns), a_function), the_length))
 end
 export when_columns
 
@@ -123,15 +125,8 @@ function left_join_pair((one_row, zilch)::Tuple{Any, Missing}, dummy_many_rows, 
     over_merge_left(one_row, dummy_many_rows, both_names)
 end
 
-dummy_many_column((name, column)) =
-    name, push!(similar(column, Missing, 0), missing)
-
-function make_dummy_many_rows(many_columns, both_names)
-    (a_key, rows) = first(Group(By(
-        Rows(map_unrolled(dummy_many_column, many_columns)),
-        both_names
-    )))
-    rows
+function dummy_many_column((name, column))
+    name, missing
 end
 
 """
@@ -151,17 +146,12 @@ function left_join(one_columns, many_columns)
     one_names = map_unrolled(key, one_columns)
     many_names = map_unrolled(key, many_columns)
     both_names = diff_unrolled(one_names, diff_unrolled(one_names, many_names))
-    (dummy_key, dummy_many_rows) =
-        first(Group(By(
-            Rows(map_unrolled(dummy_many_column, many_columns)),
-            both_names
-        )))
     make_columns(flatten(over(
         mix(Name{:left}(),
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
-        let dummy_many_rows = make_dummy_many_rows(many_columns, both_names)
+        let dummy_many_rows = (map_unrolled(dummy_column, many_columns),)
             function left_join_pair_capture(nested)
                 left_join_pair(nested, dummy_many_rows, both_names)
             end
@@ -178,7 +168,9 @@ function right_join_pair((zilch, (key2, many_rows))::Tuple{Missing, Any}, dummy_
     over_merge_right(dummy_one_row, many_rows, both_names)
 end
 
-make_dummy_one_column((name, value)) = (name, missing)
+function dummy_column((name, value))
+    (name, missing)
+end
 
 """
     right_join(one_columns, many_columns)
@@ -202,7 +194,7 @@ function right_join(one_columns, many_columns)
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
-        let dummy_one_row = map_unrolled(make_dummy_one_column, one_columns)
+        let dummy_one_row = map_unrolled(dummy_column, one_columns)
             function right_join_pair_capture(nested)
                 right_join_pair(nested, dummy_one_row, both_names)
             end
@@ -253,8 +245,8 @@ function outer_join(one_columns, many_columns)
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
-        let dummy_one_row = map_unrolled(make_dummy_one_column, one_columns),
-            dummy_many_rows = make_dummy_many_rows(many_columns, both_names)
+        let dummy_one_row = map_unrolled(dummy_column, one_columns),
+            dummy_many_rows = (map_unrolled(dummy_column, many_columns),)
             function outer_join_pair_capture(nested)
                 outer_join_pair(nested, dummy_one_row, dummy_many_rows, both_names)
             end

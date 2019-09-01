@@ -1,52 +1,85 @@
 const Some{AType} = Tuple{AType, Vararg{AType}}
 
-@inline is_empty(::Tuple{}) = true
-@inline is_empty(something) = false
+@inline function is_empty(::Tuple{})
+    true
+end
+@inline function is_empty(something)
+    false
+end
 
-flatten_unrolled() = ()
-flatten_unrolled(item, rest...) = item..., flatten_unrolled(rest...)...
+function flatten_unrolled()
+    ()
+end
+function flatten_unrolled(item, rest...)
+    item..., flatten_unrolled(rest...)...
+end
 
-reduce_unrolled(call, item) = item
-reduce_unrolled(call, item1, item2, rest...) =
+function reduce_unrolled(call, item)
+    item
+end
+function reduce_unrolled(call, item1, item2, rest...)
     reduce_unrolled(call, call(item1, item2), rest...)
+end
 
-map_unrolled(call, variables::Tuple{}) = ()
-map_unrolled(call, variables) =
+function map_unrolled(call, variables::Tuple{})
+    ()
+end
+function map_unrolled(call, variables)
     call(first(variables)), map_unrolled(call, tail(variables))...
+end
 
-map_unrolled(call, variables1::Tuple{}, variables2::Tuple{}) = ()
-map_unrolled(call, variables1, variables2) =
+function map_unrolled(call, variables1::Tuple{}, variables2::Tuple{})
+    ()
+end
+function map_unrolled(call, variables1, variables2)
     call(first(variables1), first(variables2)),
     map_unrolled(call, tail(variables1), tail(variables2))...
+end
 
-partial_map(call, fixed, variables::Tuple{}) = ()
-partial_map(call, fixed, variables) =
+function partial_map(call, fixed, variables::Tuple{})
+    ()
+end
+function partial_map(call, fixed, variables)
     call(fixed, first(variables)), partial_map(call, fixed, tail(variables))...
+end
 
-partial_map(call, fixed, variables1::Tuple{}, variables2::Tuple{}) = ()
-partial_map(call, fixed, variables1, variables2) =
+function partial_map(call, fixed, variables1::Tuple{}, variables2::Tuple{})
+    ()
+end
+function partial_map(call, fixed, variables1, variables2)
     call(fixed, first(variables1), first(variables2)),
     partial_map(call, fixed, tail(variables1), tail(variables2))...
+end
 
-filter_unrolled(call) = ()
-filter_unrolled(call, item, rest...) =
+
+function filter_unrolled(call)
+    ()
+end
+function filter_unrolled(call, item, rest...)
     if call(item)
         item, filter_unrolled(call, rest...)...
     else
         rest
     end
+end
 
-if_not_in(it) = (it,)
-if_not_in(it, item, rest...) =
+function if_not_in(it)
+    (it,)
+end
+function if_not_in(it, item, rest...)
     if item === it
         ()
     else
         if_not_in(it, rest...)
     end
-if_not_in_clump(them, it) = if_not_in(it, them...)
+end
+function if_not_in_clump(them, it)
+    if_not_in(it, them...)
+end
 
-diff_unrolled(more, less) =
+function diff_unrolled(more, less)
     flatten_unrolled(partial_map(if_not_in_clump, less, more)...)
+end
 
 """
     over(iterator, call)
@@ -66,7 +99,9 @@ julia> @inferred collect(over([1, -2, -3, 4], abs))
  4
 ```
 """
-over(iterator, call) = Generator(call, iterator)
+function over(iterator, call)
+    Generator(call, iterator)
+end
 export over
 
 """
@@ -85,7 +120,9 @@ julia> @inferred collect(when(1:4, iseven))
  4
 ```
 """
-when(iterator, call) = Iterators.filter(call, iterator)
+function when(iterator, call)
+    Iterators.filter(call, iterator)
+end
 export when
 
 """
@@ -109,7 +146,9 @@ function key(pair)
     a_key, a_value = pair
     a_key
 end
-key(pair::Pair) = pair.first
+function key(pair::Pair)
+    pair.first
+end
 export key
 
 """
@@ -133,7 +172,9 @@ function value(pair)
     a_key, a_value = pair
     a_value
 end
-value(pair::Pair) = pair.second
+function value(pair::Pair)
+    pair.second
+end
 export value
 
 """
@@ -168,21 +209,3 @@ macro if_known(something)
     end
 end
 export @if_known
-
-"""
-    if_else(switch, yes, no)
-
-`ifelse` that you can add methods to.
-
-```jldoctest
-julia> using LightQuery
-
-julia> if_else(true, 1, 0)
-1
-
-julia> if_else(false, 1, 0)
-0
-```
-"""
-if_else(switch, yes, no) = ifelse(switch, yes, no)
-export if_else
