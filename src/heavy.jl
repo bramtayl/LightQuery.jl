@@ -1,3 +1,11 @@
+function count_one(something)
+    true
+end
+
+function lengthed(iterator)
+    Length(iterator, count(over(iterator, count_one)))
+end
+
 """
     when_columns(columns, a_function)
 
@@ -11,9 +19,7 @@ julia> @name when_columns((a = [1, 2], b = [1, 2]), @_ _.a > 1)
 ```
 """
 function when_columns(columns, a_function)
-    rows = Rows(columns)
-    the_length = count(over(rows, a_function))
-    make_columns(Length(when(Rows(columns), a_function), the_length))
+    make_columns(lengthed(when(Rows(columns), a_function)))
 end
 export when_columns
 
@@ -104,7 +110,7 @@ function inner_join(one_columns, many_columns)
     many_names = map_unrolled(key, many_columns)
     both_names = diff_unrolled(one_names, diff_unrolled(one_names, many_names))
     make_columns(flatten(over(
-        mix((Name{:inner}()),
+        mix(Name{:inner}(),
             By(Rows(one_columns), both_names),
             By(Group(By(Rows(many_columns), both_names)), first)
         ),
@@ -146,17 +152,19 @@ function left_join(one_columns, many_columns)
     one_names = map_unrolled(key, one_columns)
     many_names = map_unrolled(key, many_columns)
     both_names = diff_unrolled(one_names, diff_unrolled(one_names, many_names))
+    one_rows = Rows(one_columns)
     make_columns(flatten(over(
-        mix(Name{:left}(),
-            By(Rows(one_columns), both_names),
-            By(Group(By(Rows(many_columns), both_names)), first)
-        ),
-        let dummy_many_rows = (map_unrolled(dummy_column, many_columns),)
-            function left_join_pair_capture(nested)
-                left_join_pair(nested, dummy_many_rows, both_names)
+            mix(Name{:left}(),
+                By(one_rows, both_names),
+                By(Group(By(Rows(many_columns), both_names)), first)
+            ),
+            let dummy_many_rows = (map_unrolled(dummy_column, many_columns),)
+                function left_join_pair_capture(nested)
+                    left_join_pair(nested, dummy_many_rows, both_names)
+                end
             end
-        end
-    )))
+        ))
+    )
 end
 export left_join
 
@@ -189,17 +197,21 @@ function right_join(one_columns, many_columns)
     one_names = map_unrolled(key, one_columns)
     many_names = map_unrolled(key, many_columns)
     both_names = diff_unrolled(one_names, diff_unrolled(one_names, many_names))
-    make_columns(flatten(over(
-        mix(Name{:right}(),
-            By(Rows(one_columns), both_names),
-            By(Group(By(Rows(many_columns), both_names)), first)
-        ),
-        let dummy_one_row = map_unrolled(dummy_column, one_columns)
-            function right_join_pair_capture(nested)
-                right_join_pair(nested, dummy_one_row, both_names)
+    many_rows = Rows(many_columns)
+    make_columns(Length(
+        flatten(over(
+            mix(Name{:right}(),
+                By(Rows(one_columns), both_names),
+                By(Group(By(many_rows, both_names)), first)
+            ),
+            let dummy_one_row = map_unrolled(dummy_column, one_columns)
+                function right_join_pair_capture(nested)
+                    right_join_pair(nested, dummy_one_row, both_names)
+                end
             end
-        end
-    )))
+        )),
+        length(many_rows)
+    ))
 end
 export right_join
 
@@ -271,7 +283,7 @@ julia> @name @> (a = [1, 1, 2, 2], b = [1, 2, 3, 4]) |>
 """
 function summarize_by(columns, group_function, summarize_function)
     make_columns(over(
-        Group(By(Rows(columns), group_function)),
+        lengthed(Group(By(Rows(columns), group_function))),
         let summarize_function = summarize_function
             function replacement((a_key, rows))
                 a_key..., summarize_function(to_columns(rows))...

@@ -36,6 +36,5 @@ include("make_columns.jl")
 include("pivot.jl")
 include("compat.jl")
 include("heavy.jl")
-# include("SQL.jl")
 
 end
