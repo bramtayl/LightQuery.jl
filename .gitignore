@@ -1,3 +1,2 @@
 *.info
-coverage
-test/build
+docs/build

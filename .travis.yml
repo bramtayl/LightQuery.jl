@@ -13,16 +13,16 @@ notifications:
   email: false
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia --project --code-coverage=tracefile-%p.info --code-coverage=user --eval 'using Pkg; Pkg.build(); Pkg.test(; coverage=true)';
+  - julia --project --code-coverage=tracefile-%p.info --code-coverage=user src/build_and_test.jl
 after_success:
-  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+  - if [[ $TRAVIS_JULIA_VERSION = 1.1 ]] && [[ $TRAVIS_OS_NAME = linux ]]; then
+    julia --project=coverage coverage/coverage.jl
+  fi
 jobs:
   include:
     - stage: "Documentation"
       julia: 1.2
       os: linux
       script:
-        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
-                                               Pkg.instantiate()'
-        - julia --project=docs/ docs/make.jl
+        - julia --project=docs docs/document.jl
       after_success: skip

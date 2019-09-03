@@ -1,20 +1,22 @@
 name = "LightQuery"
 uuid = "a6f99520-0501-547d-81af-dc7bed1e4d5a"
+author = ["Brandon Taylor <brandon.taylor221@gmail.com>"]
 repo = "https://github.com/bramtayl/LightQuery.jl.git"
 version = "0.3.1"
-author = ["Brandon Taylor <brandon.taylor221@gmail.com>"]
 
 [deps]
-Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
+[compat]
+julia = "1.0"
+
 [extras]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
-Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
@@ -23,6 +25,3 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [targets]
 test = ["Dates", "Documenter", "Statistics", "Test", "TimeZones", "Unitful"]
-
-[compat]
-julia = "1.0"
