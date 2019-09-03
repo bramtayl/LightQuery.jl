@@ -16,7 +16,7 @@ script:
   - julia --project --code-coverage=tracefile-%p.info --code-coverage=user build_and_test.jl
 after_success:
   - if [[ $TRAVIS_JULIA_VERSION = 1.1 ]] && [[ $TRAVIS_OS_NAME = linux ]]; then
-      julia --project=coverage coverage/coverage.jl
+      julia --project=coverage coverage/coverage.jl;
     fi
 jobs:
   include:
