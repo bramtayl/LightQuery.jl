@@ -267,11 +267,15 @@ function outer_join(one_columns, many_columns)
 end
 export outer_join
 
-"""
-    group_columns(columns, group_function, summarize_function)
+function summarize_group(summarize_function, (a_key, rows))
+    (a_key..., summarize_function(to_columns(rows))...)
+end
 
-An eager and column-wise alternative to [`mix`](@ref). Joins summarize_by commonly named
-columns.
+"""
+    summarize_by(columns, group_function, summarize_function)
+
+An eager and column-wise alternative to [`over`](@ref). Won't flatten results;
+compare [`summarize_by`](@ref).
 
 ```jldoctest
 julia> using LightQuery
@@ -285,10 +289,52 @@ function summarize_by(columns, group_function, summarize_function)
     make_columns(over(
         lengthed(Group(By(Rows(columns), group_function))),
         let summarize_function = summarize_function
-            function replacement((a_key, rows))
-                a_key..., summarize_function(to_columns(rows))...
+            function summarize_group_capture(nested)
+                summarize_group(summarize_function, nested)
             end
         end
     ))
 end
 export summarize_by
+
+function map_row(a_key, row)
+    (a_key..., row...)
+end
+
+function map_group(map_function, (a_key, rows))
+    over(
+        Rows(map_function(to_columns(rows))),
+        let a_key = a_key
+            function map_row_capture(row)
+                map_row(a_key, row)
+            end
+        end
+    )
+end
+
+"""
+    map_by(columns, group_function, map_function)
+
+An eager and column-wise alternative to [`over`](@ref). Will flatten results;
+compare [`summarize_by`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> @name @> (a = [1, 1, 2, 2], b = [1, 1, 1, 3]) |>
+        map_by(_, (:a,), @_ (c = _.b ./ sum(_.b),))
+((`a`, [1, 1, 2, 2]), (`c`, [0.5, 0.5, 0.25, 0.75]))
+```
+"""
+function map_by(columns, group_function, map_function)
+    rows = Rows(columns)
+    make_columns(Length(flatten(over(
+        Group(By(rows, group_function)),
+        let map_function = map_function
+            function map_group_capture(nested)
+                map_group(map_function, nested)
+            end
+        end
+    )), length(rows)))
+end
+export map_by
