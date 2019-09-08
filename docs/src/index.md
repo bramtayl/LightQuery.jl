@@ -25,7 +25,9 @@ julia> using Dates: Date, DateTime, Hour
 
 julia> using TimeZones: Class, Local, TimeZone, VariableTimeZone, ZonedDateTime
 
+
 julia> using Unitful: °, °F, ft, hr, inch, mbar, mi, minute
+
 
 julia> cd(joinpath(pathof(LightQuery) |> dirname |> dirname, "test"));
 ```
@@ -160,14 +162,15 @@ Call [`make_columns`](@ref) then [`Rows`](@ref) to store the data column-wise bu
 ```jldoctest dplyr
 julia> airports = Rows(make_columns(airports));
 
+
 julia> Peek(airports)
 Showing 4 of 1458 rows
-|                        `name` | `airport_code` | `altitude` |   `latitude` |   `longitude` |                    `time_zone` |
-| -----------------------------:| --------------:| ----------:| ------------:| -------------:| ------------------------------:|
-|             Lansdowne Airport |            04G |    1044 ft | 41.1304722 ° | -80.6195833 ° | America/New_York (UTC-5/UTC-4) |
-| Moton Field Municipal Airport |            06A |     264 ft | 32.4605722 ° | -85.6800278 ° |  America/Chicago (UTC-6/UTC-5) |
-|           Schaumburg Regional |            06C |     801 ft | 41.9893408 ° | -88.1012428 ° |  America/Chicago (UTC-6/UTC-5) |
-|               Randall Airport |            06N |     523 ft |  41.431912 ° | -74.3915611 ° | America/New_York (UTC-5/UTC-4) |
+|                        `name` | `airport_code` | `altitude` |  `latitude` |  `longitude` |                    `time_zone` |
+| -----------------------------:| --------------:| ----------:| -----------:| ------------:| ------------------------------:|
+|             Lansdowne Airport |            04G |    1044 ft | 41.1304722° | -80.6195833° | America/New_York (UTC-5/UTC-4) |
+| Moton Field Municipal Airport |            06A |     264 ft | 32.4605722° | -85.6800278° |  America/Chicago (UTC-6/UTC-5) |
+|           Schaumburg Regional |            06C |     801 ft | 41.9893408° | -88.1012428° |  America/Chicago (UTC-6/UTC-5) |
+|               Randall Airport |            06N |     523 ft |  41.431912° | -74.3915611° | America/New_York (UTC-5/UTC-4) |
 ```
 
 [`index`](@ref) airports by code.
@@ -545,10 +548,10 @@ julia> Peek(weathers)
 Showing 4 of 26115 rows
 |         `time_hour` | `airport_code` | `dew_point` |         `humidity` | `precipitation` |  `pressure` | `temperature` | `visibility` | `wind_direction` | `wind_gust` |      `wind_speed` |               `date_time` |
 | -------------------:| --------------:| -----------:| ------------------:| ---------------:| -----------:| -------------:| ------------:| ----------------:| -----------:| -----------------:| -------------------------:|
-| 2013-01-01 01:00:00 |            EWR |    26.06 °F |             0.5937 |        0.0 inch | 1012.0 mbar |      39.02 °F |      10.0 mi |            270 ° |     missing | 10.35702 mi hr^-1 | 2013-01-01T01:00:00-05:00 |
-| 2013-01-01 02:00:00 |            EWR |    26.96 °F | 0.6163000000000001 |        0.0 inch | 1012.3 mbar |      39.02 °F |      10.0 mi |            250 ° |     missing |  8.05546 mi hr^-1 | 2013-01-01T02:00:00-05:00 |
-| 2013-01-01 03:00:00 |            EWR |    28.04 °F | 0.6443000000000001 |        0.0 inch | 1012.5 mbar |      39.02 °F |      10.0 mi |            240 ° |     missing |  11.5078 mi hr^-1 | 2013-01-01T03:00:00-05:00 |
-| 2013-01-01 04:00:00 |            EWR |    28.04 °F |             0.6221 |        0.0 inch | 1012.2 mbar |      39.92 °F |      10.0 mi |            250 ° |     missing | 12.65858 mi hr^-1 | 2013-01-01T04:00:00-05:00 |
+| 2013-01-01 01:00:00 |            EWR |    26.06 °F |             0.5937 |        0.0 inch | 1012.0 mbar |      39.02 °F |      10.0 mi |             270° |     missing | 10.35702 mi hr^-1 | 2013-01-01T01:00:00-05:00 |
+| 2013-01-01 02:00:00 |            EWR |    26.96 °F | 0.6163000000000001 |        0.0 inch | 1012.3 mbar |      39.02 °F |      10.0 mi |             250° |     missing |  8.05546 mi hr^-1 | 2013-01-01T02:00:00-05:00 |
+| 2013-01-01 03:00:00 |            EWR |    28.04 °F | 0.6443000000000001 |        0.0 inch | 1012.5 mbar |      39.02 °F |      10.0 mi |             240° |     missing |  11.5078 mi hr^-1 | 2013-01-01T03:00:00-05:00 |
+| 2013-01-01 04:00:00 |            EWR |    28.04 °F |             0.6221 |        0.0 inch | 1012.2 mbar |      39.92 °F |      10.0 mi |             250° |     missing | 12.65858 mi hr^-1 | 2013-01-01T04:00:00-05:00 |
 ```
 
 ## Joining flights and weather
