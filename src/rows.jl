@@ -9,9 +9,9 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 julia> @inferred collect(Enumerate(when([4, 3, 2, 1], iseven)))
-2-element Array{Tuple{LightQuery.Index{Int64},Int64},1}:
- (LightQuery.Index{Int64}(1), 4)
- (LightQuery.Index{Int64}(3), 2)
+2-element Array{Tuple{Int64,Int64},1}:
+ (1, 4)
+ (3, 2)
 ```
 """
 struct Enumerate{Unenumerated}
@@ -211,7 +211,7 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 julia> result = @inferred index([-2, 1], abs)
-LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,LightQuery.Index{Int64}}} with 2 entries:
+LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,Int64}} with 2 entries:
   2 => -2
   1 => 1
 
