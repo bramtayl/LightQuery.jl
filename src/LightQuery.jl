@@ -1,21 +1,18 @@
 module LightQuery
 
-import Base: ==, !=, !, &, |, :, axes, coalesce, collect_similar, collect_to!,
+import Base: axes, collect_similar, collect_to!,
     copyto!, eltype, empty, first, get, getindex, getproperty, grow_to!, haskey,
-    isequal, in, IndexStyle, IteratorEltype, IteratorSize, isless, ismissing,
+    IndexStyle, isless, IteratorEltype, IteratorSize,
     length, iterate, merge, NamedTuple, ndims, occursin, parent, push!,
     setindex!, size, show, similar, startswith, view, zip
 @static if VERSION >= v"1.1"
     import Base: push_widen, setindex_widen_up_to
 end
-using Base: _collect, @default_eltype, diff_names, EltypeUnknown, Generator,
+using Base: _collect, @default_eltype, EltypeUnknown, Generator,
     HasEltype, HasLength, HasShape, isvatuple, @pure, promote_typejoin,
     @propagate_inbounds, SizeUnknown, tail
 import Base.Iterators: drop, flatten, take
-using Base.Iterators: Filter, Zip
-@static if VERSION < v"1.1"
-    using Base.Iterators: Zip2
-end
+using Base.Iterators: Filter
 using Base.Meta: quot
 using Compat: hasproperty
 using Core: Bool, TypeofBottom
@@ -35,6 +32,5 @@ include("rows.jl")
 include("make_columns.jl")
 include("pivot.jl")
 include("compat.jl")
-include("heavy.jl")
 
 end

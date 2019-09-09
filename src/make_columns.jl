@@ -2,7 +2,20 @@ struct Rows{Row, Dimensions, Columns, Names} <: AbstractArray{Row, Dimensions}
     columns::Columns
     names::Names
 end
+function compare_axes(reference_axes, item)
+    axes(item) == reference_axes
+end
+function same_axes(first_column, rest...)
+    reduce_unrolled(&, partial_map(compare_axes, axes(first_column), rest)...)
+end
+function same_axes()
+    true
+end
+
 function Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, Columns, Names}
+    @boundscheck if !same_axes(columns...)
+        error("All columns passed to `Rows` need to have the same axes")
+    end
     Rows{Row, Dimension, Columns, Names}(columns, the_names)
 end
 
@@ -21,7 +34,7 @@ function name_eltype(::Name, ::Column) where {Name, Column}
     Tuple{Name, eltype(Column)}
 end
 
-function Rows(columns, the_names)
+@propagate_inbounds function Rows(columns, the_names)
     Rows{
         Tuple{map_unrolled(name_eltype, the_names, columns)...},
         ndims(get_model(columns))
@@ -34,9 +47,8 @@ export Rows
     Rows(named_columns)
 
 Iterator over `rows` of a table. Always lazy. Use [`Peek`](@ref) to view. Note
-that `Rows` offers more performance, but has stricter requirements than
-[`to_rows`](@ref). `Rows` requires that the iteration state for the first column
-can generate an index for all of the colums.
+that `Rows` assumes that the iteration state for the first column can generate
+an index for all of the columns.
 
 ```jldoctest
 julia> using LightQuery
@@ -54,7 +66,7 @@ julia> @inferred collect(lazy)
  ((`a`, 2), (`b`, 2.0))
 ```
 """
-function Rows(named_columns)
+@propagate_inbounds function Rows(named_columns)
     Rows(map_unrolled(value, named_columns), map_unrolled(key, named_columns))
 end
 
@@ -70,11 +82,7 @@ function size(rows::Rows, dimensions...)
 end
 
 @propagate_inbounds function column_getindex((columns, an_index), name)
-    name, if haskey(columns, name)
-        name(columns)[an_index...]
-    else
-        missing
-    end
+    name, name(columns)[an_index...]
 end
 @propagate_inbounds function getindex(rows::Rows, an_index::Int...)
     partial_map(
@@ -85,9 +93,7 @@ end
 end
 
 @propagate_inbounds function column_setindex!((columns, an_index), (name, value))
-    if haskey(columns, name)
-        name(columns)[an_index...] = value
-    end
+    name(columns)[an_index...] = value
     nothing
 end
 @propagate_inbounds function setindex!(rows::Rows, row, an_index::Int...)
@@ -96,9 +102,7 @@ end
 end
 
 function column_push!(columns, (name, value))
-    if haskey(columns, name)
-        push!(name(columns), value)
-    end
+    push!(name(columns), value)
     nothing
 end
 function push!(rows::Rows, row)
@@ -138,7 +142,7 @@ function similar_column((model, dimensions), (name, val_Value))
     name, similar_val(model, val_Value, dimensions)
 end
 function similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow}
-    Rows(partial_map(
+    @inbounds Rows(partial_map(
         similar_column,
         (parent(rows), dimensions),
         decompose_row_type(ARow)
@@ -196,9 +200,9 @@ function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
     named_columns = to_columns(rows)
     column_names = map_unrolled(key, named_columns)
     value_names = map_unrolled(key, row)
-    just_column_names = diff_unrolled(column_names, value_names)
-    in_both_names = diff_unrolled(column_names, just_column_names)
-    Rows(partial_map(
+    just_column_names = diff_unrolled(value_names, column_names...)
+    in_both_names = diff_unrolled(just_column_names, column_names...)
+    @inbounds Rows(partial_map(
         widen_column_clumped,
         (
             iterator_size,
@@ -214,7 +218,7 @@ function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
             )...,
             map_unrolled(
                 lone_value,
-                diff_unrolled(value_names, column_names)(row)
+                diff_unrolled(column_names, value_names...)(row)
             )...
         )
     ))
@@ -259,7 +263,7 @@ julia> make_columns(when(over(1:4, unstable), row -> true))
 """
 function make_columns(rows)
     to_columns(_collect(
-        Rows(()),
+        (@inbounds Rows(())),
         rows,
         IteratorEltype(rows),
         IteratorSize(rows)
@@ -275,8 +279,8 @@ end
 function view_backwards(indexes, column)
     view(column, indexes)
 end
-@propagate_inbounds function view(rows::Rows, indexes::IndexRange)
-    Rows(
+@propagate_inbounds function view(rows::Rows, indexes)
+    @inbounds Rows(
         partial_map(view_backwards, indexes, rows.columns),
         rows.names
     )

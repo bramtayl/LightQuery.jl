@@ -1,67 +1,5 @@
 @static if VERSION < v"1.1"
 
-    function head(zipped::Zip2)
-        zipped.a
-    end
-    function tail_or_end(zipped::Zip2)
-        zipped.a
-    end
-    function head(zipped::Zip)
-        zipped.a
-    end
-    function tail_or_end(zipped::Zip)
-        zipped.z
-    end
-
-    function get_columns(zipped::Zip2)
-        zipped.a, zipped.b
-    end
-    function get_columns(zipped::Zip)
-        zipped.a, get_columns(zipped.b)...
-    end
-
-    function make_index(zipped::Union{Zip2, Zip}, (head_state, tail_state))
-        Index((
-            make_index(head(zipped), head_state),
-            make_index(tail_or_end(zipped), tail_state)
-        ))
-    end
-
-    function previous_index(zipped::Union{Zip2, Zip}, index::Index)
-        head_state, tail_state = index.inner
-        Index((
-            previous_index(head(zipped), head_state),
-            previous_index(tail_or_end(zipped), tail_state)
-        ))
-    end
-    function last_index(zipped::Union{Zip2, Zip})
-        Index((last_index(head(zipped)), last_index(tail_or_end(zipped))))
-    end
-    @propagate_inbounds function getindex(zipped::Zip2, index::Index)
-        head_state, tail_state = index.inner
-        getindex(zipped.a, head_state), getindex(zipped.b, tail_state)
-    end
-    @propagate_inbounds function getindex(zipped::Zip, index::Index)
-        head_state, tail_state = index.inner
-        getindex(zipped.a, head_state), getindex(zipped.z, tail_state)...
-    end
-    @propagate_inbounds function view(zipped::Zip2, indexes::IndexRange)
-        head_state_start, tail_state_start = indexes.start
-        head_state_stop, tail_state_stop = indexes.stop
-        zip(
-            view(zipped.a, head_state_start:head_state_stop),
-            view(zipped.b, tail_state_start:tail_state_stop)
-        )
-    end
-    @propagate_inbounds function view(zipped::Zip, indexes::IndexRange)
-        head_state_start, tail_state_start = indexes.start
-        head_state_stop, tail_state_stop = indexes.stop
-        zip(
-            view(zipped.a, head_state_start:head_state_stop),
-            view(zipped.z, tail_state_start:tail_state_stop)...
-        )
-    end
-
     # backport #30076 just for Rows
     function collect_to!(destination::Rows{Item}, iterator, offset, state) where Item
         # collect to destination array, checking the type of each result. if a result does not
@@ -118,32 +56,5 @@
         end
         push!(new, item)
         new
-    end
-else
-    function get_columns(zipped::Zip)
-        zipped.is
-    end
-    function make_index(zipped::Zip, states)
-        Index(map_unrolled(make_index, get_columns(zipped), states))
-    end
-    function previous_index(zipped::Zip, index::Index)
-        Index(map_unrolled(previous_index, get_columns(zipped), index.inner))
-    end
-    function last_index(zipped::Zip)
-        Index(map_unrolled(last_index, get_columns(zipped)))
-    end
-    @propagate_inbounds function getindex(zipped::Zip, index::Index)
-        map_unrolled(
-            getindex,
-            get_columns(zipped),
-            index.inner
-        )
-    end
-    @propagate_inbounds function view(zipped::Zip, indexes::IndexRange)
-        zip(map_unrolled(
-            view,
-            get_columns(zipped),
-            map_unrolled(:, indexes.start, indexes.stop)
-        )...)
     end
 end

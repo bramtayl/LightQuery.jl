@@ -204,12 +204,9 @@ end
 export named_tuple
 
 @inline function haskey(data::Some{Named}, name::Name)
-    is_empty(if_not_in(name, map_unrolled(key, data)...))
+    in_unrolled(name, map_unrolled(key, data)...)
 end
 @inline function haskey(data, ::Name{name}) where {name}
-    hasproperty(data, name)
-end
-@inline function haskey(data::Dict, ::Name{name}) where {name}
     hasproperty(data, name)
 end
 
@@ -231,7 +228,7 @@ julia> @name @inferred remove(data, :c, :f)
 ```
 """
 function remove(data, old_names...)
-    diff_unrolled(map_unrolled(key, data), old_names)(data)
+    diff_unrolled(old_names, map_unrolled(key, data)...)(data)
 end
 
 export remove

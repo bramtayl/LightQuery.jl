@@ -1,12 +1,5 @@
 const Some{AType} = Tuple{AType, Vararg{AType}}
 
-@inline function is_empty(::Tuple{})
-    true
-end
-@inline function is_empty(something)
-    false
-end
-
 function flatten_unrolled()
     ()
 end
@@ -63,23 +56,20 @@ function filter_unrolled(call, item, rest...)
     end
 end
 
-function if_not_in(it)
-    (it,)
-end
-function if_not_in(it, item, rest...)
-    if item === it
-        ()
+@inline in_unrolled(needle) = false
+@inline in_unrolled(needle, hay, stack...) =
+    if needle === hay
+        true
     else
-        if_not_in(it, rest...)
+        in_unrolled(needle, stack...)
     end
-end
-function if_not_in_clump(them, it)
-    if_not_in(it, them...)
-end
-
-function diff_unrolled(more, less)
-    flatten_unrolled(partial_map(if_not_in_clump, less, more)...)
-end
+diff_unrolled(less) = ()
+diff_unrolled(less, first_more, mores...) =
+    if in_unrolled(first_more, less...)
+        diff_unrolled(less, mores...)
+    else
+        first_more, diff_unrolled(less, mores...)...
+    end
 
 """
     over(iterator, call)

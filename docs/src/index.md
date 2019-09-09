@@ -162,7 +162,6 @@ Call [`make_columns`](@ref) then [`Rows`](@ref) to store the data column-wise bu
 ```jldoctest dplyr
 julia> airports = Rows(make_columns(airports));
 
-
 julia> Peek(airports)
 Showing 4 of 1458 rows
 |                        `name` | `airport_code` | `altitude` |  `latitude` |  `longitude` |                    `time_zone` |
