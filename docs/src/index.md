@@ -635,9 +635,11 @@ julia> Peek(interested_in(a_match))
 |      10.0 mi |         -4 minute |
 ```
 
-Use `flatten` to unnest data (exported from Base).
+Use `Base.Iterators.flatten` to unnest data.
 
 ```jldoctest dplyr
+julia> using Base.Iterators: flatten
+
 julia> data =
         @name @> weathers_to_flights |>
         over(_, interested_in) |>

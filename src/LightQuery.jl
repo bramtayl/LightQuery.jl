@@ -1,28 +1,25 @@
 module LightQuery
 
-import Base: axes, collect_similar, collect_to!,
-    copyto!, eltype, empty, first, get, getindex, getproperty, grow_to!, haskey,
-    IndexStyle, isless, IteratorEltype, IteratorSize,
-    length, iterate, merge, NamedTuple, ndims, occursin, parent, push!,
-    setindex!, size, show, similar, startswith, view, zip
+import Base: axes, collect_similar, collect_to!, copyto!, eltype, empty, first,
+    get, getindex, getproperty, grow_to!, haskey, IndexStyle, isless,
+    IteratorEltype, IteratorSize, length, iterate, merge, NamedTuple, ndims,
+    parent, push!, setindex!, size, show, similar, view, zip
 @static if VERSION >= v"1.1"
     import Base: push_widen, setindex_widen_up_to
 end
-using Base: _collect, @default_eltype, EltypeUnknown, Generator,
-    HasEltype, HasLength, HasShape, isvatuple, @pure, promote_typejoin,
+using Base: _collect, @default_eltype, EltypeUnknown, Generator, HasEltype,
+    HasLength, HasShape, isvatuple, @pure, promote_typejoin,
     @propagate_inbounds, SizeUnknown, tail
-import Base.Iterators: drop, flatten, take
+import Base.Iterators: take
 using Base.Iterators: Filter
 using Base.Meta: quot
 using Compat: hasproperty
-using Core: Bool, TypeofBottom
 using CSV: getcell, getfile, getrow, Row
 using IterTools: @ifsomething
 import MacroTools
 using MacroTools: @capture
 using Markdown: MD, Table
-using Tables: Schema, schema
-export flatten
+using Tables: Schema
 
 include("utilities.jl")
 include("macros.jl")
