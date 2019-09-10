@@ -14,11 +14,4 @@ script:
   - bash build_and_test.sh
 after_success:
   - bash coverage/coverage.sh
-jobs:
-  include:
-    - stage: "Documentation"
-      julia: 1.2
-      os: linux
-      script:
-        - bash docs/document.sh
-      after_success: skip
+  - bash docs/document.sh

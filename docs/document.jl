@@ -1,6 +1,4 @@
-using Pkg: develop, PackageSpec, instantiate
-
-develop(PackageSpec(; path = pwd()))
+using Pkg: instantiate
 instantiate()
 
 using LightQuery
