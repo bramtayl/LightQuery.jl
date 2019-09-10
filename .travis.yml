@@ -14,9 +14,7 @@ notifications:
 script:
   - bash build_and_test.sh
 after_success:
-  - if [[ $TRAVIS_JULIA_VERSION = 1.2 ]] && [[ $TRAVIS_OS_NAME = linux ]]; then
-      julia --project=coverage coverage/coverage.jl;
-    fi
+  - bash coverage/coverage.sh
 jobs:
   include:
     - stage: "Documentation"
