@@ -20,5 +20,5 @@ jobs:
       julia: 1.2
       os: linux
       script:
-        - julia --project=docs docs/document.jl
+        - bash docs/document.sh
       after_success: skip
