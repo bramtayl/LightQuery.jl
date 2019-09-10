@@ -112,12 +112,8 @@ function order(unordered, key_function; keywords...)
 end
 export order
 
-struct Backwards{Increasing}
-    increasing::Increasing
-end
-
 """
-    backwards(something)
+    Backwards(something)
 
 Reverse sorting order.
 
@@ -126,16 +122,17 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> collect(@inferred order([1, -2], backwards))
+julia> collect(@inferred order([1, -2], Backwards))
 2-element Array{Int64,1}:
   1
  -2
 ```
 """
-function backwards(something)
-    Backwards(something)
+struct Backwards{Increasing}
+    increasing::Increasing
 end
-export backwards
+
+export Backwards
 
 function show(io::IO, descending::Backwards)
     print(io, "Backwards($(descending.increasing))")

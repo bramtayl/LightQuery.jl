@@ -70,8 +70,7 @@ julia> using Test: @inferred
 julia> @name @inferred to_columns(Rows((a = [1, 2], b = [1.0, 2.0])))
 ((`a`, [1, 2]), (`b`, [1.0, 2.0]))
 
-julia> result =
-        @name @> (a = [2, 1], b = [2.0, 1.0]) |>
+julia> @name @> (a = [2, 1], b = [2.0, 1.0]) |>
         Rows |>
         order(_, :a) |>
         to_columns |>
