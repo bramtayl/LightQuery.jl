@@ -12,7 +12,7 @@ function same_axes()
     true
 end
 
-function Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, Columns, Names}
+@propagate_inbounds function Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, Columns, Names}
     @boundscheck if !same_axes(columns...)
         error("All columns passed to `Rows` need to have the same axes")
     end
@@ -271,10 +271,6 @@ function make_columns(rows)
 end
 
 export make_columns
-
-function get_columns(rows::Rows)
-    rows.columns
-end
 
 function view_backwards(indexes, column)
     view(column, indexes)
