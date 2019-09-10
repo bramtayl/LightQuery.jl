@@ -12,8 +12,7 @@ matrix:
 notifications:
   email: false
 script:
-  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia --project --code-coverage=tracefile-%p.info --code-coverage=user build_and_test.jl
+  - bash build_and_test.sh
 after_success:
   - if [[ $TRAVIS_JULIA_VERSION = 1.2 ]] && [[ $TRAVIS_OS_NAME = linux ]]; then
       julia --project=coverage coverage/coverage.jl;
