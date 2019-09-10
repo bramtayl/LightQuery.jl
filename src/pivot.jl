@@ -51,6 +51,11 @@ function show(output::IO, peek::Peek)
     )))
 end
 
+function OrderView_backwards(index_key, unordered)
+    OrderView(unordered, index_key)
+end
+
+# OrderView(Rows) => Rows(OrderView)
 """
     to_columns(rows)
 
@@ -74,16 +79,8 @@ julia> result =
 2-element Array{Float64,1}:
  1.0
  2.0
+```
 """
-function to_columns(rows::Generator)
-    rows.f(get_columns(parent(rows)))
-end
-
-function OrderView_backwards(index_key, unordered)
-    OrderView(unordered, index_key)
-end
-
-# OrderView(Rows) => Rows(OrderView)
 function to_columns(order_view::OrderView{Iterator}) where {Iterator <: Rows}
     to_columns(@inbounds Rows(
         partial_map(OrderView_backwards,
