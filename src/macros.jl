@@ -2,7 +2,7 @@ function substitute_underscores!(underscores_to_gensyms, meta_level, other)
     other
 end
 function substitute_underscores!(underscores_to_gensyms, meta_level, maybe_argument::Symbol)
-    if meta_level[] < 1 && all(isequal('_'), string(maybe_argument))
+    if meta_level < 1 && all(isequal('_'), string(maybe_argument))
         if !haskey(underscores_to_gensyms, maybe_argument)
             underscores_to_gensyms[maybe_argument] = gensym(maybe_argument)
         end
@@ -27,15 +27,18 @@ function substitute_underscores!(underscores_to_gensyms, meta_level, code::Expr)
             code
         end
     head = expanded_code.head
-    if head == :quote
-        meta_level[] = meta_level[] + 1
-    elseif head == :$
-        meta_level[] = meta_level[] - 1
-    end
+    new_meta_level =
+        if head == :quote
+            meta_level + 1
+        elseif head == :$
+            meta_level - 1
+        else
+            meta_level
+        end
     Expr(head, map(let underscores_to_gensyms = underscores_to_gensyms
         code -> substitute_underscores!(
             underscores_to_gensyms,
-            meta_level,
+            new_meta_level,
             code
         )
     end, expanded_code.args)...)
@@ -46,7 +49,7 @@ function anonymous(location, other)
 end
 function anonymous(location, body::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
-    meta_level = Ref(0)
+    meta_level = 0
     substituted_body =
         substitute_underscores!(
             underscores_to_gensyms,
@@ -86,7 +89,7 @@ export @_
 
 function link(location, object, call::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
-    meta_level = Ref(0)
+    meta_level = 0
     body = substitute_underscores!(underscores_to_gensyms, meta_level, call)
     Expr(:let,
         Expr(:(=), underscores_to_gensyms[:_], object),
