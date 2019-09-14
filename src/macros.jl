@@ -1,8 +1,8 @@
-function substitute_underscores!(underscores_to_gensyms, other)
+function substitute_underscores!(underscores_to_gensyms, meta_level, other)
     other
 end
-function substitute_underscores!(underscores_to_gensyms, maybe_argument::Symbol)
-    if all(isequal('_'), string(maybe_argument))
+function substitute_underscores!(underscores_to_gensyms, meta_level, maybe_argument::Symbol)
+    if meta_level[] < 1 && all(isequal('_'), string(maybe_argument))
         if !haskey(underscores_to_gensyms, maybe_argument)
             underscores_to_gensyms[maybe_argument] = gensym(maybe_argument)
         end
@@ -11,7 +11,7 @@ function substitute_underscores!(underscores_to_gensyms, maybe_argument::Symbol)
         maybe_argument
     end
 end
-function substitute_underscores!(underscores_to_gensyms, code::Expr)
+function substitute_underscores!(underscores_to_gensyms, meta_level, code::Expr)
     # have to do this the old fashioned way because _ has a special meaning in MacroTools
     expanded_code =
         if code.head === :macrocall && length(code.args) === 3
@@ -26,8 +26,18 @@ function substitute_underscores!(underscores_to_gensyms, code::Expr)
         else
             code
         end
-    Expr(expanded_code.head, map(let underscores_to_gensyms = underscores_to_gensyms
-        code -> substitute_underscores!(underscores_to_gensyms, code)
+    head = expanded_code.head
+    if head == :quote
+        meta_level[] = meta_level[] + 1
+    elseif head == :$
+        meta_level[] = meta_level[] - 1
+    end
+    Expr(head, map(let underscores_to_gensyms = underscores_to_gensyms
+        code -> substitute_underscores!(
+            underscores_to_gensyms,
+            meta_level,
+            code
+        )
     end, expanded_code.args)...)
 end
 
@@ -36,7 +46,13 @@ function anonymous(location, other)
 end
 function anonymous(location, body::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
-    substituted_body = substitute_underscores!(underscores_to_gensyms, body)
+    meta_level = Ref(0)
+    substituted_body =
+        substitute_underscores!(
+            underscores_to_gensyms,
+            meta_level,
+            body
+        )
     Expr(:function,
         Expr(:call, gensym("@_"), over(
             sort!(collect(underscores_to_gensyms), by = first),
@@ -70,7 +86,8 @@ export @_
 
 function link(location, object, call::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
-    body = substitute_underscores!(underscores_to_gensyms, call)
+    meta_level = Ref(0)
+    body = substitute_underscores!(underscores_to_gensyms, meta_level, call)
     Expr(:let,
         Expr(:(=), underscores_to_gensyms[:_], object),
         Expr(:block,
@@ -108,6 +125,13 @@ You can nest chains:
 ```jldoctest chain
 julia> @> 1 |> (@> _ + 1 |> _ + 1)
 3
+```
+
+Handles interpolations seamlessly:
+
+```jldoctest chain
+julia> @> 1 |> :(_ + \$_)
+:(_ + 1)
 ```
 """
 macro >(body)
