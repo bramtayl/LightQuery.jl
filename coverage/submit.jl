@@ -6,7 +6,7 @@ using Coverage.Codecov: submit
 using Coverage.LCOV: readfolder
 
 submit(
-    @static if VERSION >= v"1.0"
+    @static if VERSION >= v"1.1"
         filter(
             let prefix = joinpath(pwd(), "src", "")
                 coverage -> startswith(coverage.filename, prefix)
