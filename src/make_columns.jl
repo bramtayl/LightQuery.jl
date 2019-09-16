@@ -14,7 +14,7 @@ end
 
 @propagate_inbounds function Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, Columns, Names}
     @boundscheck if !same_axes(columns...)
-        error("All columns passed to `Rows` need to have the same axes")
+        throw(DimensionMismatch("All arguments to `Rows` must have the same axes"))
     end
     Rows{Row, Dimension, Columns, Names}(columns, the_names)
 end
@@ -46,11 +46,9 @@ export Rows
 """
     Rows(named_columns)
 
-Iterator over `rows` of a table. Always lazy. Use [`Peek`](@ref) to view. Note
-that `Rows` assumes that the iteration state for the first column can generate
-an index for all of the columns.
+Iterator over `rows` of a table. Always lazy. Use [`Peek`](@ref) to view.
 
-```jldoctest
+```jldoctest Rows
 julia> using LightQuery
 
 julia> using Test: @inferred
@@ -64,6 +62,15 @@ julia> @inferred collect(lazy)
 2-element Array{Tuple{Tuple{Name{:a},Int64},Tuple{Name{:b},Float64}},1}:
  ((`a`, 1), (`b`, 1.0))
  ((`a`, 2), (`b`, 2.0))
+```
+
+All arguments to Rows must have the same axes. Use `@inbounds` to override the
+check.
+
+```jldoctest Rows
+julia> result = @name Rows((a = 1:2, b = 1:3))
+ERROR: DimensionMismatch("All arguments to `Rows` must have the same axes")
+[...]
 ```
 """
 @propagate_inbounds function Rows(named_columns)

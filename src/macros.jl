@@ -35,13 +35,19 @@ function substitute_underscores!(underscores_to_gensyms, meta_level, code::Expr)
         else
             meta_level
         end
-    Expr(head, map(let underscores_to_gensyms = underscores_to_gensyms
-        code -> substitute_underscores!(
-            underscores_to_gensyms,
-            new_meta_level,
-            code
-        )
-    end, expanded_code.args)...)
+    Expr(head, map(
+        let underscores_to_gensyms = underscores_to_gensyms,
+            new_meta_level = new_meta_level
+            function substitute_underscores!_capture(code)
+                substitute_underscores!(
+                    underscores_to_gensyms,
+                    new_meta_level,
+                    code
+                )
+            end
+        end,
+        expanded_code.args
+    )...)
 end
 
 function anonymous(location, other)

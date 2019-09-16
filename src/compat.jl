@@ -1,5 +1,7 @@
 @static if VERSION < v"1.1"
 
+    using Base: promote_typejoin
+    
     # backport #30076 just for Rows
     function collect_to!(destination::Rows{Item}, iterator, offset, state) where Item
         # collect to destination array, checking the type of each result. if a result does not

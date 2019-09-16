@@ -80,7 +80,7 @@ julia> @name @> (a = [2, 1], b = [2.0, 1.0]) |>
  2.0
 ```
 """
-function to_columns(order_view::OrderView{Iterator}) where {Iterator <: Rows}
+function to_columns(order_view::OrderView{Element, Dimensions, Iterator}) where {Element, Dimensions, Iterator <: Rows}
     to_columns(@inbounds Rows(
         partial_map(OrderView_backwards,
             order_view.index_keys,

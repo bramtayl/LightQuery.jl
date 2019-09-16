@@ -44,36 +44,26 @@ function iterate(enumerated::Enumerate, state)
 end
 export Enumerate
 
-struct OrderView{Unordered, IndexKeys}
+struct OrderView{Element, Dimensions, Unordered, IndexKeys} <: AbstractArray{Element, Dimensions}
     unordered::Unordered
     index_keys::IndexKeys
+end
+
+function OrderView(unordered::Unordered, index_keys::IndexKeys) where {Unordered, IndexKeys}
+    OrderView{eltype(Unordered), ndims(IndexKeys), Unordered, IndexKeys}(
+        unordered, index_keys
+    )
 end
 
 function parent(order_view::OrderView)
     order_view.index_keys
 end
 
-function IteratorEltype(::Type{OrderView{Unordered, IndexKeys}}) where {Unordered, IndexKeys}
-    IteratorEltype(Unordered)
-end
-function eltype(::Type{OrderView{Unordered, IndexKeys}}) where  {Unordered, IndexKeys}
-    eltype(Unordered)
-end
-
-function IteratorSize(::Type{OrderView{Unordered, IndexKeys}}) where {Unordered, IndexKeys}
-    IteratorSize(IndexKeys)
-end
 function axes(order_view::OrderView, dimensions...)
     axes(order_view.index_keys, dimensions...)
 end
 function size(order_view::OrderView, dimensions...)
     size(order_view.index_keys, dimensions...)
-end
-function length(order_view::OrderView)
-    length(order_view.index_keys)
-end
-function ndims(order_view::OrderView)
-    ndims(order_view.index_keys)
 end
 
 @propagate_inbounds function getindex(order_view::OrderView, index::Int...)
@@ -82,11 +72,6 @@ end
 
 @propagate_inbounds function view(order_view::OrderView, indices...)
     OrderView(order_view.unordered, view(order_view.index_keys, indices...))
-end
-
-function iterate(order_view::OrderView, state...)
-    index_key, state = @ifsomething iterate(order_view.index_keys, state...)
-    order_view.unordered[key(index_key)], state
 end
 
 """
@@ -220,7 +205,9 @@ function index(unindexed, key_function)
     key_to_index = collect_similar(
         Dict{Union{}, Union{}}(),
         Generator(let key_function = key_function
-            index_item -> key_index(key_function, index_item)
+            function key_index_capture(index_item)
+                key_index(key_function, index_item)
+            end
         end, Enumerate(unindexed))
     )
     Indexed{keytype(key_to_index), eltype(unindexed)}(unindexed, key_to_index)
@@ -681,10 +668,16 @@ end
 
 export mix
 
+function setindex_pair!(dictionary, (a_key, a_value))
+    dictionary[a_key] = a_value
+end
+
 # piracy
 function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
     foreach(let dictionary = dictionary
-        ((a_key, a_value),) -> dictionary[a_key] = a_value
+        function setindex_pair!(pair)
+            setindex_pair!(dictionary, pair)
+        end
     end, dictionary)
     nothing
 end
