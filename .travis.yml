@@ -11,7 +11,7 @@ matrix:
 notifications:
   email: false
 script: dash test.sh
-after_success: julia --project=coverage coverage/submit.jl
+after_success: julia --project=coverage/ coverage/submit.jl
 jobs:
   include:
     - stage: "Documentation"
