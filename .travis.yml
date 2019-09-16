@@ -16,5 +16,5 @@ jobs:
   include:
     - stage: "Documentation"
       julia: 1.2
-      script: julia --project=docs/ document.jl
+      script: julia --project=docs/ docs/document.jl
       after_success: skip
