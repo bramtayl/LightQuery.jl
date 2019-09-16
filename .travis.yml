@@ -10,8 +10,11 @@ matrix:
     - julia: nightly
 notifications:
   email: false
-script:
-  - bash build_and_test.sh
-after_success:
-  - bash coverage/coverage.sh
-  - bash docs/document.sh
+script: ./test.sh
+after_success: julia --project=coverage coverage/submit.jl
+jobs:
+  include:
+    - stage: "Documentation"
+      julia: 1.2
+      script: julia --project=docs/ document.jl
+      after_success: skip
