@@ -10,7 +10,7 @@ matrix:
     - julia: nightly
 notifications:
   email: false
-script: ./test.sh
+script: dash test.sh
 after_success: julia --project=coverage coverage/submit.jl
 jobs:
   include:
