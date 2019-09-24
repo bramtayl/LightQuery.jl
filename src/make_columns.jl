@@ -6,7 +6,7 @@ function compare_axes(reference_axes, item)
     axes(item) == reference_axes
 end
 function same_axes(first_column, rest...)
-    reduce_unrolled(&, partial_map(compare_axes, axes(first_column), rest)...)
+    reduce_unrolled(&, true, partial_map(compare_axes, axes(first_column), rest)...)
 end
 function same_axes()
     true
@@ -62,6 +62,13 @@ julia> @inferred collect(lazy)
 2-element Array{Tuple{Tuple{Name{:a},Int64},Tuple{Name{:b},Float64}},1}:
  ((`a`, 1), (`b`, 1.0))
  ((`a`, 2), (`b`, 2.0))
+named_columns = @name (a = [1, 2],)
+(columns, the_names) = map_unrolled(value, named_columns), map_unrolled(key, named_columns)
+
+julia> @name @inferred Rows((a = [1, 2],))
+2-element Rows{Tuple{Tuple{Name{:a},Int64}},1,Tuple{Array{Int64,1}},Tuple{Name{:a}}}:
+ ((`a`, 1),)
+ ((`a`, 2),)
 ```
 
 All arguments to Rows must have the same axes. Use `@inbounds` to override the
