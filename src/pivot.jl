@@ -22,14 +22,14 @@ Showing 4 of 5 rows
 |   4 |   2 |
 ```
 """
-function Peek(rows)
+@inline function Peek(rows)
     Peek(rows, 4)
 end
 
 function make_any(values)
     Any[values...]
 end
-function justification(column)
+@inline function justification(column)
     :r
 end
 function show(output::IO, peek::Peek)
@@ -51,43 +51,39 @@ function show(output::IO, peek::Peek)
     )))
 end
 
-function OrderView_backwards(index_key, unordered)
-    OrderView(unordered, index_key)
+function reduce_values(a_function, columns, row1, row2)
+    map_unrolled(tuple,
+        columns,
+        map_unrolled(
+            a_function,
+            map_unrolled(value, columns(row1)),
+            map_unrolled(value, columns(row2))
+        )
+    )
 end
 
-# OrderView(Rows) => Rows(OrderView)
 """
-    to_columns(rows)
+    function reduce_rows(rows, a_function, columns...)
 
-Convert rows into columns. Always lazy, see [`make_columns`] for an eager
-version. In many cases, row-wise access will be more efficient.
+Reduce a function over each of `columns` in `rows`.
 
 ```jldoctest
 julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @name @inferred to_columns(Rows((a = [1, 2], b = [1.0, 2.0])))
-((`a`, [1, 2]), (`b`, [1.0, 2.0]))
-
-julia> @name @> (a = [2, 1], b = [2.0, 1.0]) |>
-        Rows |>
-        order(_, :a) |>
-        to_columns |>
-        collect(_.b)
-2-element Array{Float64,1}:
- 1.0
- 2.0
+julia> @name @inferred reduce_rows(Rows((a = [1, 1], b = [1.0, 1.0])), +, :a, :b)
+((`a`, 2), (`b`, 2.0))
 ```
 """
-function to_columns(order_view::OrderView{Element, Dimensions, Iterator}) where {Element, Dimensions, Iterator <: Rows}
-    to_columns(@inbounds Rows(
-        partial_map(OrderView_backwards,
-            order_view.index_keys,
-            order_view.unordered.columns
-        ),
-        order_view.unordered.names
-    ))
+@inline function reduce_rows(rows, a_function, columns...)
+    reduce(
+        let a_function = a_function, columns = columns
+            @inline function reduce_rows_capture(row1, row2)
+                reduce_values(a_function, columns, row1, row2)
+            end
+        end,
+        rows
+    )
 end
-
-export to_columns
+export reduce_rows

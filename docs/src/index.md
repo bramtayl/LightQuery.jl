@@ -691,15 +691,14 @@ Showing 4 of 87 rows
 |       0.0 mi |         -7 minute |
 ```
 
-Calculate the mean `departure_delay` using [`to_columns`](@ref).
+Calculate the mean `departure_delay`.
 
 ```jldoctest dplyr
 julia> using Statistics: mean
 
 julia> @name @> visibility_group |>
         value |>
-        to_columns |>
-        _.departure_delay |>
+        over(_, :departure_delay) |>
         mean
 32.252873563218394 minute
 ```
@@ -712,8 +711,7 @@ julia> get_mean_departure_delay(visibility_group) = @name (
             mean_departure_delay =
                 (@> visibility_group |>
                     value |>
-                    to_columns |>
-                    _.departure_delay |>
+                    over(_, :departure_delay) |>
                     mean),
             count = length(value(visibility_group))
         );
