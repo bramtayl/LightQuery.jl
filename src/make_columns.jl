@@ -62,8 +62,6 @@ julia> @inferred collect(lazy)
 2-element Array{Tuple{Tuple{Name{:a},Int64},Tuple{Name{:b},Float64}},1}:
  ((`a`, 1), (`b`, 1.0))
  ((`a`, 2), (`b`, 2.0))
-named_columns = @name (a = [1, 2],)
-(columns, the_names) = map_unrolled(value, named_columns), map_unrolled(key, named_columns)
 
 julia> @name @inferred Rows((a = [1, 2],))
 2-element Rows{Tuple{Tuple{Name{:a},Int64}},1,Tuple{Array{Int64,1}},Tuple{Name{:a}}}:
@@ -285,13 +283,3 @@ function make_columns(rows)
 end
 
 export make_columns
-
-function view_backwards(indexes, column)
-    view(column, indexes)
-end
-@propagate_inbounds function view(rows::Rows, indexes)
-    @inbounds Rows(
-        partial_map(view_backwards, indexes, rows.columns),
-        rows.names
-    )
-end

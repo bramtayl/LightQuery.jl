@@ -705,7 +705,7 @@ struct Length{Iterator}
 end
 IteratorEltype(::Type{Length{Iterator}}) where {Iterator} =
     IteratorEltype(Iterator)
-eltype(fixed::Length) = eltype(fixed.iterator)
+eltype(::Type{Length{Iterator}}) where {Iterator} = eltype(Iterator)
 IteratorLength(::Type{T}) where {T <: Length} = HasLength()
 length(fixed::Length) = fixed.new_length
 iterate(fixed::Length) = iterate(fixed.iterator)
