@@ -31,10 +31,12 @@ function process_with_lightquery(file)
     make_columns
 end
 
+println("LightQuery")
 @btime process_with_lightquery(file)
 
 function process_with_dataframes_meta(file)
     by(DataFrame(file), :Column1, :Column1 => length)
 end
 
+println("DataFrames")
 @btime process_with_dataframes_meta(file)
