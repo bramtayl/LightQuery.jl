@@ -22,7 +22,7 @@ Showing 4 of 5 rows
 |   4 |   2 |
 ```
 """
-@inline function Peek(rows)
+function Peek(rows)
     Peek(rows, 4)
 end
 
@@ -51,7 +51,7 @@ function show(output::IO, peek::Peek)
     )))
 end
 
-function reduce_values(a_function, columns, row1, row2)
+@inline function reduce_values(a_function, columns, row1, row2)
     map_unrolled(tuple,
         columns,
         map_unrolled(

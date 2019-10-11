@@ -272,7 +272,7 @@ julia> make_columns(when(over(1:4, unstable), row -> true))
 ((`d`, Union{Missing, String}["1", "2", missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, String}["1", "2", missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
 ```
 """
-@inline function make_columns(rows)
+function make_columns(rows)
     to_columns(_collect(
         (@inbounds Rows(())),
         rows,

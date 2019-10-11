@@ -89,7 +89,7 @@ julia> @inferred collect(over([1, -2, -3, 4], abs))
  4
 ```
 """
-function over(iterator, call)
+@inline function over(iterator, call)
     Generator(call, iterator)
 end
 export over
@@ -110,7 +110,7 @@ julia> @inferred collect(when(1:4, iseven))
  4
 ```
 """
-function when(iterator, call)
+@inline function when(iterator, call)
     Iterators.filter(call, iterator)
 end
 export when
@@ -132,11 +132,10 @@ julia> @inferred key((:a, 1))
 :a
 ```
 """
-function key(pair)
-    a_key, a_value = pair
+@inline function key((a_key, a_value))
     a_key
 end
-function key(pair::Pair)
+@inline function key(pair::Pair)
     pair.first
 end
 export key
@@ -158,11 +157,10 @@ julia> @inferred value((:a, 1))
 1
 ```
 """
-function value(pair)
-    a_key, a_value = pair
+@inline function value((a_key, a_value))
     a_value
 end
-function value(pair::Pair)
+@inline function value(pair::Pair)
     pair.second
 end
 export value

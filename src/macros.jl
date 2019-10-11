@@ -67,14 +67,14 @@ function anonymous(location, body::Expr)
             sort!(collect(underscores_to_gensyms), by = first),
             value
         )...),
-        Expr(:block, location, substituted_body)
+        Expr(:block, Expr(:meta, :inline), location, substituted_body)
     )
 end
 
 """
     macro _(body)
 
-Terser function syntax. The arguments are inside the `body`; the first argument is `_`, the second argument is `__`, etc.
+Terser function syntax. The arguments are inside the `body`; the first argument is `_`, the second argument is `__`, etc. Will `@inline`.
 
 ```jldoctest
 julia> using LightQuery
