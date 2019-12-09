@@ -50,28 +50,15 @@ Use [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File) to import t
 ```jldoctest dplyr
 julia> import CSV
 
-julia> airports_file = CSV.File("airports.csv", missingstrings = ["", "\\N"])
-CSV.File("airports.csv"):
-Size: 1458 x 8
-Tables.Schema:
- :faa    String
- :name   String
- :lat    Float64
- :lon    Float64
- :alt    Int64
- :tz     Int64
- :dst    String
- :tzone  Union{Missing, String}
+julia> airports_file = CSV.File("airports.csv", missingstrings = ["", "\\N"]);
 ```
 
 For this package, I made [`named_tuple`](@ref)s to replace `NamedTuple`s. Use [`@name`](@ref) to work with them.
 
-Convert the `schema` to [`row_info`](@ref).
+Get [`row_info`](@ref).
 
 ```jldoctest dplyr
-julia> using Tables: schema
-
-julia> const Airport = row_info(schema(airports_file));
+julia> const Airport = row_info(airports_file);
 ```
 
 Read the first row.
@@ -197,35 +184,13 @@ julia> indexed_airports["JFK"]
 Use [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File) to import the flights data.
 
 ```jldoctest dplyr
-julia> flights_file = CSV.File("flights.csv")
-CSV.File("flights.csv"):
-Size: 336776 x 19
-Tables.Schema:
- :year            Int64
- :month           Int64
- :day             Int64
- :dep_time        Union{Missing, Int64}
- :sched_dep_time  Int64
- :dep_delay       Union{Missing, Int64}
- :arr_time        Union{Missing, Int64}
- :sched_arr_time  Int64
- :arr_delay       Union{Missing, Int64}
- :carrier         String
- :flight          Int64
- :tailnum         Union{Missing, String}
- :origin          String
- :dest            String
- :air_time        Union{Missing, Int64}
- :distance        Int64
- :hour            Int64
- :minute          Int64
- :time_hour       String
+julia> flights_file = CSV.File("flights.csv");
 ```
 
 Get the first flight, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
 
 ```jldoctest dplyr
-julia> const Flight = row_info(schema(flights_file));
+julia> const Flight = row_info(flights_file);
 
 julia> flight =
         @name @> flights_file |>
@@ -489,27 +454,9 @@ Showing at most 4 rows
 Import weather data. Get the first row, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
 
 ```jldoctest dplyr
-julia> weathers_file = CSV.File("weather.csv")
-CSV.File("weather.csv"):
-Size: 26115 x 15
-Tables.Schema:
- :origin      String
- :year        Int64
- :month       Int64
- :day         Int64
- :hour        Int64
- :temp        Union{Missing, Float64}
- :dewp        Union{Missing, Float64}
- :humid       Union{Missing, Float64}
- :wind_dir    Union{Missing, Int64}
- :wind_speed  Union{Missing, Float64}
- :wind_gust   Union{Missing, Float64}
- :precip      Float64
- :pressure    Union{Missing, Float64}
- :visib       Float64
- :time_hour   String
+julia> weathers_file = CSV.File("weather.csv");
 
-julia> const Weather = row_info(schema(weathers_file));
+julia> const Weather = row_info(weathers_file);
 
 julia> function get_weather(indexed_airports, row)
             @name @> row |>

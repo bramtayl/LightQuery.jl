@@ -360,30 +360,26 @@ export Apply
     map_unrolled(tuple, apply.names, them)
 end
 
-struct InRow{name, type, position}
+struct InRow{name, AColumn}
+    column::AColumn
 end
-
-@pure function InRow(name, type, position)
-    InRow{name, type, position}()
+@inline function InRow{name}(column::AColumn) where {name, AColumn}
+    InRow{name, AColumn}(column)
 end
-@inline function (::InRow{name, type, position})(row::Row) where {name, type, position}
-    getcell(getfile(row), type, position, getrow(row))::type
+@inline function (in_row::InRow)(row::Row)
+    in_row.column[getrow(row)]
 end
-@inline function get_pair(row::Row, column::InRow{name}) where {name}
-    name, column(row)
+@inline function get_pair(row::Row, in_row::InRow{name}) where {name}
+    Name{name}(), in_row(row)
 end
-@inline function (columns::Some{InRow})(data)
-    partial_map(get_pair, data, columns)
-end
-
-@inline function InRow_at(::Schema{Names, Types}, index) where {Names, Types}
-    InRow(Name{Names[index]}(), fieldtype(Types, index), index)
+@inline function (in_rows::Some{InRow})(data)
+    partial_map(get_pair, data, in_rows)
 end
 
 """
-    row_info(::Tables.Schema)
+    row_info(::CSV.File)
 
-Get row info for the schema. Can be used as a type stable selector function.
+Get row info for the CSV file. Can be used as a type stable selector function.
 
 ```jldoctest
 julia> using LightQuery
@@ -392,30 +388,20 @@ julia> using Test: @inferred
 
 julia> using CSV: File
 
-julia> using Tables: schema
+julia> test = File("test.csv");
 
-julia> test = File("test.csv")
-CSV.File("test.csv"):
-Size: 1 x 6
-Tables.Schema:
- :a  Int64
- :b  Float64
- :c  Int64
- :d  Float64
- :e  Int64
- :f  Float64
-
-julia> template = @inferred row_info(schema(test))
-(LightQuery.InRow{`a`,Int64,1}(), LightQuery.InRow{`b`,Float64,2}(), LightQuery.InRow{`c`,Int64,3}(), LightQuery.InRow{`d`,Float64,4}(), LightQuery.InRow{`e`,Int64,5}(), LightQuery.InRow{`f`,Float64,6}())
+julia> template = row_info(test)
+(LightQuery.InRow{:a,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:b,CSV.Column{Float64,Float64}}([1.0]), LightQuery.InRow{:c,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:d,CSV.Column{Float64,Float64}}([1.0]), LightQuery.InRow{:e,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:f,CSV.Column{Float64,Float64}}([1.0]))
 
 julia> @inferred template(first(test))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-@inline function row_info(a_schema::Schema{Names}) where {Names}
-    ntuple(let a_schema = a_schema
-        @inline InRow_at_capture(index) = InRow_at(a_schema, index)
-    end, Val{length(Names)}())
+@noinline function row_info(file::File)
+    ((
+        InRow{name}(getcolumn(file, name))
+        for name in propertynames(file)
+    )...,)
 end
 
 export row_info

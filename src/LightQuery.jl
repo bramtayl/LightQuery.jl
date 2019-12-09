@@ -14,17 +14,16 @@ import Base.Iterators: take
 using Base.Iterators: Filter
 using Base.Meta: quot
 using Compat: hasproperty
-using CSV: getcell, getfile, getrow, Row
+using CSV: getcolumn, Column, getrow, Row, File
 using IterTools: @ifsomething
 import MacroTools
 using MacroTools: @capture
 using Markdown: MD, Table
-using Tables: Schema
 
 include("utilities.jl")
 include("macros.jl")
 include("columns.jl")
-include("Index.jl")
+include("index.jl")
 include("rows.jl")
 include("make_columns.jl")
 include("pivot.jl")
