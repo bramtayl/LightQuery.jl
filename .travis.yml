@@ -10,8 +10,8 @@ matrix:
     - julia: nightly
 notifications:
   email: false
-script: dash test.sh
-after_success: julia --project=coverage/ coverage/submit.jl
+after_success:
+  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder(pwd()))'
 jobs:
   include:
     - stage: "Documentation"
