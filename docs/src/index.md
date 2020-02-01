@@ -39,7 +39,6 @@ julia> using TimeZones: Class, Local, TimeZone, VariableTimeZone, ZonedDateTime
 
 julia> using Unitful: °, °F, ft, hr, inch, mbar, mi, minute
 
-
 julia> cd(joinpath(pathof(LightQuery) |> dirname |> dirname, "test"));
 ```
 
@@ -760,7 +759,9 @@ julia> first(days)
 ((`year`, 1949), (`month`, 1), (`variable`, :TMAX), (`day`, 1), (`value`, 289))
 ```
 
-Use [`transform`](@ref) and [`remove`](@ref) to create a `Date`.
+Use [`transform`](@ref) and [`remove`](@ref) to create a `Date`. Note that
+`:TMAX` has to be defined outside of the [`@name`](@ref) macro; otherwise,
+LightQuery will think that it is a [`Name`](@ref).
 
 ```jldoctest dplyr
 julia> get_date(day) =
@@ -768,8 +769,14 @@ julia> get_date(day) =
         transform(_, date = Date(_.year, _.month, _.day)) |>
         remove(_, :year, :month, :day);
 
-julia> get_date(first(days))
-((`variable`, :TMAX), (`value`, 289), (`date`, 1949-01-01))
+julia> TMAX = :TMAX;
+
+julia> get_date(first(days)) == @name (
+            variable = TMAX,
+            value = 289,
+            date = Date("1949-01-01")
+        )
+true
 ```
 
 All together.
@@ -789,8 +796,12 @@ julia> function get_month_variable(line)
             over(_, get_date)
         end;
 
-julia> first(get_month_variable(line))
-((`variable`, :TMAX), (`value`, 289), (`date`, 1949-01-01))
+julia> first(get_month_variable(line)) == @name (
+            variable = TMAX,
+            value = 289,
+            date = Date("1949-01-01")
+        )
+true
 ```
 
 [`over`](@ref) each line. Use `flatten` to unnest data.
@@ -847,8 +858,15 @@ julia> spread_variables(day_variables) = @name (
             )...
         );
 
-julia> spread_variables(day_variables)
-((`date`, 1949-01-01), (`TMAX`, 289), (`TMIN`, 217), (`PRCP`, 0), (`SNOW`, 0), (`SNWD`, 0))
+julia> spread_variables(day_variables) == @name (
+            date = Date("1949-01-01"),
+            TMAX = 289,
+            TMIN = 217,
+            PRCP = 0,
+            SNOW = 0,
+            SNWD = 0
+        )
+true
 ```
 
 [`over`](@ref) each day.
