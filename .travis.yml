@@ -8,7 +8,7 @@ julia:
 notifications:
   email: false
 after_success:
-  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder(pwd()))'
+  - julia -e 'if VERSION > v"1.3"; using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder(pwd())); end'
 jobs:
   include:
     - stage: "Documentation"
