@@ -3,10 +3,9 @@
     instantiate()
     using Coverage
     coverage = process_folder()
-    coverage = append!(coverage, process_folder("deps"))
     coverage = merge_coverage_counts(coverage, filter!(
-        let prefixes = (joinpath(pwd(), "src", ""), joinpath(pwd(), "deps", ""))
-            c -> any(p -> startswith(c.filename, p), prefixes)
+        let prefix = joinpath(pwd(), "src", "")
+            coverage_file -> startswith(coverage_file.filename, prefix)
         end,
         LCOV.readfolder(pwd())
     ))
