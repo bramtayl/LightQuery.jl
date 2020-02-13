@@ -1,4 +1,4 @@
-@static if VERSION > v"1.3"
+@static if VERSION >= v"1.1"
     using Pkg: instantiate
     instantiate()
     using Coverage
