@@ -1,4 +1,6 @@
 @static if VERSION > v"1.3"
+    using Pkg: instantiate
+    instantiate()
     using Coverage
     coverage = process_folder()
     coverage = append!(coverage, process_folder("deps"))
