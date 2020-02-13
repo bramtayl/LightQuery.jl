@@ -8,7 +8,7 @@
         let prefixes = (joinpath(pwd(), "src", ""), joinpath(pwd(), "deps", ""))
             c -> any(p -> startswith(c.filename, p), prefixes)
         end,
-        LCOV.readfolder("."))
-    )
+        LCOV.readfolder(pwd())
+    ))
     Codecov.submit(coverage)
 end
