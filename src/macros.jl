@@ -44,6 +44,7 @@ end
 function anonymous(location, other)
     other
 end
+
 function anonymous(location, body::Expr)
     underscores_to_gensyms = Dict{Symbol, Symbol}()
     meta_level = 0
@@ -53,13 +54,17 @@ function anonymous(location, body::Expr)
             meta_level,
             body
         )
-    Expr(:function,
-        Expr(:call, gensym("@_"), over(
-            sort!(collect(underscores_to_gensyms), by = first),
-            value
-        )...),
-        Expr(:block, Expr(:meta, :inline), location, substituted_body)
-    )
+    if length(underscores_to_gensyms) == 0
+        body
+    else
+        Expr(:function,
+            Expr(:call, gensym("@_"), over(
+                sort!(collect(underscores_to_gensyms), by = first),
+                value
+            )...),
+            Expr(:block, Expr(:meta, :inline), location, substituted_body)
+        )
+    end
 end
 
 """
@@ -67,7 +72,7 @@ end
 
 Terser function syntax. The arguments are inside the `body`; the first argument is `_`, the second argument is `__`, etc. Will `@inline`.
 
-```jldoctest
+```jldoctest anonymous
 julia> using LightQuery
 
 julia> using Test: @inferred
@@ -77,6 +82,13 @@ julia> @inferred (@_ _ + 1)(1)
 
 julia> @inferred map((@_ __ - _), (1, 2), (2, 1))
 (1, -1)
+```
+
+If there are no `_` arguments, read as is.
+
+```jldoctest anonymous
+julia> (@_ x -> x + 1)(1)
+2
 ```
 """
 macro _(body)
