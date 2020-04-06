@@ -1,4 +1,4 @@
-name: test
+name: test and submit coverage
 on:
   - push
   - pull_request
