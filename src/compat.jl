@@ -3,7 +3,12 @@
     using Base: promote_typejoin
 
     # backport #30076 just for Rows
-    @inline function collect_to!(destination::Rows{Item}, iterator, offset, state) where Item
+    @inline function collect_to!(
+        destination::Rows{Item},
+        iterator,
+        offset,
+        state,
+    ) where {Item}
         # collect to destination array, checking the type of each result. if a result does not
         # match, widen the result type and re-dispatch.
         index = offset
@@ -22,7 +27,11 @@
         destination
     end
 
-    @inline function setindex_widen_up_to(destination::AbstractArray{Item}, item, index) where Item
+    @inline function setindex_widen_up_to(
+        destination::AbstractArray{Item},
+        item,
+        index,
+    ) where {Item}
         new = similar(destination, promote_typejoin(Item, typeof(item)))
         copyto!(new, firstindex(new), destination, firstindex(destination), index - 1)
         @inbounds new[index] = item
@@ -46,10 +55,10 @@
     end
 
     @inline function push_widen(destination, item)
-        new = sizehint!(empty(
-            destination,
-            promote_typejoin(eltype(destination), typeof(item))
-        ), length(destination))
+        new = sizehint!(
+            empty(destination, promote_typejoin(eltype(destination), typeof(item))),
+            length(destination),
+        )
         if new isa AbstractSet
             # TODO: merge back these two branches when copy! is re-enabled for sets/vectors
             union!(new, destination)

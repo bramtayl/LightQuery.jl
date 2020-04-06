@@ -13,32 +13,33 @@ function substitute_underscores!(underscores_to_gensyms, meta_level, maybe_argum
 end
 function substitute_underscores!(underscores_to_gensyms, meta_level, code::Expr)
     # have to do this the old fashioned way because _ has a special meaning in MacroTools
-    expanded_code =
-        if code.head === :macrocall && length(code.args) === 3
-            name, location, body = code.args
-            if name === Symbol("@_")
-                anonymous(location, body)
-            elseif name === Symbol("@>")
-                make_chain(location, body)
-            else
-                code
-            end
+    expanded_code = if code.head === :macrocall && length(code.args) === 3
+        name, location, body = code.args
+        if name === Symbol("@_")
+            anonymous(location, body)
+        elseif name === Symbol("@>")
+            make_chain(location, body)
         else
             code
         end
+    else
+        code
+    end
     head = expanded_code.head
-    new_meta_level =
-        if head == :quote
-            meta_level + 1
-        elseif head == :$
-            meta_level - 1
-        else
-            meta_level
-        end
-    Expr(head, (
-        substitute_underscores!(underscores_to_gensyms, new_meta_level, code)
-        for code in expanded_code.args
-    )...)
+    new_meta_level = if head == :quote
+        meta_level + 1
+    elseif head == :$
+        meta_level - 1
+    else
+        meta_level
+    end
+    Expr(
+        head,
+        (
+            substitute_underscores!(underscores_to_gensyms, new_meta_level, code) for
+            code in expanded_code.args
+        )...,
+    )
 end
 
 function anonymous(location, other)
@@ -46,23 +47,20 @@ function anonymous(location, other)
 end
 
 function anonymous(location, body::Expr)
-    underscores_to_gensyms = Dict{Symbol, Symbol}()
+    underscores_to_gensyms = Dict{Symbol,Symbol}()
     meta_level = 0
-    substituted_body =
-        substitute_underscores!(
-            underscores_to_gensyms,
-            meta_level,
-            body
-        )
+    substituted_body = substitute_underscores!(underscores_to_gensyms, meta_level, body)
     if length(underscores_to_gensyms) == 0
         body
     else
-        Expr(:function,
-            Expr(:call, gensym("@_"), over(
-                sort!(collect(underscores_to_gensyms), by = first),
-                value
-            )...),
-            Expr(:block, Expr(:meta, :inline), location, substituted_body)
+        Expr(
+            :function,
+            Expr(
+                :call,
+                gensym("@_"),
+                over(sort!(collect(underscores_to_gensyms), by = first), value)...,
+            ),
+            Expr(:block, Expr(:meta, :inline), location, substituted_body),
         )
     end
 end
@@ -97,16 +95,10 @@ end
 export @_
 
 function link(location, object, call::Expr)
-    underscores_to_gensyms = Dict{Symbol, Symbol}()
+    underscores_to_gensyms = Dict{Symbol,Symbol}()
     meta_level = 0
     body = substitute_underscores!(underscores_to_gensyms, meta_level, call)
-    Expr(:let,
-        Expr(:(=), underscores_to_gensyms[:_], object),
-        Expr(:block,
-            location,
-            body
-        )
-    )
+    Expr(:let, Expr(:(=), underscores_to_gensyms[:_], object), Expr(:block, location, body))
 end
 function link(location, object, call)
     Expr(:call, call, object)

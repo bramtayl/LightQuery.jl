@@ -44,15 +44,17 @@ end
 end
 export Enumerate
 
-struct OrderView{Element, Dimensions, Unordered, IndexKeys} <: AbstractArray{Element, Dimensions}
+struct OrderView{Element,Dimensions,Unordered,IndexKeys} <:
+       AbstractArray{Element,Dimensions}
     unordered::Unordered
     index_keys::IndexKeys
 end
 
-@inline function OrderView(unordered::Unordered, index_keys::IndexKeys) where {Unordered, IndexKeys}
-    OrderView{eltype(Unordered), ndims(IndexKeys), Unordered, IndexKeys}(
-        unordered, index_keys
-    )
+@inline function OrderView(
+    unordered::Unordered,
+    index_keys::IndexKeys,
+) where {Unordered,IndexKeys}
+    OrderView{eltype(Unordered),ndims(IndexKeys),Unordered,IndexKeys}(unordered, index_keys)
 end
 
 @inline function parent(order_view::OrderView)
@@ -123,13 +125,16 @@ end
     isless(descending_2.increasing, descending_1.increasing)
 end
 
-struct Indexed{Key, Value, Unindexed, KeyToIndex} <: AbstractDict{Key, Value}
+struct Indexed{Key,Value,Unindexed,KeyToIndex} <: AbstractDict{Key,Value}
     unindexed::Unindexed
     key_to_index::KeyToIndex
 end
 
-@inline function Indexed{Key, Value}(unindexed::Unindexed, key_to_index::KeyToIndex) where {Key, Value, Unindexed, KeyToIndex}
-    Indexed{Key, Value, Unindexed, KeyToIndex}(unindexed, key_to_index)
+@inline function Indexed{Key,Value}(
+    unindexed::Unindexed,
+    key_to_index::KeyToIndex,
+) where {Key,Value,Unindexed,KeyToIndex}
+    Indexed{Key,Value,Unindexed,KeyToIndex}(unindexed, key_to_index)
 end
 
 @inline function getindex(indexed::Indexed, a_key)
@@ -154,7 +159,9 @@ end
     (key(key_index) => indexed.unindexed[value(key_index)]), next_state
 end
 
-@inline function IteratorSize(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex}
+@inline function IteratorSize(
+    ::Type{Indexed{Unindexed,KeyToIndex}},
+) where {Unindexed,KeyToIndex}
     IteratorSize(KeyToIndex)
 end
 @inline function length(indexed::Indexed)
@@ -167,11 +174,13 @@ end
     axes(indexed.key_to_index)
 end
 
-@inline function IteratorEltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex}
+@inline function IteratorEltype(
+    ::Type{Indexed{Unindexed,KeyToIndex}},
+) where {Unindexed,KeyToIndex}
     combine_iterator_eltype(IteratorEltype(Unindexed), IteratorEltype(KeyToIndex))
 end
-@inline function eltype(::Type{Indexed{Unindexed, KeyToIndex}}) where {Unindexed, KeyToIndex}
-    Pair{keytype(KeyToIndex), eltype(Unindexed)}
+@inline function eltype(::Type{Indexed{Unindexed,KeyToIndex}}) where {Unindexed,KeyToIndex}
+    Pair{keytype(KeyToIndex),eltype(Unindexed)}
 end
 
 @inline function key_index(key_function, (index, item))
@@ -199,14 +208,14 @@ julia> @inferred result[2]
 """
 @inline function index(unindexed, key_function)
     key_to_index = collect_similar(
-        Dict{Union{}, Union{}}(),
+        Dict{Union{},Union{}}(),
         Generator(let key_function = key_function
             @inline function key_index_capture(index_item)
                 key_index(key_function, index_item)
             end
-        end, Enumerate(unindexed))
+        end, Enumerate(unindexed)),
     )
-    Indexed{keytype(key_to_index), eltype(unindexed)}(unindexed, key_to_index)
+    Indexed{keytype(key_to_index),eltype(unindexed)}(unindexed, key_to_index)
 end
 export index
 
@@ -225,13 +234,13 @@ julia> @inferred By([1, -2], abs)
 By{Array{Int64,1},typeof(abs)}([1, -2], abs)
 ```
 """
-struct By{Iterator, Key}
+struct By{Iterator,Key}
     sorted::Iterator
     key_function::Key
 end
 export By
 
-struct Group{Iterator, Key}
+struct Group{Iterator,Key}
     ungrouped::Iterator
     key_function::Key
 end
@@ -282,23 +291,25 @@ julia> collect(value(first_group))
     Group(sorted.sorted, sorted.key_function)
 end
 
-@inline function IteratorSize(::Type{<: Group})
+@inline function IteratorSize(::Type{<:Group})
     SizeUnknown()
 end
-@inline function IteratorEltype(::Type{<: Group})
+@inline function IteratorEltype(::Type{<:Group})
     EltypeUnknown()
 end
 
-@inline function get_group(group, state, old_key_result, old_left_index,
+@inline function get_group(
+    group,
+    state,
+    old_key_result,
+    old_left_index,
     right_index = last_index(group.ungrouped),
     new_left_index = old_left_index,
     new_key_result = old_key_result,
-    is_last = true
+    is_last = true,
 )
-    (old_key_result, (@inbounds view(
-        group.ungrouped,
-        old_left_index:right_index,
-    ))), (state, new_left_index, new_key_result, is_last)
+    (old_key_result, (@inbounds view(group.ungrouped, old_left_index:right_index))),
+    (state, new_left_index, new_key_result, is_last)
 end
 
 @inline function iterate(group::Group, (state, old_left_index, old_key_result, is_last))
@@ -320,26 +331,28 @@ end
             new_key_result = group.key_function(item)
         end
         new_left_index = make_index(group.ungrouped, state)
-        get_group(group, state, old_key_result, old_left_index,
+        get_group(
+            group,
+            state,
+            old_key_result,
+            old_left_index,
             previous_index(group.ungrouped, new_left_index),
             new_left_index,
             new_key_result,
-            false
+            false,
         )
     end
 end
 @inline function iterate(group::Group)
     item, state = @ifsomething iterate(group.ungrouped)
-    iterate(group, (
-        state,
-        make_index(group.ungrouped, state),
-        group.key_function(item),
-        false
-    ))
+    iterate(
+        group,
+        (state, make_index(group.ungrouped, state), group.key_function(item), false),
+    )
 end
 export Group
 
-abstract type Mix{Left <: By, Right <: By} end
+abstract type Mix{Left<:By,Right<:By} end
 
 @inline function combine_iterator_eltype(::HasEltype, ::HasEltype)
     HasEltype()
@@ -357,35 +370,45 @@ end
     (new_state, new_item, side.key_function(new_item))
 end
 
-struct InnerMix{Left <: By, Right <: By} <: Mix{Left, Right}
+struct InnerMix{Left<:By,Right<:By} <: Mix{Left,Right}
     left::Left
     right::Right
 end
 
-@inline function IteratorEltype(::Type{InnerMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
+@inline function IteratorEltype(
+    ::Type{InnerMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(::Type{InnerMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
-    Tuple{eltype(LeftIterator), eltype(RightIterator)}
+@inline function eltype(
+    ::Type{InnerMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{eltype(LeftIterator),eltype(RightIterator)}
 end
 
 @inline function compare(mixed::InnerMix, ::Nothing, ::Nothing)
     nothing
 end
 
-struct LeftMix{Left <: By, Right <: By} <: Mix{Left, Right}
+struct LeftMix{Left<:By,Right<:By} <: Mix{Left,Right}
     left::Left
     right::Right
 end
 
-@inline function IteratorEltype(::Type{LeftMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
+@inline function IteratorEltype(
+    ::Type{LeftMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(::Type{LeftMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
-    Tuple{eltype(LeftIterator), Union{Missing, eltype(RightIterator)}}
+@inline function eltype(
+    ::Type{LeftMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{eltype(LeftIterator),Union{Missing,eltype(RightIterator)}}
 end
 
-@inline function IteratorSize(::Type{LeftMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
+@inline function IteratorSize(
+    ::Type{LeftMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
     IteratorSize(LeftIterator)
 end
 @inline function size(mixed::LeftMix)
@@ -402,19 +425,25 @@ end
     nothing
 end
 
-struct RightMix{Left <: By, Right <: By} <: Mix{Left, Right}
+struct RightMix{Left<:By,Right<:By} <: Mix{Left,Right}
     left::Left
     right::Right
 end
 
-@inline function IteratorEltype(::Type{RightMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
+@inline function IteratorEltype(
+    ::Type{RightMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(::Type{RightMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
-    Tuple{Union{Missing, eltype(LeftIterator)}, eltype(RightIterator)}
+@inline function eltype(
+    ::Type{RightMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{Union{Missing,eltype(LeftIterator)},eltype(RightIterator)}
 end
 
-@inline function IteratorSize(::Type{RightMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
+@inline function IteratorSize(
+    ::Type{RightMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
     IteratorSize(RightIterator)
 end
 @inline function size(mixed::RightMix)
@@ -431,54 +460,58 @@ end
     nothing
 end
 
-struct OuterMix{Left <: By, Right <: By} <: Mix{Left, Right}
+struct OuterMix{Left<:By,Right<:By} <: Mix{Left,Right}
     left::Left
     right::Right
 end
 
-@inline function IteratorEltype(::Type{OuterMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
+@inline function IteratorEltype(
+    ::Type{OuterMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(::Type{OuterMix{By{LeftIterator, LeftKey}, By{RightIterator, RightKey}}}) where {LeftIterator, LeftKey, RightIterator, RightKey}
-    Tuple{Union{Missing, eltype(LeftIterator)}, Union{Missing, eltype(RightIterator)}}
+@inline function eltype(
+    ::Type{OuterMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{Union{Missing,eltype(LeftIterator)},Union{Missing,eltype(RightIterator)}}
 end
 
 @inline function compare(mixed::OuterMix, ::Nothing, ::Nothing)
     nothing
 end
 
-function IteratorSize(::Type{AType}) where {AType <: Union{InnerMix, OuterMix}}
+function IteratorSize(::Type{AType}) where {AType<:Union{InnerMix,OuterMix}}
     SizeUnknown()
 end
 
-@inline function next_left(mixed::Union{InnerMix, RightMix}, left_history, right_history)
+@inline function next_left(mixed::Union{InnerMix,RightMix}, left_history, right_history)
     iterate(mixed, (left_history, right_history, true, false))
 end
-@inline function next_left(mixed::Union{LeftMix, OuterMix}, left_history, right_history)
+@inline function next_left(mixed::Union{LeftMix,OuterMix}, left_history, right_history)
     left_state, left_item, left_key_result = left_history
     (left_item, missing), (left_history, right_history, true, false)
 end
 
-@inline function next_right(mixed::Union{InnerMix, LeftMix}, left_history, right_history)
+@inline function next_right(mixed::Union{InnerMix,LeftMix}, left_history, right_history)
     iterate(mixed, (left_history, right_history, false, true))
 end
-@inline function next_right(mixed::Union{RightMix, OuterMix}, left_history, right_history)
+@inline function next_right(mixed::Union{RightMix,OuterMix}, left_history, right_history)
     right_state, right_item, right_key_result = right_history
     (missing, right_item), (left_history, right_history, false, true)
 end
 
-@inline function compare(mixed::Union{InnerMix, LeftMix}, ::Nothing, right_history)
+@inline function compare(mixed::Union{InnerMix,LeftMix}, ::Nothing, right_history)
     nothing
 end
-@inline function compare(mixed::Union{LeftMix, OuterMix}, left_history, ::Nothing)
+@inline function compare(mixed::Union{LeftMix,OuterMix}, left_history, ::Nothing)
     left_state, left_item, left_key_result = left_history
     (left_item, missing), (left_history, nothing, true, false)
 end
 
-@inline function compare(mixed::Union{InnerMix, RightMix}, left_history, ::Nothing)
+@inline function compare(mixed::Union{InnerMix,RightMix}, left_history, ::Nothing)
     nothing
 end
-@inline function compare(mixed::Union{RightMix, OuterMix}, ::Nothing, right_history)
+@inline function compare(mixed::Union{RightMix,OuterMix}, ::Nothing, right_history)
     right_state, right_item, right_key_result = right_history
     (missing, right_item), (nothing, right_history, false, true)
 end
@@ -499,30 +532,22 @@ end
     nothing
 end
 @inline function iterate(mixed::Mix)
-    compare(mixed,
-        next_history(mixed.left),
-        next_history(mixed.right)
-    )
+    compare(mixed, next_history(mixed.left), next_history(mixed.right))
 end
 @inline function iterate(mixed::Mix, (left_history, right_history, next_left, next_right))
     if next_left
         if next_right
-            compare(mixed,
+            compare(
+                mixed,
                 next_history(mixed.left, left_history),
-                next_history(mixed.right, right_history)
+                next_history(mixed.right, right_history),
             )
         else
-            compare(mixed,
-                next_history(mixed.left, left_history),
-                right_history
-            )
+            compare(mixed, next_history(mixed.left, left_history), right_history)
         end
     else
         if next_right
-            compare(mixed,
-                left_history,
-                next_history(mixed.right, right_history)
-            )
+            compare(mixed, left_history, next_history(mixed.right, right_history))
         else
             compare(mixed, left_history, right_history)
         end
@@ -669,7 +694,10 @@ export mix
 end
 
 # piracy
-@inline function copyto!(dictionary::Dict{Key, Value}, pairs::AbstractVector{Tuple{Key, Value}}) where {Key, Value}
+@inline function copyto!(
+    dictionary::Dict{Key,Value},
+    pairs::AbstractVector{Tuple{Key,Value}},
+) where {Key,Value}
     foreach(let dictionary = dictionary
         function setindex_pair!(pair)
             setindex_pair!(dictionary, pair)
@@ -677,8 +705,8 @@ end
     end, dictionary)
     nothing
 end
-@inline function similar(old::Dict, ::Type{Tuple{Key, Value}}) where {Key, Value}
-    Dict{Key, Value}(old)
+@inline function similar(old::Dict, ::Type{Tuple{Key,Value}}) where {Key,Value}
+    Dict{Key,Value}(old)
 end
 
 """
@@ -699,10 +727,9 @@ struct Length{Iterator}
     iterator::Iterator
     new_length::Int
 end
-@inline IteratorEltype(::Type{Length{Iterator}}) where {Iterator} =
-    IteratorEltype(Iterator)
+@inline IteratorEltype(::Type{Length{Iterator}}) where {Iterator} = IteratorEltype(Iterator)
 @inline eltype(::Type{Length{Iterator}}) where {Iterator} = eltype(Iterator)
-@inline IteratorLength(::Type{T}) where {T <: Length} = HasLength()
+@inline IteratorLength(::Type{T}) where {T<:Length} = HasLength()
 @inline length(fixed::Length) = fixed.new_length
 @inline iterate(fixed::Length) = iterate(fixed.iterator)
 @inline iterate(fixed::Length, state) = iterate(fixed.iterator, state)

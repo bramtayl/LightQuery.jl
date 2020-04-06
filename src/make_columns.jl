@@ -1,4 +1,4 @@
-struct Rows{Row, Dimensions, Columns, Names} <: AbstractArray{Row, Dimensions}
+struct Rows{Row,Dimensions,Columns,Names} <: AbstractArray{Row,Dimensions}
     columns::Columns
     names::Names
 end
@@ -12,11 +12,14 @@ end
     true
 end
 
-@inline function Rows{Row, Dimension}(columns::Columns, the_names::Names) where {Row, Dimension, Columns, Names}
+@inline function Rows{Row,Dimension}(
+    columns::Columns,
+    the_names::Names,
+) where {Row,Dimension,Columns,Names}
     @boundscheck if !same_axes(columns...)
         throw(DimensionMismatch("All arguments to `Rows` must have the same axes"))
     end
-    Rows{Row, Dimension, Columns, Names}(columns, the_names)
+    Rows{Row,Dimension,Columns,Names}(columns, the_names)
 end
 
 @inline function get_model(columns)
@@ -30,15 +33,15 @@ end
     get_model(rows.columns)
 end
 
-@inline function name_eltype(::Name, ::Column) where {Name, Column}
-    Tuple{Name, eltype(Column)}
+@inline function name_eltype(::Name, ::Column) where {Name,Column}
+    Tuple{Name,eltype(Column)}
 end
 
 @inline function Rows(columns, the_names)
-    Rows{
-        Tuple{map_unrolled(name_eltype, the_names, columns)...},
-        ndims(get_model(columns))
-    }(columns, the_names)
+    Rows{Tuple{map_unrolled(name_eltype, the_names, columns)...},ndims(get_model(columns))}(
+        columns,
+        the_names,
+    )
 end
 
 export Rows
@@ -97,11 +100,7 @@ end
     name, name(columns)[an_index...]
 end
 @inline function getindex(rows::Rows, an_index::Int...)
-    partial_map(
-        column_getindex,
-        (to_columns(rows), an_index),
-        rows.names
-    )
+    partial_map(column_getindex, (to_columns(rows), an_index), rows.names)
 end
 
 @inline function column_setindex!((columns, an_index), (name, value))
@@ -133,7 +132,7 @@ end
     end
 end
 
-@inline function decompose_named_type(::Val{Tuple{Name{name}, Value}}) where {name, Value}
+@inline function decompose_named_type(::Val{Tuple{Name{name},Value}}) where {name,Value}
     Name{name}(), Val{Value}()
 end
 @inline function decompose_named_type(type)
@@ -141,10 +140,7 @@ end
 end
 
 @inline function decompose_row_type(Row)
-    filter_unrolled(
-        !ismissing,
-        map_unrolled(decompose_named_type, val_fieldtypes(Row))...
-    )
+    filter_unrolled(!ismissing, map_unrolled(decompose_named_type, val_fieldtypes(Row))...)
 end
 
 @inline function similar_val(model, ::Val{Value}, dimensions) where {Value}
@@ -157,34 +153,76 @@ end
     @inbounds Rows(partial_map(
         similar_column,
         (parent(rows), dimensions),
-        decompose_row_type(ARow)
+        decompose_row_type(ARow),
     ))
 end
 
-@inline function empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow, NewRow}
+@inline function empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow,NewRow}
     similar(column, NewRow)
 end
 
-@inline function widen_column(::HasLength, new_length, an_index, name, column::AbstractArray{Element}, item::Item) where {Element, Item <: Element}
+@inline function widen_column(
+    ::HasLength,
+    new_length,
+    an_index,
+    name,
+    column::AbstractArray{Element},
+    item::Item,
+) where {Element,Item<:Element}
     @inbounds column[an_index] = item
     name, column
 end
-@inline function widen_column(::HasLength, new_length, an_index, name, column::AbstractArray, item)
+@inline function widen_column(
+    ::HasLength,
+    new_length,
+    an_index,
+    name,
+    column::AbstractArray,
+    item,
+)
     name, setindex_widen_up_to(column, item, an_index)
 end
-@inline function widen_column(::SizeUnknown, new_length, an_index, name, column::AbstractArray{Element}, item::Item) where {Element, Item <: Element}
+@inline function widen_column(
+    ::SizeUnknown,
+    new_length,
+    an_index,
+    name,
+    column::AbstractArray{Element},
+    item::Item,
+) where {Element,Item<:Element}
     push!(column, item)
     name, column
 end
-@inline function widen_column(::SizeUnknown, new_length, an_index, name, column::AbstractArray, item)
+@inline function widen_column(
+    ::SizeUnknown,
+    new_length,
+    an_index,
+    name,
+    column::AbstractArray,
+    item,
+)
     name, push_widen(column, item)
 end
-@inline function widen_column(iterator_size, new_length, an_index, name, ::Missing, item::Item) where {Item}
-    new_column = Array{Union{Missing, Item}}(missing, new_length)
+@inline function widen_column(
+    iterator_size,
+    new_length,
+    an_index,
+    name,
+    ::Missing,
+    item::Item,
+) where {Item}
+    new_column = Array{Union{Missing,Item}}(missing, new_length)
     @inbounds new_column[an_index] = item
     name, new_column
 end
-@inline function widen_column(iterator_size, new_length, an_index, name, ::Missing, ::Missing)
+@inline function widen_column(
+    iterator_size,
+    new_length,
+    an_index,
+    name,
+    ::Missing,
+    ::Missing,
+)
     name, Array{Missing}(missing, new_length)
 end
 @inline function widen_column_clumped(fixeds, variables)
@@ -216,23 +254,12 @@ end
     in_both_names = diff_unrolled(just_column_names, column_names...)
     @inbounds Rows(partial_map(
         widen_column_clumped,
-        (
-            iterator_size,
-            get_new_length(iterator_size, rows, an_index),
-            an_index
-        ),
+        (iterator_size, get_new_length(iterator_size, rows, an_index), an_index),
         (
             map_unrolled(lone_column, just_column_names(named_columns))...,
-            map_unrolled(
-                column_value,
-                in_both_names(named_columns),
-                in_both_names(row)
-            )...,
-            map_unrolled(
-                lone_value,
-                diff_unrolled(column_names, value_names...)(row)
-            )...
-        )
+            map_unrolled(column_value, in_both_names(named_columns), in_both_names(row))...,
+            map_unrolled(lone_value, diff_unrolled(column_names, value_names...)(row))...,
+        ),
     ))
 end
 
@@ -273,12 +300,9 @@ julia> make_columns(when(over(1:4, unstable), row -> true))
 ```
 """
 function make_columns(rows)
-    to_columns(_collect(
-        (@inbounds Rows(())),
+    to_columns(_collect((@inbounds Rows(())), rows, IteratorEltype(rows), IteratorSize(
         rows,
-        IteratorEltype(rows),
-        IteratorSize(rows)
-    ))
+    )))
 end
 
 export make_columns

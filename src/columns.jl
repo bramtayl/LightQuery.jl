@@ -1,5 +1,4 @@
-struct Name{name}
-end
+struct Name{name} end
 
 """
     Name(name)
@@ -41,7 +40,7 @@ export unname
     print(output, '`', name, '`')
 end
 
-const Named{name} = Tuple{Name{name}, Any}
+const Named{name} = Tuple{Name{name},Any}
 
 @inline function recursive_get(initial, name)
     throw(BoundsError(initial, (name,)))
@@ -72,7 +71,7 @@ end
     ()
 end
 
-@inline function isless(::Name{name1}, ::Name{name2}) where {name1, name2}
+@inline function isless(::Name{name1}, ::Name{name2}) where {name1,name2}
     isless(name1, name2)
 end
 
@@ -85,9 +84,7 @@ end
 end
 
 @inline function NamedTuple(data::Some{Named})
-    NamedTuple{map_unrolled(unname ∘ key, data)}(
-        map_unrolled(value, data)
-    )
+    NamedTuple{map_unrolled(unname ∘ key, data)}(map_unrolled(value, data))
 end
 
 function code_with_names(other)
@@ -306,10 +303,7 @@ julia> @name @inferred gather(data, g = (:b, :e), h = (:c, :f))
 ```
 """
 @inline function gather(data, new_name_old_names...)
-    remove(
-        data,
-        flatten_unrolled(map_unrolled(value, new_name_old_names)...)...
-    )...,
+    remove(data, flatten_unrolled(map_unrolled(value, new_name_old_names)...)...)...,
     partial_map(rename_one, data, new_name_old_names)...
 end
 export gather
@@ -351,7 +345,7 @@ julia> @name @inferred Apply((:a, :b, :c, :d, :e, :f))((1, 1.0, 1, 1.0, 1, 1.0))
 ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
 ```
 """
-struct Apply{Names <: Some{Name}}
+struct Apply{Names<:Some{Name}}
     names::Names
 end
 export Apply
@@ -360,11 +354,11 @@ export Apply
     map_unrolled(tuple, apply.names, them)
 end
 
-struct InRow{name, AColumn}
+struct InRow{name,AColumn}
     column::AColumn
 end
-@inline function InRow{name}(column::AColumn) where {name, AColumn}
-    InRow{name, AColumn}(column)
+@inline function InRow{name}(column::AColumn) where {name,AColumn}
+    InRow{name,AColumn}(column)
 end
 @inline function (in_row::InRow)(row::Row)
     in_row.column[getrow(row)]
@@ -398,10 +392,7 @@ julia> @inferred template(first(test))
 ```
 """
 @noinline function row_info(file::File)
-    ((
-        InRow{name}(getcolumn(file, name))
-        for name in propertynames(file)
-    )...,)
+    ((InRow{name}(getcolumn(file, name)) for name in propertynames(file))...,)
 end
 
 export row_info

@@ -25,3 +25,6 @@ jobs:
       - uses: codecov/codecov-action@v1
         with:
           file: ./lcov.info
+      - uses: domluna/JuliaFormatter-action@master
+        with:
+          args: -v .

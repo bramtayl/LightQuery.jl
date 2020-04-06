@@ -1,4 +1,4 @@
-const Some{AType} = Tuple{AType, Vararg{AType}}
+const Some{AType} = Tuple{AType,Vararg{AType}}
 
 @inline function flatten_unrolled()
     ()
