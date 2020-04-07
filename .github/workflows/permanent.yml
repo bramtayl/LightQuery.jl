@@ -1,4 +1,4 @@
-name: document and tag
+name: permanent
 on:
   push:
     branches:

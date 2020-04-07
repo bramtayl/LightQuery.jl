@@ -1,4 +1,4 @@
-name: CompatHelper
+name: daily
 on:
   schedule:
     - cron: '00 00 * * *'
