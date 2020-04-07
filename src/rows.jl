@@ -549,7 +549,7 @@ end
         if next_right
             compare(mixed, left_history, next_history(mixed.right, right_history))
         else
-            compare(mixed, left_history, right_history)
+            throw(StackOverflowError())
         end
     end
 end
