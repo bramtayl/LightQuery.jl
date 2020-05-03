@@ -261,8 +261,8 @@ julia> @inferred collect(Group(By([1, -1, -2, 2, 3, -3], abs)))
  (2, [-2, 2])
  (3, [3, -3])
 
-julia> @inferred collect(Group(By(Int[], abs)))
-0-element Array{Tuple{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}
+julia> (@inferred collect(Group(By(Int[], abs)))) == []
+true
 ```
 
 Requires a presorted object (see [`By`](@ref)); [`order`](@ref) first if not.
@@ -571,14 +571,14 @@ julia> @name @inferred collect(mix(name"inner", By([1, -2, 5, -6], abs), By([-1,
  (1, -1)
  (-6, 6)
 
-julia> @name @inferred collect(mix(name"inner", By(Int[], abs), By(Int[], abs)))
-0-element Array{Tuple{Int64,Int64},1}
+julia> (@name @inferred collect(mix(name"inner", By(Int[], abs), By(Int[], abs)))) == []
+true
 
-julia> @name @inferred collect(mix(name"inner", By([1], abs), By(Int[], abs)))
-0-element Array{Tuple{Int64,Int64},1}
+julia> (@name @inferred collect(mix(name"inner", By([1], abs), By(Int[], abs)))) == []
+true
 
-julia> @name @inferred collect(mix(name"inner", By(Int[], abs), By([1], abs)))
-0-element Array{Tuple{Int64,Int64},1}
+julia> (@name @inferred collect(mix(name"inner", By(Int[], abs), By([1], abs)))) == []
+true
 ```
 """
 @inline function mix(::Name{:inner}, left, right)
@@ -603,15 +603,15 @@ julia> @name collect(mix(name"left", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6],
  (5, missing)
  (-6, 6)
 
-julia> @name collect(mix(name"left", By(Int[], abs), By(Int[], abs)))
-0-element Array{Tuple{Int64,Union{Missing, Int64}},1}
+julia> (@name collect(mix(name"left", By(Int[], abs), By(Int[], abs)))) == []
+true
 
 julia> @name collect(mix(name"left", By([1], abs), By(Int[], abs)))
 1-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, missing)
 
-julia> @name collect(mix(name"left", By(Int[], abs), By([1], abs)))
-0-element Array{Tuple{Int64,Union{Missing, Int64}},1}
+julia> (@name collect(mix(name"left", By(Int[], abs), By([1], abs)))) == []
+true
 ```
 """
 @inline function mix(::Name{:left}, left, right)
@@ -636,11 +636,11 @@ julia> @name collect(mix(name"right", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6]
  (missing, -4)
  (-6, 6)
 
-julia> @name collect(mix(name"right", By(Int[], abs), By(Int[], abs)))
-0-element Array{Tuple{Union{Missing, Int64},Int64},1}
+julia> (@name collect(mix(name"right", By(Int[], abs), By(Int[], abs)))) == []
+true
 
-julia> @name collect(mix(name"right", By([1], abs), By(Int[], abs)))
-0-element Array{Tuple{Union{Missing, Int64},Int64},1}
+julia> (@name collect(mix(name"right", By([1], abs), By(Int[], abs)))) == []
+true
 
 julia> @name collect(mix(name"right", By(Int[], abs), By([1], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Int64},1}:
@@ -671,8 +671,8 @@ julia> @name collect(mix(name"outer", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6]
  (5, missing)
  (-6, 6)
 
-julia> @name collect(mix(name"outer", By(Int[], abs), By(Int[], abs)))
-0-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}
+julia> (@name collect(mix(name"outer", By(Int[], abs), By(Int[], abs)))) == []
+true
 
 julia> @name collect(mix(name"outer", By([1], abs), By(Int[], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
