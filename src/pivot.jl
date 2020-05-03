@@ -14,12 +14,12 @@ julia> using LightQuery
 
 julia> @name Peek(Rows((a = 1:5, b = 5:-1:1)))
 Showing 4 of 5 rows
-| `a` | `b` |
-| ---:| ---:|
-|   1 |   5 |
-|   2 |   4 |
-|   3 |   3 |
-|   4 |   2 |
+| name"a" | name"b" |
+| -------:| -------:|
+|       1 |       5 |
+|       2 |       4 |
+|       3 |       3 |
+|       4 |       2 |
 ```
 """
 function Peek(rows)
@@ -70,8 +70,8 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @name @inferred reduce_rows(Rows((a = [1, 1], b = [1.0, 1.0])), +, :a, :b)
-((`a`, 2), (`b`, 2.0))
+julia> @name @inferred reduce_rows(Rows((a = [1, 1], b = [1.0, 1.0])), +, name"a", name"b")
+((name"a", 2), (name"b", 2.0))
 ```
 """
 @inline function reduce_rows(rows, a_function, columns...)

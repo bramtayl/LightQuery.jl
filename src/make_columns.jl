@@ -58,18 +58,18 @@ julia> using Test: @inferred
 
 julia> lazy = @name @inferred Rows((a = [1, 2], b = [1.0, 2.0]))
 2-element Rows{Tuple{Tuple{Name{:a},Int64},Tuple{Name{:b},Float64}},1,Tuple{Array{Int64,1},Array{Float64,1}},Tuple{Name{:a},Name{:b}}}:
- ((`a`, 1), (`b`, 1.0))
- ((`a`, 2), (`b`, 2.0))
+ ((name"a", 1), (name"b", 1.0))
+ ((name"a", 2), (name"b", 2.0))
 
 julia> @inferred collect(lazy)
 2-element Array{Tuple{Tuple{Name{:a},Int64},Tuple{Name{:b},Float64}},1}:
- ((`a`, 1), (`b`, 1.0))
- ((`a`, 2), (`b`, 2.0))
+ ((name"a", 1), (name"b", 1.0))
+ ((name"a", 2), (name"b", 2.0))
 
 julia> @name @inferred Rows((a = [1, 2],))
 2-element Rows{Tuple{Tuple{Name{:a},Int64}},1,Tuple{Array{Int64,1}},Tuple{Name{:a}}}:
- ((`a`, 1),)
- ((`a`, 2),)
+ ((name"a", 1),)
+ ((name"a", 2),)
 ```
 
 All arguments to Rows must have the same axes. Use `@inbounds` to override the
@@ -283,7 +283,7 @@ julia> using Test: @inferred
 julia> stable(x) = @name (a = x, b = x + 0.0, c = x, d = x + 0.0, e = x, f = x + 0.0);
 
 julia> @inferred make_columns(over(1:4, stable))
-((`a`, [1, 2, 3, 4]), (`b`, [1.0, 2.0, 3.0, 4.0]), (`c`, [1, 2, 3, 4]), (`d`, [1.0, 2.0, 3.0, 4.0]), (`e`, [1, 2, 3, 4]), (`f`, [1.0, 2.0, 3.0, 4.0]))
+((name"a", [1, 2, 3, 4]), (name"b", [1.0, 2.0, 3.0, 4.0]), (name"c", [1, 2, 3, 4]), (name"d", [1.0, 2.0, 3.0, 4.0]), (name"e", [1, 2, 3, 4]), (name"f", [1.0, 2.0, 3.0, 4.0]))
 
 julia> unstable(x) =
             @name if x <= 2
@@ -293,10 +293,10 @@ julia> unstable(x) =
             end;
 
 julia> make_columns(over(1:4, unstable))
-((`d`, Union{Missing, String}["1", "2", missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, String}["1", "2", missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
+((name"d", Union{Missing, String}["1", "2", missing, missing]), (name"a", Union{Missing, Int64}[missing, missing, 3, 4]), (name"b", Union{Missing, String}["1", "2", missing, missing]), (name"c", Union{Missing, Int64}[missing, missing, 3, 4]))
 
 julia> make_columns(when(over(1:4, unstable), row -> true))
-((`d`, Union{Missing, String}["1", "2", missing, missing]), (`a`, Union{Missing, Int64}[missing, missing, 3, 4]), (`b`, Union{Missing, String}["1", "2", missing, missing]), (`c`, Union{Missing, Int64}[missing, missing, 3, 4]))
+((name"d", Union{Missing, String}["1", "2", missing, missing]), (name"a", Union{Missing, Int64}[missing, missing, 3, 4]), (name"b", Union{Missing, String}["1", "2", missing, missing]), (name"c", Union{Missing, Int64}[missing, missing, 3, 4]))
 ```
 """
 function make_columns(rows)

@@ -1,15 +1,32 @@
 struct Name{name} end
 
 """
+    name_str(name)
+
+Create a typed [`Name`](@ref).
+
+```jldoctest
+julia> using LightQuery
+
+julia> name"a"
+name"a"
+```
+"""
+macro name_str(name)
+    esc(Name{Symbol(name)}())
+end
+export @name_str
+
+"""
     Name(name)
 
-Create a typed `Name`. Inverse of [`unname`](@ref)
+Create a typed `Name`. Inverse of [`unname`](@ref). See also [`@name_str`](@ref).
 
-```jlodctest
+```jldoctest
 julia> using LightQuery
 
 julia> Name(:a)
-`a`
+name"a"
 ```
 """
 @pure function Name(name)
@@ -37,7 +54,7 @@ end
 export unname
 
 @inline function show(output::IO, ::Name{name}) where {name}
-    print(output, '`', name, '`')
+    print(output, "name\"", name, '"')
 end
 
 const Named{name} = Tuple{Name{name},Any}
@@ -82,17 +99,17 @@ end
 @inline function to_Names(them)
     map_unrolled(Name, Tuple(them))
 end
-
+@inline function unname_key((key, value))
+    unname(key)
+end
 @inline function NamedTuple(data::Some{Named})
-    NamedTuple{map_unrolled(unname ∘ key, data)}(map_unrolled(value, data))
+    NamedTuple{map_unrolled(unname_key, data)}(map_unrolled(value, data))
 end
 
 function code_with_names(other)
     other
 end
-function code_with_names(symbol::QuoteNode)
-    Name{symbol.value}()
-end
+
 function code_with_names(code::Expr)
     if @capture code data_.name_
         Expr(:call, Name{name}(), code_with_names(data))
@@ -114,14 +131,14 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+((name"a", 1), (name"b", 1.0), (name"c", 1), (name"d", 1.0), (name"e", 1), (name"f", 1.0))
 ```
 
 based on typed `Name`s.
 
 ```jldoctest name
-julia> @name :a
-`a`
+julia> name"a"
+name"a"
 ```
 
 `Name`s can be used as properties
@@ -131,22 +148,23 @@ julia> @name @inferred data.c
 1
 
 julia> @name data.g
-ERROR: BoundsError: attempt to access ((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+ERROR: BoundsError: attempt to access ((name"a", 1), (name"b", 1.0), (name"c", 1), (name"d", 1.0), (name"e", 1), (name"f", 1.0))
+  at index [name"g"]
 [...]
 ```
 
 and selector functions.
 
 ```jldoctest name
-julia> @name @inferred (:c)(data)
+julia> @name @inferred name"c"(data)
 1
 ```
 
 Multiple names can be used as selector functions
 
 ```jldoctest name
-julia> @name @inferred (:c, :f)(data)
-((`c`, 1), (`f`, 1.0))
+julia> @name @inferred (name"c", name"f")(data)
+((name"c", 1), (name"f", 1.0))
 ```
 
 You can also convert back to `NamedTuple`s.
@@ -172,7 +190,7 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 julia> @inferred named_tuple((a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0))
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+((name"a", 1), (name"b", 1.0), (name"c", 1), (name"d", 1.0), (name"e", 1), (name"f", 1.0))
 ```
 
 For stability working with arbitrary `struct`s, `propertynames` must constant propagate.
@@ -192,7 +210,7 @@ julia> import Base: propertynames
 julia> @inline propertynames(::MyType) = (:a, :b, :c, :d, :e, :f);
 
 julia> @inferred named_tuple(MyType(1, 1.0, 1, 1.0, 1, 1.0))
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+((name"a", 1), (name"b", 1.0), (name"c", 1), (name"d", 1.0), (name"e", 1), (name"f", 1.0))
 ```
 """
 @inline function named_tuple(data)
@@ -217,11 +235,11 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0);
 
-julia> @name @inferred remove(data, :c, :f)
-((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1))
+
+julia> @name @inferred remove(data, name"c", name"f")
+((name"a", 1), (name"b", 1.0), (name"d", 1.0), (name"e", 1))
 ```
 """
 @inline function remove(data, old_names...)
@@ -240,11 +258,11 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0);
+
 
 julia> @name @inferred transform(data, c = 2.0, f = 2, g = 1, h = 1.0)
-((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1), (`c`, 2.0), (`f`, 2), (`g`, 1), (`h`, 1.0))
+((name"a", 1), (name"b", 1.0), (name"d", 1.0), (name"e", 1), (name"c", 2.0), (name"f", 2), (name"g", 1), (name"h", 1.0))
 ```
 """
 @inline function transform(data, assignments...)
@@ -272,11 +290,11 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0);
 
-julia> @name @inferred rename(data, c2 = :c, f2 = :f)
-((`a`, 1), (`b`, 1.0), (`d`, 1.0), (`e`, 1), (`c2`, 1), (`f2`, 1.0))
+
+julia> @name @inferred rename(data, c2 = name"c", f2 = name"f")
+((name"a", 1), (name"b", 1.0), (name"d", 1.0), (name"e", 1), (name"c2", 1), (name"f2", 1.0))
 ```
 """
 @inline function rename(data, new_name_old_names...)
@@ -295,11 +313,11 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+julia> data = @name (a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0);
 
-julia> @name @inferred gather(data, g = (:b, :e), h = (:c, :f))
-((`a`, 1), (`d`, 1.0), (`g`, ((`b`, 1.0), (`e`, 1))), (`h`, ((`c`, 1), (`f`, 1.0))))
+
+julia> @name @inferred gather(data, g = (name"b", name"e"), h = (name"c", name"f"))
+((name"a", 1), (name"d", 1.0), (name"g", ((name"b", 1.0), (name"e", 1))), (name"h", ((name"c", 1), (name"f", 1.0))))
 ```
 """
 @inline function gather(data, new_name_old_names...)
@@ -318,11 +336,11 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> gathered = @name (a = 1, d = 1.0, g = (b = 1.0, e = 1), h = (c = 1, f = 1.0))
-((`a`, 1), (`d`, 1.0), (`g`, ((`b`, 1.0), (`e`, 1))), (`h`, ((`c`, 1), (`f`, 1.0))))
+julia> gathered = @name (a = 1, d = 1.0, g = (b = 1.0, e = 1), h = (c = 1, f = 1.0));
 
-julia> @name @inferred spread(gathered, :g, :h)
-((`a`, 1), (`d`, 1.0), (`b`, 1.0), (`e`, 1), (`c`, 1), (`f`, 1.0))
+
+julia> @name @inferred spread(gathered, name"g", name"h")
+((name"a", 1), (name"d", 1.0), (name"b", 1.0), (name"e", 1), (name"c", 1), (name"f", 1.0))
 ```
 """
 @inline function spread(data, some_names...)
@@ -341,8 +359,8 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @name @inferred Apply((:a, :b, :c, :d, :e, :f))((1, 1.0, 1, 1.0, 1, 1.0))
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+julia> @name @inferred Apply((name"a", name"b", name"c", name"d", name"e", name"f"))((1, 1.0, 1, 1.0, 1, 1.0))
+((name"a", 1), (name"b", 1.0), (name"c", 1), (name"d", 1.0), (name"e", 1), (name"f", 1.0))
 ```
 """
 struct Apply{Names<:Some{Name}}
@@ -388,7 +406,7 @@ julia> template = row_info(test)
 (LightQuery.InRow{:a,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:b,CSV.Column{Float64,Float64}}([1.0]), LightQuery.InRow{:c,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:d,CSV.Column{Float64,Float64}}([1.0]), LightQuery.InRow{:e,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:f,CSV.Column{Float64,Float64}}([1.0]))
 
 julia> @inferred template(first(test))
-((`a`, 1), (`b`, 1.0), (`c`, 1), (`d`, 1.0), (`e`, 1), (`f`, 1.0))
+((name"a", 1), (name"b", 1.0), (name"c", 1), (name"d", 1.0), (name"e", 1), (name"f", 1.0))
 ```
 """
 @noinline function row_info(file::File)

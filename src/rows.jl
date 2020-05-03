@@ -566,18 +566,18 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @name @inferred collect(mix(:inner, By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> @name @inferred collect(mix(name"inner", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 2-element Array{Tuple{Int64,Int64},1}:
  (1, -1)
  (-6, 6)
 
-julia> @name @inferred collect(mix(:inner, By(Int[], abs), By(Int[], abs)))
+julia> @name @inferred collect(mix(name"inner", By(Int[], abs), By(Int[], abs)))
 0-element Array{Tuple{Int64,Int64},1}
 
-julia> @name @inferred collect(mix(:inner, By([1], abs), By(Int[], abs)))
+julia> @name @inferred collect(mix(name"inner", By([1], abs), By(Int[], abs)))
 0-element Array{Tuple{Int64,Int64},1}
 
-julia> @name @inferred collect(mix(:inner, By(Int[], abs), By([1], abs)))
+julia> @name @inferred collect(mix(name"inner", By(Int[], abs), By([1], abs)))
 0-element Array{Tuple{Int64,Int64},1}
 ```
 """
@@ -596,21 +596,21 @@ See [`By`](@ref).
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(mix(:left, By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> @name collect(mix(name"left", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 4-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, -1)
  (-2, missing)
  (5, missing)
  (-6, 6)
 
-julia> @name collect(mix(:left, By(Int[], abs), By(Int[], abs)))
+julia> @name collect(mix(name"left", By(Int[], abs), By(Int[], abs)))
 0-element Array{Tuple{Int64,Union{Missing, Int64}},1}
 
-julia> @name collect(mix(:left, By([1], abs), By(Int[], abs)))
+julia> @name collect(mix(name"left", By([1], abs), By(Int[], abs)))
 1-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, missing)
 
-julia> @name collect(mix(:left, By(Int[], abs), By([1], abs)))
+julia> @name collect(mix(name"left", By(Int[], abs), By([1], abs)))
 0-element Array{Tuple{Int64,Union{Missing, Int64}},1}
 ```
 """
@@ -629,20 +629,20 @@ strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. See
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(mix(:right, By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> @name collect(mix(name"right", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 4-element Array{Tuple{Union{Missing, Int64},Int64},1}:
  (1, -1)
  (missing, 3)
  (missing, -4)
  (-6, 6)
 
-julia> @name collect(mix(:right, By(Int[], abs), By(Int[], abs)))
+julia> @name collect(mix(name"right", By(Int[], abs), By(Int[], abs)))
 0-element Array{Tuple{Union{Missing, Int64},Int64},1}
 
-julia> @name collect(mix(:right, By([1], abs), By(Int[], abs)))
+julia> @name collect(mix(name"right", By([1], abs), By(Int[], abs)))
 0-element Array{Tuple{Union{Missing, Int64},Int64},1}
 
-julia> @name collect(mix(:right, By(Int[], abs), By([1], abs)))
+julia> @name collect(mix(name"right", By(Int[], abs), By([1], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Int64},1}:
  (missing, 1)
 ```
@@ -662,7 +662,7 @@ first. See [`By`](@ref).
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(mix(:outer, By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> @name collect(mix(name"outer", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 6-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (1, -1)
  (-2, missing)
@@ -671,14 +671,14 @@ julia> @name collect(mix(:outer, By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs
  (5, missing)
  (-6, 6)
 
-julia> @name collect(mix(:outer, By(Int[], abs), By(Int[], abs)))
+julia> @name collect(mix(name"outer", By(Int[], abs), By(Int[], abs)))
 0-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}
 
-julia> @name collect(mix(:outer, By([1], abs), By(Int[], abs)))
+julia> @name collect(mix(name"outer", By([1], abs), By(Int[], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (1, missing)
 
-julia> @name collect(mix(:outer, By(Int[], abs), By([1], abs)))
+julia> @name collect(mix(name"outer", By(Int[], abs), By([1], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (missing, 1)
 ```
