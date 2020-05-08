@@ -223,7 +223,7 @@ export index
     By(sorted, key_function)
 
 Mark that `sorted` has been pre-sorted by `key_function`. Use with
-[`Group`](@ref), or [`mix`](@ref).
+[`Group`](@ref), and various joins.
 
 ```jldoctest
 julia> using LightQuery
@@ -352,7 +352,7 @@ end
 end
 export Group
 
-abstract type Mix{Left<:By,Right<:By} end
+abstract type Join{Left<:By,Right<:By} end
 
 @inline function combine_iterator_eltype(::HasEltype, ::HasEltype)
     HasEltype()
@@ -370,192 +370,8 @@ end
     (new_state, new_item, side.key_function(new_item))
 end
 
-struct InnerMix{Left<:By,Right<:By} <: Mix{Left,Right}
-    left::Left
-    right::Right
-end
-
-@inline function IteratorEltype(
-    ::Type{InnerMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
-end
-@inline function eltype(
-    ::Type{InnerMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    Tuple{eltype(LeftIterator),eltype(RightIterator)}
-end
-
-@inline function compare(mixed::InnerMix, ::Nothing, ::Nothing)
-    nothing
-end
-
-struct LeftMix{Left<:By,Right<:By} <: Mix{Left,Right}
-    left::Left
-    right::Right
-end
-
-@inline function IteratorEltype(
-    ::Type{LeftMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
-end
-@inline function eltype(
-    ::Type{LeftMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    Tuple{eltype(LeftIterator),Union{Missing,eltype(RightIterator)}}
-end
-
-@inline function IteratorSize(
-    ::Type{LeftMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    IteratorSize(LeftIterator)
-end
-@inline function size(mixed::LeftMix)
-    size(mixed.left.sorted)
-end
-@inline function length(mixed::LeftMix)
-    length(mixed.left.sorted)
-end
-@inline function axes(mixed::LeftMix)
-    axes(mixed.left.sorted)
-end
-
-@inline function compare(mixed::LeftMix, ::Nothing, ::Nothing)
-    nothing
-end
-
-struct RightMix{Left<:By,Right<:By} <: Mix{Left,Right}
-    left::Left
-    right::Right
-end
-
-@inline function IteratorEltype(
-    ::Type{RightMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
-end
-@inline function eltype(
-    ::Type{RightMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    Tuple{Union{Missing,eltype(LeftIterator)},eltype(RightIterator)}
-end
-
-@inline function IteratorSize(
-    ::Type{RightMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    IteratorSize(RightIterator)
-end
-@inline function size(mixed::RightMix)
-    size(mixed.right.sorted)
-end
-@inline function length(mixed::RightMix)
-    length(mixed.right.sorted)
-end
-@inline function axes(mixed::RightMix)
-    axes(mixed.right.sorted)
-end
-
-@inline function compare(mixed::RightMix, ::Nothing, ::Nothing)
-    nothing
-end
-
-struct OuterMix{Left<:By,Right<:By} <: Mix{Left,Right}
-    left::Left
-    right::Right
-end
-
-@inline function IteratorEltype(
-    ::Type{OuterMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
-end
-@inline function eltype(
-    ::Type{OuterMix{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
-    Tuple{Union{Missing,eltype(LeftIterator)},Union{Missing,eltype(RightIterator)}}
-end
-
-@inline function compare(mixed::OuterMix, ::Nothing, ::Nothing)
-    nothing
-end
-
-function IteratorSize(::Type{AType}) where {AType<:Union{InnerMix,OuterMix}}
-    SizeUnknown()
-end
-
-@inline function next_left(mixed::Union{InnerMix,RightMix}, left_history, right_history)
-    iterate(mixed, (left_history, right_history, true, false))
-end
-@inline function next_left(mixed::Union{LeftMix,OuterMix}, left_history, right_history)
-    left_state, left_item, left_key_result = left_history
-    (left_item, missing), (left_history, right_history, true, false)
-end
-
-@inline function next_right(mixed::Union{InnerMix,LeftMix}, left_history, right_history)
-    iterate(mixed, (left_history, right_history, false, true))
-end
-@inline function next_right(mixed::Union{RightMix,OuterMix}, left_history, right_history)
-    right_state, right_item, right_key_result = right_history
-    (missing, right_item), (left_history, right_history, false, true)
-end
-
-@inline function compare(mixed::Union{InnerMix,LeftMix}, ::Nothing, right_history)
-    nothing
-end
-@inline function compare(mixed::Union{LeftMix,OuterMix}, left_history, ::Nothing)
-    left_state, left_item, left_key_result = left_history
-    (left_item, missing), (left_history, nothing, true, false)
-end
-
-@inline function compare(mixed::Union{InnerMix,RightMix}, left_history, ::Nothing)
-    nothing
-end
-@inline function compare(mixed::Union{RightMix,OuterMix}, ::Nothing, right_history)
-    right_state, right_item, right_key_result = right_history
-    (missing, right_item), (nothing, right_history, false, true)
-end
-
-@inline function compare(mixed, left_history, right_history)
-    left_state, left_item, left_key_result = left_history
-    right_state, right_item, right_key_result = right_history
-    if isless(left_key_result, right_key_result)
-        next_left(mixed, left_history, right_history)
-    elseif isless(right_key_result, left_key_result)
-        next_right(mixed, left_history, right_history)
-    else
-        (left_item, right_item), (left_history, right_history, true, true)
-    end
-end
-
-@inline function iterate(::Mix, ::Nothing)
-    nothing
-end
-@inline function iterate(mixed::Mix)
-    compare(mixed, next_history(mixed.left), next_history(mixed.right))
-end
-@inline function iterate(mixed::Mix, (left_history, right_history, next_left, next_right))
-    if next_left
-        if next_right
-            compare(
-                mixed,
-                next_history(mixed.left, left_history),
-                next_history(mixed.right, right_history),
-            )
-        else
-            compare(mixed, next_history(mixed.left, left_history), right_history)
-        end
-    else
-        if next_right
-            compare(mixed, left_history, next_history(mixed.right, right_history))
-        else
-            throw(StackOverflowError())
-        end
-    end
-end
-
 """
-    mix(::Name{:inner},  left::By, right::By)
+    InnerJoin(left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`.
 Assumes `left` and `right` are both strictly sorted (no repeats). If there are
@@ -566,27 +382,44 @@ julia> using LightQuery
 
 julia> using Test: @inferred
 
-julia> @name @inferred collect(mix(name"inner", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> @inferred collect(InnerJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 2-element Array{Tuple{Int64,Int64},1}:
  (1, -1)
  (-6, 6)
 
-julia> (@name @inferred collect(mix(name"inner", By(Int[], abs), By(Int[], abs)))) == []
+julia> (@inferred collect(InnerJoin(By(Int[], abs), By(Int[], abs)))) == []
 true
 
-julia> (@name @inferred collect(mix(name"inner", By([1], abs), By(Int[], abs)))) == []
+julia> (@inferred collect(InnerJoin(By([1], abs), By(Int[], abs)))) == []
 true
 
-julia> (@name @inferred collect(mix(name"inner", By(Int[], abs), By([1], abs)))) == []
+julia> (@inferred collect(InnerJoin(By(Int[], abs), By([1], abs)))) == []
 true
 ```
 """
-@inline function mix(::Name{:inner}, left, right)
-    InnerMix(left, right)
+struct InnerJoin{Left<:By,Right<:By} <: Join{Left,Right}
+    left::Left
+    right::Right
+end
+export InnerJoin
+
+@inline function IteratorEltype(
+    ::Type{InnerJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
+end
+@inline function eltype(
+    ::Type{InnerJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{eltype(LeftIterator),eltype(RightIterator)}
+end
+
+@inline function compare(joined::InnerJoin, ::Nothing, ::Nothing)
+    nothing
 end
 
 """
-    mix(::Name{:left}, left::By, right::By)
+    LeftJoin(left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no right match. Assumes `left` and `right` are
@@ -596,30 +429,62 @@ See [`By`](@ref).
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(mix(name"left", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> collect(LeftJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 4-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, -1)
  (-2, missing)
  (5, missing)
  (-6, 6)
 
-julia> (@name collect(mix(name"left", By(Int[], abs), By(Int[], abs)))) == []
+julia> collect(LeftJoin(By(Int[], abs), By(Int[], abs))) == []
 true
 
-julia> @name collect(mix(name"left", By([1], abs), By(Int[], abs)))
+julia> collect(LeftJoin(By([1], abs), By(Int[], abs)))
 1-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, missing)
 
-julia> (@name collect(mix(name"left", By(Int[], abs), By([1], abs)))) == []
+julia> collect(LeftJoin(By(Int[], abs), By([1], abs))) == []
 true
 ```
 """
-@inline function mix(::Name{:left}, left, right)
-    LeftMix(left, right)
+struct LeftJoin{Left<:By,Right<:By} <: Join{Left,Right}
+    left::Left
+    right::Right
+end
+export LeftJoin
+
+@inline function IteratorEltype(
+    ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
+end
+@inline function eltype(
+    ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{eltype(LeftIterator),Union{Missing,eltype(RightIterator)}}
+end
+
+@inline function IteratorSize(
+    ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    IteratorSize(LeftIterator)
+end
+@inline function size(joined::LeftJoin)
+    size(joined.left.sorted)
+end
+@inline function length(joined::LeftJoin)
+    length(joined.left.sorted)
+end
+@inline function axes(joined::LeftJoin)
+    axes(joined.left.sorted)
+end
+
+@inline function compare(joined::LeftJoin, ::Nothing, ::Nothing)
+    nothing
 end
 
 """
-    mix(::Name{:right}, left::By, right::By)
+    RightJoin(left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no left match. Assumes `left` and `right` are both
@@ -629,30 +494,62 @@ strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. See
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(mix(name"right", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> collect(RightJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 4-element Array{Tuple{Union{Missing, Int64},Int64},1}:
  (1, -1)
  (missing, 3)
  (missing, -4)
  (-6, 6)
 
-julia> (@name collect(mix(name"right", By(Int[], abs), By(Int[], abs)))) == []
+julia> collect(RightJoin(By(Int[], abs), By(Int[], abs))) == []
 true
 
-julia> (@name collect(mix(name"right", By([1], abs), By(Int[], abs)))) == []
+julia> collect(RightJoin(By([1], abs), By(Int[], abs))) == []
 true
 
-julia> @name collect(mix(name"right", By(Int[], abs), By([1], abs)))
+julia> collect(RightJoin(By(Int[], abs), By([1], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Int64},1}:
  (missing, 1)
 ```
 """
-@inline function mix(::Name{:right}, left, right)
-    RightMix(left, right)
+struct RightJoin{Left<:By,Right<:By} <: Join{Left,Right}
+    left::Left
+    right::Right
+end
+export RightJoin
+
+@inline function IteratorEltype(
+    ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
+end
+@inline function eltype(
+    ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{Union{Missing,eltype(LeftIterator)},eltype(RightIterator)}
+end
+
+@inline function IteratorSize(
+    ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    IteratorSize(RightIterator)
+end
+@inline function size(joined::RightJoin)
+    size(joined.right.sorted)
+end
+@inline function length(joined::RightJoin)
+    length(joined.right.sorted)
+end
+@inline function axes(joined::RightJoin)
+    axes(joined.right.sorted)
+end
+
+@inline function compare(joined::RightJoin, ::Nothing, ::Nothing)
+    nothing
 end
 
 """
-    mix(::Name{:outer}, left::By, right::By)
+    OuterJoin(left::By, right::By)
 
 Find all pairs where `isequal(left.key_function(left.sorted), right.key_function(right.sorted))`,
 using `missing` when there is no left or right match. Assumes `left` and `right`
@@ -662,7 +559,7 @@ first. See [`By`](@ref).
 ```jldoctest
 julia> using LightQuery
 
-julia> @name collect(mix(name"outer", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
+julia> collect(OuterJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 6-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (1, -1)
  (-2, missing)
@@ -671,23 +568,112 @@ julia> @name collect(mix(name"outer", By([1, -2, 5, -6], abs), By([-1, 3, -4, 6]
  (5, missing)
  (-6, 6)
 
-julia> (@name collect(mix(name"outer", By(Int[], abs), By(Int[], abs)))) == []
+julia> collect(OuterJoin(By(Int[], abs), By(Int[], abs))) == []
 true
 
-julia> @name collect(mix(name"outer", By([1], abs), By(Int[], abs)))
+julia> collect(OuterJoin(By([1], abs), By(Int[], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (1, missing)
 
-julia> @name collect(mix(name"outer", By(Int[], abs), By([1], abs)))
+julia> collect(OuterJoin(By(Int[], abs), By([1], abs)))
 1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (missing, 1)
 ```
 """
-@inline function mix(::Name{:outer}, left, right)
-    OuterMix(left, right)
+struct OuterJoin{Left<:By,Right<:By} <: Join{Left,Right}
+    left::Left
+    right::Right
+end
+export OuterJoin
+
+@inline function IteratorEltype(
+    ::Type{OuterJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
+end
+@inline function eltype(
+    ::Type{OuterJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
+) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    Tuple{Union{Missing,eltype(LeftIterator)},Union{Missing,eltype(RightIterator)}}
 end
 
-export mix
+@inline function compare(joined::OuterJoin, ::Nothing, ::Nothing)
+    nothing
+end
+
+function IteratorSize(::Type{AType}) where {AType<:Union{InnerJoin,OuterJoin}}
+    SizeUnknown()
+end
+
+@inline function next_left(joined::Union{InnerJoin,RightJoin}, left_history, right_history)
+    iterate(joined, (left_history, right_history, true, false))
+end
+@inline function next_left(joined::Union{LeftJoin,OuterJoin}, left_history, right_history)
+    left_state, left_item, left_key_result = left_history
+    (left_item, missing), (left_history, right_history, true, false)
+end
+
+@inline function next_right(joined::Union{InnerJoin,LeftJoin}, left_history, right_history)
+    iterate(joined, (left_history, right_history, false, true))
+end
+@inline function next_right(joined::Union{RightJoin,OuterJoin}, left_history, right_history)
+    right_state, right_item, right_key_result = right_history
+    (missing, right_item), (left_history, right_history, false, true)
+end
+
+@inline function compare(joined::Union{InnerJoin,LeftJoin}, ::Nothing, right_history)
+    nothing
+end
+@inline function compare(joined::Union{LeftJoin,OuterJoin}, left_history, ::Nothing)
+    left_state, left_item, left_key_result = left_history
+    (left_item, missing), (left_history, nothing, true, false)
+end
+
+@inline function compare(joined::Union{InnerJoin,RightJoin}, left_history, ::Nothing)
+    nothing
+end
+@inline function compare(joined::Union{RightJoin,OuterJoin}, ::Nothing, right_history)
+    right_state, right_item, right_key_result = right_history
+    (missing, right_item), (nothing, right_history, false, true)
+end
+
+@inline function compare(joined, left_history, right_history)
+    left_state, left_item, left_key_result = left_history
+    right_state, right_item, right_key_result = right_history
+    if isless(left_key_result, right_key_result)
+        next_left(joined, left_history, right_history)
+    elseif isless(right_key_result, left_key_result)
+        next_right(joined, left_history, right_history)
+    else
+        (left_item, right_item), (left_history, right_history, true, true)
+    end
+end
+
+@inline function iterate(::Join, ::Nothing)
+    nothing
+end
+@inline function iterate(joined::Join)
+    compare(joined, next_history(joined.left), next_history(joined.right))
+end
+@inline function iterate(joined::Join, (left_history, right_history, next_left, next_right))
+    if next_left
+        if next_right
+            compare(
+                joined,
+                next_history(joined.left, left_history),
+                next_history(joined.right, right_history),
+            )
+        else
+            compare(joined, next_history(joined.left, left_history), right_history)
+        end
+    else
+        if next_right
+            compare(joined, left_history, next_history(joined.right, right_history))
+        else
+            throw(StackOverflowError())
+        end
+    end
+end
 
 @inline function setindex_pair!(dictionary, (a_key, a_value))
     dictionary[a_key] = a_value
@@ -729,7 +715,7 @@ struct Length{Iterator}
 end
 @inline IteratorEltype(::Type{Length{Iterator}}) where {Iterator} = IteratorEltype(Iterator)
 @inline eltype(::Type{Length{Iterator}}) where {Iterator} = eltype(Iterator)
-@inline IteratorLength(::Type{T}) where {T<:Length} = HasLength()
+@inline IteratorLength(::Type{<:Length}) = HasLength()
 @inline length(fixed::Length) = fixed.new_length
 @inline iterate(fixed::Length) = iterate(fixed.iterator)
 @inline iterate(fixed::Length, state) = iterate(fixed.iterator, state)

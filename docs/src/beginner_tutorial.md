@@ -560,10 +560,10 @@ julia> key(first(grouped_flights))
 ("EWR", ZonedDateTime(2013, 1, 1, 5, tz"America/New_York"))
 ```
 
-I used the verb [`mix`](@ref) instead of `join` because `join` was already taken by Base. The first argument to [`mix`](@ref) should be a [`Name`](@ref) for which kind of join you would like to perform. An inner join will find pairs rows with matching [`key`](@ref)s. Groups of flights are already sorted by [`key`](@ref).
+An inner join will find pairs rows with matching [`key`](@ref)s. Groups of flights are already sorted by [`key`](@ref).
 
 ```jldoctest flights
-julia> weathers_to_flights = @name @> mix(name"inner",
+julia> weathers_to_flights = @name @> InnerJoin(
             By(weathers, @_ (_.airport_code, _.date_time)),
             By(grouped_flights, key)
         );
