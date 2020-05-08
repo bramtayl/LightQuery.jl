@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Reshaping tutorial · LightQuery.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">LightQuery.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Usage and performance notes</a></li><li><a class="tocitem" href="../beginner_tutorial/">Beginner tutorial</a></li><li class="is-active"><a class="tocitem" href>Reshaping tutorial</a></li><li><a class="tocitem" href="../interface/">Interface</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Reshaping tutorial</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Reshaping tutorial</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/bramtayl/LightQuery.jl/blob/master/docs/src/reshaping_tutorial.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Reshaping-tutorial-1"><a class="docs-heading-anchor" href="#Reshaping-tutorial-1">Reshaping tutorial</a><a class="docs-heading-anchor-permalink" href="#Reshaping-tutorial-1" title="Permalink"></a></h1><p>For this section, I will use <a href="https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/all/ACW00011604.dly">data from the Global Historical Climatology Network</a>. I got this idea from the <a href="https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html"><code>tidyr</code> tutorial</a>. This example assumes you have already worked through the <a href="../beginner_tutorial/"><code>Beginner tutorial</code></a>. Let&#39;s take a quick peek at the data.</p><pre><code class="language-julia-repl">julia&gt; using LightQuery
+
+julia&gt; using Base.Iterators: flatten
+
+julia&gt; using Dates: Date
+
+julia&gt; cd(joinpath(pathof(LightQuery) |&gt; dirname |&gt; dirname, &quot;test&quot;));</code></pre><pre><code class="language-julia-repl">julia&gt; file = open(&quot;climate.txt&quot;);
+
+julia&gt; line = readline(file)
+&quot;ACW00011604194901TMAX  289  X  289  X  283  X  283  X  289  X  289  X  278  X  267  X  272  X  278  X  267  X  278  X  267  X  267  X  278  X  267  X  267  X  272  X  272  X  272  X  278  X  272  X  267  X  267  X  267  X  278  X  272  X  272  X  272  X  272  X  272  X&quot;
+
+julia&gt; close(file)</code></pre><p>Oh boy this is some messy data. Let&#39;s start by parsing the first chunk, which contains within it the year and the month.</p><pre><code class="language-julia-repl">julia&gt; month_variable = @name (
+            year = parse(Int, SubString(line, 12, 15)),
+            month = parse(Int, SubString(line, 16, 17)),
+            variable = Symbol(SubString(line, 18, 21))
+        )
+((name&quot;year&quot;, 1949), (name&quot;month&quot;, 1), (name&quot;variable&quot;, :TMAX))</code></pre><p>The next chucks each represent a day. Let&#39;s parse a day. <code>missing</code> is represented by <code>-9999</code>.</p><pre><code class="language-julia-repl">julia&gt; function get_day(line, day)
+            start = 14 + 8 * day
+            value = parse(Int, line[start:start + 4])
+            @name (day = day, value =
+                if value == -9999
+                    missing
+                else
+                    value
+                end
+            )
+        end;
+
+julia&gt; get_day(line, 1)
+((name&quot;day&quot;, 1), (name&quot;value&quot;, 289))</code></pre><p>Now, we can get data for every day of the month.</p><pre><code class="language-julia-repl">julia&gt; days = @&gt; over(1:31, @_ (
+            month_variable...,
+            get_day(line, _)...
+        ));
+
+julia&gt; first(days)
+((name&quot;year&quot;, 1949), (name&quot;month&quot;, 1), (name&quot;variable&quot;, :TMAX), (name&quot;day&quot;, 1), (name&quot;value&quot;, 289))</code></pre><p>Use <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a> to remove missing data;</p><pre><code class="language-julia-repl">julia&gt; days = @name when(days, @_ _.value !== missing);
+
+julia&gt; first(days)
+((name&quot;year&quot;, 1949), (name&quot;month&quot;, 1), (name&quot;variable&quot;, :TMAX), (name&quot;day&quot;, 1), (name&quot;value&quot;, 289))</code></pre><p>Use <a href="../interface/#LightQuery.transform-Tuple{Any,Vararg{Any,N} where N}"><code>transform</code></a> a true data and <a href="../interface/#LightQuery.remove-Tuple{Any,Vararg{Any,N} where N}"><code>remove</code></a> the old fields.</p><pre><code class="language-julia-repl">julia&gt; get_date(day) =
+        @name @&gt; day |&gt;
+        transform(_, date = Date(_.year, _.month, _.day)) |&gt;
+        remove(_, name&quot;year&quot;, name&quot;month&quot;, name&quot;day&quot;);
+
+julia&gt; get_date(first(days)) == @name (
+            variable = :TMAX,
+            value = 289,
+            date = Date(&quot;1949-01-01&quot;)
+        )
+true</code></pre><p>We can combine these steps to process a whole month.</p><pre><code class="language-julia-repl">julia&gt; function get_month_variable(line)
+            month_variable = @name (
+                year = parse(Int, SubString(line, 12, 15)),
+                month = parse(Int, SubString(line, 16, 17)),
+                variable = Symbol(SubString(line, 18, 21))
+            )
+            @name @&gt; over(1:31, @_ (
+                month_variable...,
+                get_day(line, _)...
+            )) |&gt;
+            when(_, @_ _.value !== missing) |&gt;
+            over(_, get_date)
+        end;
+
+julia&gt; first(get_month_variable(line)) == @name (
+            variable = :TMAX,
+            value = 289,
+            date = Date(&quot;1949-01-01&quot;)
+        )
+true</code></pre><p>Each line will return several days. Use <code>flatten</code> to unnest the data.</p><pre><code class="language-julia-repl">julia&gt; climate_data =
+        @&gt; eachline(&quot;climate.txt&quot;) |&gt;
+        over(_, get_month_variable) |&gt;
+        flatten |&gt;
+        make_columns |&gt;
+        Rows;
+
+julia&gt; Peek(climate_data)
+Showing 4 of 1231 rows
+| name&quot;variable&quot; | name&quot;value&quot; | name&quot;date&quot; |
+| --------------:| -----------:| ----------:|
+|          :TMAX |         289 | 1949-01-01 |
+|          :TMAX |         289 | 1949-01-02 |
+|          :TMAX |         283 | 1949-01-03 |
+|          :TMAX |         283 | 1949-01-04 |</code></pre><p>Let&#39;s sort and group the data by date. This will allow us to combine various measures into one row for each date.</p><pre><code class="language-julia-repl">julia&gt; by_date =
+        @&gt; climate_data |&gt;
+        order(_, name&quot;date&quot;) |&gt;
+        Group(By(_, name&quot;date&quot;));
+
+julia&gt; day_variables = first(by_date);
+
+julia&gt; key(day_variables)
+1949-01-01
+
+julia&gt; value(day_variables) |&gt; Peek
+Showing 4 of 5 rows
+| name&quot;variable&quot; | name&quot;value&quot; | name&quot;date&quot; |
+| --------------:| -----------:| ----------:|
+|          :TMAX |         289 | 1949-01-01 |
+|          :TMIN |         217 | 1949-01-01 |
+|          :PRCP |           0 | 1949-01-01 |
+|          :SNOW |           0 | 1949-01-01 |</code></pre><p>We can directly convert this group of measurements into a <a href="../interface/#LightQuery.named_tuple-Tuple{Any}"><code>named_tuple</code></a>. Do do this, use Use <a href="../interface/#LightQuery.Name-Tuple{Any}"><code>Name</code></a> to make turn variables into true names, and splat the result into a tuple.</p><pre><code class="language-julia-repl">julia&gt; spread_variables(day_variables) = @name (
+            date = key(day_variables),
+            over(
+                value(day_variables),
+                @_ (Name(_.variable), _.value)
+            )...
+        );
+
+julia&gt; spread_variables(day_variables) == @name (
+            date = Date(&quot;1949-01-01&quot;),
+            TMAX = 289,
+            TMIN = 217,
+            PRCP = 0,
+            SNOW = 0,
+            SNWD = 0
+        )
+true</code></pre><p>Finally, we can run this reshaping over each day in the data using <a href="../interface/#LightQuery.over-Tuple{Any,Any}"><code>over</code></a>,</p><pre><code class="language-julia-repl">julia&gt; @&gt; by_date |&gt;
+        over(_, spread_variables) |&gt;
+        Peek
+Showing at most 4 rows
+| name&quot;WT16&quot; | name&quot;date&quot; | name&quot;TMAX&quot; | name&quot;TMIN&quot; | name&quot;PRCP&quot; | name&quot;SNOW&quot; | name&quot;SNWD&quot; |
+| ----------:| ----------:| ----------:| ----------:| ----------:| ----------:| ----------:|
+|    missing | 1949-01-01 |        289 |        217 |          0 |          0 |          0 |
+|          1 | 1949-01-02 |        289 |        228 |         30 |          0 |          0 |
+|    missing | 1949-01-03 |        283 |        222 |          0 |          0 |          0 |
+|          1 | 1949-01-04 |        283 |        233 |          0 |          0 |          0 |</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../beginner_tutorial/">« Beginner tutorial</a><a class="docs-footer-nextpage" href="../interface/">Interface »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 8 May 2020 17:08">Friday 8 May 2020</span>. Using Julia version 1.3.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
