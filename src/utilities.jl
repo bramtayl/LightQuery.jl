@@ -8,7 +8,7 @@ end
 end
 
 function my_flatten(containers)
-    if length(containers) > 16
+    if length(containers) > LONG
         (flatten(containers)...,)
     else
         flatten_unrolled(containers...)
@@ -117,7 +117,7 @@ end
 end
 
 function my_setdiff(more, less)
-    if length(more) > 16
+    if length(more) > LONG
         (setdiff(more, less)...,)
     else
         setdiff_unrolled(less, more...)
@@ -137,7 +137,7 @@ julia> using Test: @inferred
 
 
 julia> @inferred collect(over([1, -2, -3, 4], abs))
-4-element Array{Int64,1}:
+4-element Vector{Int64}:
  1
  2
  3
@@ -162,7 +162,7 @@ julia> using Test: @inferred
 
 
 julia> @inferred collect(when(1:4, iseven))
-2-element Array{Int64,1}:
+2-element Vector{Int64}:
  2
  4
 ```

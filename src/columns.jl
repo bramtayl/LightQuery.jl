@@ -51,10 +51,11 @@ julia> @inferred (name"c", name"f")(data)
 (c = 1, f = 1.0)
 ```
 
-A final use for names can be as a way to construct NamedTuples from pairs.
+A final use for names can be as a way to construct NamedTuples from pairs. Using `Name`s
+instead of `Symbol`s gives type stability.
 
 ```jldoctest name
-julia> @inferred NamedTuple(((name"a", 1), (name"b", 2)))
+julia> @inferred NamedTuple((name"a", 1), (name"b", 2))
 (a = 1, b = 2)
 ```
 """
@@ -116,7 +117,7 @@ end
         end
         data[index][2]
     else
-        recursive_get(initial, name, data...)
+        recursive_get(data, name, data...)
     end
 end
 
@@ -129,7 +130,7 @@ function (some_names::SomeOf{Name})(data::MyNamedTuple)
 end
 # TODO: a version which works on all types?
 function (some_names::SomeOf{Name})(data::NamedTuple)
-    NamedTuple(some_names(named_tuple(data)))
+    NamedTuple(some_names(named_tuple(data))...)
 end
 
 @inline function isless(::Name{name1}, ::Name{name2}) where {name1,name2}
@@ -144,10 +145,10 @@ function to_Names(them)
     map(Name, Tuple(them))
 end
 
-function NamedTuple(data::MyNamedTuple)
-    NamedTuple{map((function ((key, value),)
+function NamedTuple(data::Tuple{Name,Any}...)
+    NamedTuple{map(function ((key, value),)
         unname(key)
-    end), data)}(map(value, data))
+    end, data)}(map(value, data))
 end
 
 function named_tuple(data)
@@ -178,7 +179,7 @@ function remove(data::MyNamedTuple, old_names...)
     my_setdiff(map(key, data), old_names)(data)
 end
 function remove(data, old_names...)
-    NamedTuple(remove(named_tuple(data), old_names...))
+    NamedTuple(remove(named_tuple(data), old_names...)...)
 end
 
 export remove
@@ -206,12 +207,12 @@ function transform(data::MyNamedTuple, assignments...)
     remove(data, map(key, assignments)...)..., assignments...
 end
 function transform(data; assignments...)
-    NamedTuple(transform(named_tuple(data), named_tuple(assignments.data)...))
+    NamedTuple(transform(named_tuple(data), named_tuple(assignments.data)...)...)
 end
 export transform
 
 maybe_named_tuple(something) = something
-maybe_named_tuple(something::MyNamedTuple) = NamedTuple(something)
+maybe_named_tuple(something::MyNamedTuple) = NamedTuple(something...)
 
 function rename_one(data, (new_name, old_name))
     new_name, maybe_named_tuple(old_name(data))
@@ -240,7 +241,7 @@ function rename(data::MyNamedTuple, new_name_old_names...)
     partial_map(rename_one, data, new_name_old_names)...
 end
 function rename(data; new_name_old_names...)
-    NamedTuple(rename(named_tuple(data), named_tuple(new_name_old_names.data)...))
+    NamedTuple(rename(named_tuple(data), named_tuple(new_name_old_names.data)...)...)
 end
 export rename
 
@@ -268,7 +269,7 @@ function gather(data::MyNamedTuple, new_name_old_names...)
     partial_map(rename_one, data, new_name_old_names)...
 end
 function gather(data; new_name_old_names...)
-    NamedTuple(gather(named_tuple(data), named_tuple(new_name_old_names.data)...))
+    NamedTuple(gather(named_tuple(data), named_tuple(new_name_old_names.data)...)...)
 end
 export gather
 
@@ -298,58 +299,7 @@ function spread(data::MyNamedTuple, some_names...)
     end), some_names(data)))...
 end
 function spread(data, some_names...)
-    NamedTuple(spread(named_tuple(data), some_names...))
+    NamedTuple(spread(named_tuple(data), some_names...)...)
 end
 
 export spread
-
-struct InRow{name,AColumn}
-    column::AColumn
-end
-function InRow{name}(column::AColumn) where {name,AColumn}
-    InRow{name,AColumn}(column)
-end
-
-Name(in_row::InRow{name}) where {name} = Name{name}()
-
-function (in_row::InRow)(row::Row)
-    in_row.column[getrow(row)]
-end
-function (in_rows::SomeOf{InRow})(data::Row)
-    NamedTuple(partial_map(get_pair, data, in_rows))
-end
-
-function get_pair(data::Row, in_row::InRow{name}) where name
-    Name{name}(), in_row(data)
-end
-
-"""
-    row_info(::CSV.File)
-
-Get row info for the CSV file. Can be used as a type stable selector function.
-
-```jldoctest
-julia> using LightQuery
-
-
-julia> using Test: @inferred
-
-
-julia> using CSV: File
-
-
-julia> test = File("test.csv");
-
-
-julia> template = row_info(test)
-(LightQuery.InRow{:a,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:b,CSV.Column{Float64,Float64}}([1.0]), LightQuery.InRow{:c,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:d,CSV.Column{Float64,Float64}}([1.0]), LightQuery.InRow{:e,CSV.Column{Int64,Int64}}([1]), LightQuery.InRow{:f,CSV.Column{Float64,Float64}}([1.0]))
-
-julia> @inferred template(first(test))
-(a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
-```
-"""
-@noinline function row_info(file::File)
-    ((InRow{name}(getcolumn(file, name)) for name in propertynames(file))...,)
-end
-
-export row_info

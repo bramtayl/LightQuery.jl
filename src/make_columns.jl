@@ -56,17 +56,17 @@ julia> using Test: @inferred
 
 
 julia> lazy = @inferred Rows(a = [1, 2], b = [1.0, 2.0])
-2-element Rows{NamedTuple{(:a, :b),Tuple{Int64,Float64}},1,Tuple{Array{Int64,1},Array{Float64,1}},Tuple{Name{:a},Name{:b}}}:
+2-element Rows{NamedTuple{(:a, :b),Tuple{Int64,Float64}},1,Tuple{Vector{Int64},Vector{Float64}},Tuple{Name{:a},Name{:b}}}:
  (a = 1, b = 1.0)
  (a = 2, b = 2.0)
 
 julia> @inferred collect(lazy)
-2-element Array{NamedTuple{(:a, :b),Tuple{Int64,Float64}},1}:
+2-element Vector{NamedTuple{(:a, :b),Tuple{Int64,Float64}}}:
  (a = 1, b = 1.0)
  (a = 2, b = 2.0)
 
 julia> @inferred Rows(a = [1, 2])
-2-element Rows{NamedTuple{(:a,),Tuple{Int64}},1,Tuple{Array{Int64,1}},Tuple{Name{:a}}}:
+2-element Rows{NamedTuple{(:a,),Tuple{Int64}},1,Tuple{Vector{Int64}},Tuple{Name{:a}}}:
  (a = 1,)
  (a = 2,)
 ```
@@ -79,9 +79,21 @@ julia> result = Rows(a = 1:2, b = 1:3)
 ERROR: DimensionMismatch("All columns passed to `Rows` must have the same axes")
 [...]
 ```
+
+You can also use rows on CSV files:
+
+```jldoctest Rows
+julia> using CSV: File
+
+julia> first(Rows(File("test.csv")))
+(a = 1, b = 1.0, f = 1.0, d = 1.0, e = 1, c = 1)
+```
 """
 @propagate_inbounds function Rows(; columns...)
     Rows(named_tuple(columns.data))
+end
+function Rows(file::File)
+    @inbounds Rows(; getfield(file, :lookup)...)
 end
 
 function get_model(columns)
@@ -113,7 +125,7 @@ end
         end),
         (to_columns(rows), an_index),
         rows.names,
-    ))
+    )...)
 end
 
 @propagate_inbounds function setindex!(rows::Rows, row::MyNamedTuple, an_index::Int...)
@@ -308,7 +320,7 @@ function make_columns(rows)
         rows,
         EltypeUnknown(),
         IteratorSize(rows),
-    )))
+    ))...)
 end
 
 export make_columns

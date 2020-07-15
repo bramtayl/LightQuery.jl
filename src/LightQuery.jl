@@ -15,6 +15,7 @@ import Base:
     getproperty,
     grow_to!,
     haskey,
+    hasproperty,
     IndexStyle,
     isless,
     IteratorEltype,
@@ -51,8 +52,7 @@ using Base:
 import Base.Iterators: flatten, take
 using Base.Iterators: Filter
 using Base.Meta: quot
-using Compat: hasproperty
-using CSV: getcolumn, Column, getrow, Row, File
+using CSV: File
 using IterTools: @ifsomething
 import MacroTools
 using MacroTools: @capture
@@ -67,6 +67,5 @@ include("index.jl")
 include("rows.jl")
 include("make_columns.jl")
 include("pivot.jl")
-include("compat.jl")
 
 end

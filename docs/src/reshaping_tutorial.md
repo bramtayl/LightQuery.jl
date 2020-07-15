@@ -154,16 +154,15 @@ Showing 4 of 5 rows
 |    :SNOW |     0 | 1949-01-01 |
 ```
 
-We can directly convert this group of measurements into a `NamedTuple`. Use [`Name`](@ref) to make turn variables into true names, and splat the result into a tuple. You can simply call `NamedTuple` on the result.
+Use [`transform`](@ref) to add all the new variables to the day key.
 
 ```jldoctest reshaping
-julia> spread_variables(day_variables) = NamedTuple((
-            (Name(:date), key(day_variables)),
+julia> spread_variables(day_variables) = transform((date = key(day_variables),);
             over(
                 value(day_variables),
-                @_ (Name(_.variable), _.value)
+                @_ _.variable => _.value
             )...
-        ));
+        );
 
 
 julia> spread_variables(day_variables) == (
