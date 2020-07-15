@@ -69,16 +69,16 @@ julia&gt; get_airport(first(airports_file))
 (name = &quot;Lansdowne Airport&quot;, airport_code = &quot;04G&quot;, altitude = 1044 ft, latitude = 41.1304722°, longitude = -80.6195833°, time_zone = tz&quot;America/New_York&quot;)</code></pre><p>Use <a href="../interface/#LightQuery.over-Tuple{Any,Any}"><code>over</code></a> to lazily map this function over each row of the airports file. <code>over</code> is simply <code>Base.Generator</code> with the argument order reversed. This facilitates chaining.</p><pre><code class="language-julia-repl">julia&gt; airports = over(airports_file, get_airport);
 
 julia&gt; first(airports)
-(name = &quot;Lansdowne Airport&quot;, airport_code = &quot;04G&quot;, altitude = 1044 ft, latitude = 41.1304722°, longitude = -80.6195833°, time_zone = tz&quot;America/New_York&quot;)</code></pre><p>I will repeat the following sequence of operations many times in this tutorial. Call <a href="../interface/#LightQuery.make_columns-Tuple{Any}"><code>make_columns</code></a> to store the data as columns. Then, because it is useful to view the data as rows, use <a href="../interface/#LightQuery.Rows-Tuple{Any}"><code>Rows</code></a> to lazily view the data row-wise. You can use <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> to look at the first few rows of data.</p><pre><code class="language-julia-repl">julia&gt; airports = Rows(make_columns(airports));
+(name = &quot;Lansdowne Airport&quot;, airport_code = &quot;04G&quot;, altitude = 1044 ft, latitude = 41.1304722°, longitude = -80.6195833°, time_zone = tz&quot;America/New_York&quot;)</code></pre><p>I will repeat the following sequence of operations many times in this tutorial. Call <a href="../interface/#LightQuery.make_columns-Tuple{Any}"><code>make_columns</code></a> to store the data as columns. Then, because it is useful to view the data as rows, use <a href="../interface/#LightQuery.Rows-Tuple{}"><code>Rows</code></a> to lazily view the data row-wise. You can use <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> to look at the first few rows of data.</p><pre><code class="language-julia-repl">julia&gt; airports = Rows(; make_columns(airports)...);
 
 julia&gt; Peek(airports)
 Showing 4 of 1458 rows
-|                    name&quot;name&quot; | name&quot;airport_code&quot; | name&quot;altitude&quot; | name&quot;latitude&quot; | name&quot;longitude&quot; |                name&quot;time_zone&quot; |
-| -----------------------------:| ------------------:| --------------:| --------------:| ---------------:| ------------------------------:|
-|             Lansdowne Airport |                04G |        1044 ft |    41.1304722° |    -80.6195833° | America/New_York (UTC-5/UTC-4) |
-| Moton Field Municipal Airport |                06A |         264 ft |    32.4605722° |    -85.6800278° |  America/Chicago (UTC-6/UTC-5) |
-|           Schaumburg Regional |                06C |         801 ft |    41.9893408° |    -88.1012428° |  America/Chicago (UTC-6/UTC-5) |
-|               Randall Airport |                06N |         523 ft |     41.431912° |    -74.3915611° | America/New_York (UTC-5/UTC-4) |</code></pre><p>You can use <a href="../interface/#LightQuery.index-Tuple{Any,Any}"><code>index</code></a> to be able to quickly retrieve airports by code. This will be helpful later. This is very similar to making a <code>Dict</code>.</p><pre><code class="language-julia-repl">julia&gt; const indexed_airports = index(airports, name&quot;airport_code&quot;);
+|                          name | airport_code | altitude |    latitude |    longitude |                      time_zone |
+| -----------------------------:| ------------:| --------:| -----------:| ------------:| ------------------------------:|
+|             Lansdowne Airport |          04G |  1044 ft | 41.1304722° | -80.6195833° | America/New_York (UTC-5/UTC-4) |
+| Moton Field Municipal Airport |          06A |   264 ft | 32.4605722° | -85.6800278° |  America/Chicago (UTC-6/UTC-5) |
+|           Schaumburg Regional |          06C |   801 ft | 41.9893408° | -88.1012428° |  America/Chicago (UTC-6/UTC-5) |
+|               Randall Airport |          06N |   523 ft |  41.431912° | -74.3915611° | America/New_York (UTC-5/UTC-4) |</code></pre><p>You can use <a href="../interface/#LightQuery.index-Tuple{Any,Any}"><code>index</code></a> to be able to quickly retrieve airports by code. This will be helpful later. This is very similar to making a <code>Dict</code>.</p><pre><code class="language-julia-repl">julia&gt; const indexed_airports = index(airports, name&quot;airport_code&quot;);
 
 julia&gt; indexed_airports[&quot;JFK&quot;]
 (name = &quot;John F Kennedy Intl&quot;, airport_code = &quot;JFK&quot;, altitude = 13 ft, latitude = 40.639751°, longitude = -73.778925°, time_zone = tz&quot;America/New_York&quot;)</code></pre><h2 id="Flights-cleaning"><a class="docs-heading-anchor" href="#Flights-cleaning">Flights cleaning</a><a id="Flights-cleaning-1"></a><a class="docs-heading-anchor-permalink" href="#Flights-cleaning" title="Permalink"></a></h2><p>Now that we have built our airports dataset, we can start working on the flights data. Start by using <a href="http://juliadata.github.io/CSV.jl/stable/#CSV.File"><code>CSV.File</code></a> to lazily import the flights data.</p><pre><code class="language-julia-repl">julia&gt; flights_file = CSV.File(&quot;flights.csv&quot;);</code></pre><p>Again, we will build a function to clean up a row of data. We will again use the first row to build and test our function. I will skip over several steps that we already used in the airports data: get the first flight, <a href="../interface/#LightQuery.rename-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>rename</code></a>, <a href="../interface/#LightQuery.remove-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>remove</code></a>, and <a href="../interface/#LightQuery.transform-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>transform</code></a> to add units.</p><pre><code class="language-julia-repl">julia&gt; const Flight = row_info(flights_file);
@@ -183,7 +183,7 @@ julia&gt; get_time(
         end;
 
 julia&gt; get_flight(indexed_airports, first(flights_file))
-(carrier = &quot;UA&quot;, flight = 1545, origin = &quot;EWR&quot;, destination = &quot;IAH&quot;, tail_number = &quot;N14228&quot;, air_time = 227 minute, distance = 1400 mi, departure_delay = 2 minute, arrival_delay = 11 minute, scheduled_departure_time = ZonedDateTime(2013, 1, 1, 5, 15, tz&quot;America/New_York&quot;), scheduled_arrival_time = ZonedDateTime(2013, 1, 1, 8, 19, tz&quot;America/Chicago&quot;))</code></pre><p>Again, use <a href="../interface/#LightQuery.over-Tuple{Any,Any}"><code>over</code></a> to lazily map this function over each row. Here we are using the <a href="../interface/#LightQuery.@_-Tuple{Any}"><code>@_</code></a> macro to create an anonymous function as tersely as possible. Finally, we will again use <a href="../interface/#LightQuery.make_columns-Tuple{Any}"><code>make_columns</code></a> and <a href="../interface/#LightQuery.Rows-Tuple{Any}"><code>Rows</code></a> to store the data column-wise and view it row-wise. Again use <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> to view the first few rows.</p><pre><code class="language-julia-repl">julia&gt; flights =
+(carrier = &quot;UA&quot;, flight = 1545, origin = &quot;EWR&quot;, destination = &quot;IAH&quot;, tail_number = &quot;N14228&quot;, air_time = 227 minute, distance = 1400 mi, departure_delay = 2 minute, arrival_delay = 11 minute, scheduled_departure_time = ZonedDateTime(2013, 1, 1, 5, 15, tz&quot;America/New_York&quot;), scheduled_arrival_time = ZonedDateTime(2013, 1, 1, 8, 19, tz&quot;America/Chicago&quot;))</code></pre><p>Again, use <a href="../interface/#LightQuery.over-Tuple{Any,Any}"><code>over</code></a> to lazily map this function over each row. Here we are using the <a href="../interface/#LightQuery.@_-Tuple{Any}"><code>@_</code></a> macro to create an anonymous function as tersely as possible. Finally, we will again use <a href="../interface/#LightQuery.make_columns-Tuple{Any}"><code>make_columns</code></a> and <a href="../interface/#LightQuery.Rows-Tuple{}"><code>Rows</code></a> to store the data column-wise and view it row-wise. Again use <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> to view the first few rows.</p><pre><code class="language-julia-repl">julia&gt; flights =
         @&gt; flights_file |&gt;
         over(_, @_ get_flight(indexed_airports, _));
 
@@ -191,16 +191,16 @@ julia&gt; flights =
         @&gt; flights |&gt;
         Iterators.take(_, 6400) |&gt;
         make_columns |&gt;
-        Rows;
+        Rows(; _...);
 
 julia&gt; Peek(flights)
 Showing 4 of 6400 rows
-| name&quot;carrier&quot; | name&quot;flight&quot; | name&quot;origin&quot; | name&quot;destination&quot; | name&quot;tail_number&quot; | name&quot;air_time&quot; | name&quot;distance&quot; | name&quot;departure_delay&quot; | name&quot;arrival_delay&quot; | name&quot;scheduled_departure_time&quot; | name&quot;scheduled_arrival_time&quot; |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            UA |         1545 |          EWR |               IAH |            N14228 |     227 minute |        1400 mi |              2 minute |           11 minute |      2013-01-01T05:15:00-05:00 |    2013-01-01T08:19:00-06:00 |
-|            UA |         1714 |          LGA |               IAH |            N24211 |     227 minute |        1416 mi |              4 minute |           20 minute |      2013-01-01T05:29:00-05:00 |    2013-01-01T08:30:00-06:00 |
-|            AA |         1141 |          JFK |               MIA |            N619AA |     160 minute |        1089 mi |              2 minute |           33 minute |      2013-01-01T05:40:00-05:00 |    2013-01-01T08:50:00-05:00 |
-|            B6 |          725 |          JFK |               BQN |            N804JB |     183 minute |        1576 mi |             -1 minute |          -18 minute |      2013-01-01T05:45:00-05:00 |                      missing |</code></pre><h2 id="Grouping-and-validating-flights"><a class="docs-heading-anchor" href="#Grouping-and-validating-flights">Grouping and validating flights</a><a id="Grouping-and-validating-flights-1"></a><a class="docs-heading-anchor-permalink" href="#Grouping-and-validating-flights" title="Permalink"></a></h2><p>Now that we have cleaned the data, what should we do with? One simple question we might want to answer is whether the distances between two airports is always the same. If this is not the case, there is an inconsistency in the data. Answering this question will also allow me to show off the grouping features of the package. For both joining and grouping, LightQuery requires your data to be pre-sorted. This is greatly improves performance. Consider keeping your data pre-sorted to begin with!</p><p>Thus, first, we will need to <a href="../interface/#LightQuery.order-Tuple{Any,Any}"><code>order</code></a> flights by <code>origin</code>, <code>destination</code>, and <code>distance</code>. Note that we are using a tuple of <a href="../interface/#LightQuery.Name-Tuple{Any}"><code>Name</code></a>s as a selector function to pass to <code>order</code>. Once the data is in order, we can  <a href="../interface/#LightQuery.Group-Tuple{By}"><code>Group</code></a> <a href="../interface/#LightQuery.By"><code>By</code></a> the same variables. <a href="../interface/#LightQuery.By"><code>By</code></a> is necessary before grouping and joining to tell LightQuery how your data is ordered. All flights with the same origin, destination, and distance will be put into one group.</p><pre><code class="language-julia-repl">julia&gt; paths_grouped =
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1545 |    EWR |         IAH |      N14228 | 227 minute |  1400 mi |        2 minute |     11 minute | 2013-01-01T05:15:00-05:00 | 2013-01-01T08:19:00-06:00 |
+|      UA |   1714 |    LGA |         IAH |      N24211 | 227 minute |  1416 mi |        4 minute |     20 minute | 2013-01-01T05:29:00-05:00 | 2013-01-01T08:30:00-06:00 |
+|      AA |   1141 |    JFK |         MIA |      N619AA | 160 minute |  1089 mi |        2 minute |     33 minute | 2013-01-01T05:40:00-05:00 | 2013-01-01T08:50:00-05:00 |
+|      B6 |    725 |    JFK |         BQN |      N804JB | 183 minute |  1576 mi |       -1 minute |    -18 minute | 2013-01-01T05:45:00-05:00 |                   missing |</code></pre><h2 id="Grouping-and-validating-flights"><a class="docs-heading-anchor" href="#Grouping-and-validating-flights">Grouping and validating flights</a><a id="Grouping-and-validating-flights-1"></a><a class="docs-heading-anchor-permalink" href="#Grouping-and-validating-flights" title="Permalink"></a></h2><p>Now that we have cleaned the data, what should we do with? One simple question we might want to answer is whether the distances between two airports is always the same. If this is not the case, there is an inconsistency in the data. Answering this question will also allow me to show off the grouping features of the package. For both joining and grouping, LightQuery requires your data to be pre-sorted. This is greatly improves performance. Consider keeping your data pre-sorted to begin with!</p><p>Thus, first, we will need to <a href="../interface/#LightQuery.order-Tuple{Any,Any}"><code>order</code></a> flights by <code>origin</code>, <code>destination</code>, and <code>distance</code>. Note that we are using a tuple of <a href="../interface/#LightQuery.Name-Tuple{Any}"><code>Name</code></a>s as a selector function to pass to <code>order</code>. Once the data is in order, we can  <a href="../interface/#LightQuery.Group-Tuple{By}"><code>Group</code></a> <a href="../interface/#LightQuery.By"><code>By</code></a> the same variables. <a href="../interface/#LightQuery.By"><code>By</code></a> is necessary before grouping and joining to tell LightQuery how your data is ordered. All flights with the same origin, destination, and distance will be put into one group.</p><pre><code class="language-julia-repl">julia&gt; paths_grouped =
         @&gt; flights |&gt;
         order(_, (name&quot;origin&quot;, name&quot;destination&quot;, name&quot;distance&quot;)) |&gt;
         Group(By(_, (name&quot;origin&quot;, name&quot;destination&quot;, name&quot;distance&quot;)));
@@ -211,25 +211,25 @@ julia&gt; key(path)
 
 julia&gt; value(path) |&gt; Peek
 Showing 4 of 16 rows
-| name&quot;carrier&quot; | name&quot;flight&quot; | name&quot;origin&quot; | name&quot;destination&quot; | name&quot;tail_number&quot; | name&quot;air_time&quot; | name&quot;distance&quot; | name&quot;departure_delay&quot; | name&quot;arrival_delay&quot; | name&quot;scheduled_departure_time&quot; | name&quot;scheduled_arrival_time&quot; |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            EV |         4112 |          EWR |               ALB |            N13538 |      33 minute |         143 mi |             -2 minute |          -10 minute |      2013-01-01T13:17:00-05:00 |    2013-01-01T14:23:00-05:00 |
-|            EV |         3260 |          EWR |               ALB |            N19554 |      36 minute |         143 mi |             34 minute |           40 minute |      2013-01-01T16:21:00-05:00 |    2013-01-01T17:24:00-05:00 |
-|            EV |         4170 |          EWR |               ALB |            N12540 |      31 minute |         143 mi |             52 minute |           44 minute |      2013-01-01T20:04:00-05:00 |    2013-01-01T21:12:00-05:00 |
-|            EV |         4316 |          EWR |               ALB |            N14153 |      33 minute |         143 mi |              5 minute |          -14 minute |      2013-01-02T13:27:00-05:00 |    2013-01-02T14:33:00-05:00 |</code></pre><p>For the purposes of our analysis, all we need is the <code>key</code>. As always, store the data as columns using <a href="../interface/#LightQuery.make_columns-Tuple{Any}"><code>make_columns</code></a>, lazily view it as rows using <a href="../interface/#LightQuery.Rows-Tuple{Any}"><code>Rows</code></a>, and use <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> to view the first few rows.</p><pre><code class="language-julia-repl">julia&gt; paths =
+| carrier | flight | origin | destination | tail_number |  air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ---------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      EV |   4112 |    EWR |         ALB |      N13538 | 33 minute |   143 mi |       -2 minute |    -10 minute | 2013-01-01T13:17:00-05:00 | 2013-01-01T14:23:00-05:00 |
+|      EV |   3260 |    EWR |         ALB |      N19554 | 36 minute |   143 mi |       34 minute |     40 minute | 2013-01-01T16:21:00-05:00 | 2013-01-01T17:24:00-05:00 |
+|      EV |   4170 |    EWR |         ALB |      N12540 | 31 minute |   143 mi |       52 minute |     44 minute | 2013-01-01T20:04:00-05:00 | 2013-01-01T21:12:00-05:00 |
+|      EV |   4316 |    EWR |         ALB |      N14153 | 33 minute |   143 mi |        5 minute |    -14 minute | 2013-01-02T13:27:00-05:00 | 2013-01-02T14:33:00-05:00 |</code></pre><p>For the purposes of our analysis, all we need is the <code>key</code>. As always, store the data as columns using <a href="../interface/#LightQuery.make_columns-Tuple{Any}"><code>make_columns</code></a>, lazily view it as rows using <a href="../interface/#LightQuery.Rows-Tuple{}"><code>Rows</code></a>, and use <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> to view the first few rows.</p><pre><code class="language-julia-repl">julia&gt; paths =
         @&gt; paths_grouped |&gt;
         over(_, key) |&gt;
         make_columns |&gt;
-        Rows;
+        Rows(; _ ...);
 
 julia&gt; Peek(paths)
 Showing 4 of 186 rows
-| name&quot;origin&quot; | name&quot;destination&quot; | name&quot;distance&quot; |
-| ------------:| -----------------:| --------------:|
-|          EWR |               ALB |         143 mi |
-|          EWR |               ATL |         746 mi |
-|          EWR |               AUS |        1504 mi |
-|          EWR |               AVL |         583 mi |</code></pre><p>Let&#39;s run our data through a second round of grouping. This time, we will group data only by origin and destination. Theoretically, each group should only be one row long, because the distance between an origin and destination airport should always be the same. Our data is already sorted, so we do not need to sort it again before grouping. Again, use <a href="../interface/#LightQuery.Group-Tuple{By}"><code>Group</code></a> and <a href="../interface/#LightQuery.By"><code>By</code></a> to group the rows. Again, we can pass a tuple of <a href="../interface/#LightQuery.Name-Tuple{Any}"><code>Name</code></a>s as a selector function. Then, for each group, we can find the number of rows it contains.</p><pre><code class="language-julia-repl">julia&gt; path_groups =
+| origin | destination | distance |
+| ------:| -----------:| --------:|
+|    EWR |         ALB |   143 mi |
+|    EWR |         ATL |   746 mi |
+|    EWR |         AUS |  1504 mi |
+|    EWR |         AVL |   583 mi |</code></pre><p>Let&#39;s run our data through a second round of grouping. This time, we will group data only by origin and destination. Theoretically, each group should only be one row long, because the distance between an origin and destination airport should always be the same. Our data is already sorted, so we do not need to sort it again before grouping. Again, use <a href="../interface/#LightQuery.Group-Tuple{By}"><code>Group</code></a> and <a href="../interface/#LightQuery.By"><code>By</code></a> to group the rows. Again, we can pass a tuple of <a href="../interface/#LightQuery.Name-Tuple{Any}"><code>Name</code></a>s as a selector function. Then, for each group, we can find the number of rows it contains.</p><pre><code class="language-julia-repl">julia&gt; path_groups =
         @&gt; paths |&gt;
         Group(By(_, (name&quot;origin&quot;, name&quot;destination&quot;)));</code></pre><p>Let&#39;s create a function to add the number of distinct distances to the <code>key</code>.</p><pre><code class="language-julia-repl">julia&gt; first_path_group = first(path_groups);
 
@@ -237,9 +237,9 @@ julia&gt; key(first_path_group)
 (origin = &quot;EWR&quot;, destination = &quot;ALB&quot;)
 
 julia&gt; Peek(value(first_path_group))
-| name&quot;origin&quot; | name&quot;destination&quot; | name&quot;distance&quot; |
-| ------------:| -----------------:| --------------:|
-|          EWR |               ALB |         143 mi |
+| origin | destination | distance |
+| ------:| -----------:| --------:|
+|    EWR |         ALB |   143 mi |
 
 julia&gt; function with_number((key, value))
             transform(key, number = length(value))
@@ -252,26 +252,26 @@ julia&gt; with_number(first_path_group)
 
 julia&gt; Peek(distinct_distances)
 Showing at most 4 rows
-| name&quot;origin&quot; | name&quot;destination&quot; | name&quot;number&quot; |
-| ------------:| -----------------:| ------------:|
-|          EWR |               ALB |            1 |
-|          EWR |               ATL |            1 |
-|          EWR |               AUS |            1 |
-|          EWR |               AVL |            1 |</code></pre><p>Let&#39;s see <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a> there are multiple distances for the same path. <code>when</code> is simply <code>Iterators.filter</code> with the argument order reversed. This facilitates chaining. Again, use <a href="../interface/#LightQuery.@_-Tuple{Any}"><code>@_</code></a> to create an anonymous function to pass to <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a>.</p><pre><code class="language-julia-repl">julia&gt; @&gt; distinct_distances |&gt;
+| origin | destination | number |
+| ------:| -----------:| ------:|
+|    EWR |         ALB |      1 |
+|    EWR |         ATL |      1 |
+|    EWR |         AUS |      1 |
+|    EWR |         AVL |      1 |</code></pre><p>Let&#39;s see <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a> there are multiple distances for the same path. <code>when</code> is simply <code>Iterators.filter</code> with the argument order reversed. This facilitates chaining. Again, use <a href="../interface/#LightQuery.@_-Tuple{Any}"><code>@_</code></a> to create an anonymous function to pass to <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a>.</p><pre><code class="language-julia-repl">julia&gt; @&gt; distinct_distances |&gt;
         when(_, @_ _.number != 1) |&gt;
         Peek
 Showing at most 4 rows
-| name&quot;origin&quot; | name&quot;destination&quot; | name&quot;number&quot; |
-| ------------:| -----------------:| ------------:|</code></pre><p>It looks like there is a consistency with flights which arrive at at the <code>EGE</code> airport. Let&#39;s take a <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> at flights going to <code>&quot;EGE&quot;</code> using <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a>. Again, use <a href="../interface/#LightQuery.@_-Tuple{Any}"><code>@_</code></a> to create an anonymous function to pass to <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a>.</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
+| origin | destination | number |
+| ------:| -----------:| ------:|</code></pre><p>It looks like there is a consistency with flights which arrive at at the <code>EGE</code> airport. Let&#39;s take a <a href="../interface/#LightQuery.Peek-Tuple{Any}"><code>Peek</code></a> at flights going to <code>&quot;EGE&quot;</code> using <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a>. Again, use <a href="../interface/#LightQuery.@_-Tuple{Any}"><code>@_</code></a> to create an anonymous function to pass to <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a>.</p><pre><code class="language-julia-repl">julia&gt; @&gt; flights |&gt;
         when(_, @_ _.destination == &quot;EGE&quot;) |&gt;
         Peek
 Showing at most 4 rows
-| name&quot;carrier&quot; | name&quot;flight&quot; | name&quot;origin&quot; | name&quot;destination&quot; | name&quot;tail_number&quot; | name&quot;air_time&quot; | name&quot;distance&quot; | name&quot;departure_delay&quot; | name&quot;arrival_delay&quot; | name&quot;scheduled_departure_time&quot; | name&quot;scheduled_arrival_time&quot; |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            UA |         1597 |          EWR |               EGE |            N27733 |     287 minute |        1726 mi |             -2 minute |           13 minute |      2013-01-01T09:28:00-05:00 |    2013-01-01T12:20:00-07:00 |
-|            AA |          575 |          JFK |               EGE |            N5DRAA |     280 minute |        1747 mi |             -5 minute |            3 minute |      2013-01-01T17:00:00-05:00 |    2013-01-01T19:50:00-07:00 |
-|            UA |         1597 |          EWR |               EGE |            N24702 |     261 minute |        1726 mi |              1 minute |            3 minute |      2013-01-02T09:28:00-05:00 |    2013-01-02T12:20:00-07:00 |
-|            AA |          575 |          JFK |               EGE |            N631AA |     260 minute |        1747 mi |              5 minute |           16 minute |      2013-01-02T17:00:00-05:00 |    2013-01-02T19:50:00-07:00 |</code></pre><p>You can see just in these rows that there is an inconsistency in the data. The distance for the first two rows should be the same as the distance for the second two rows.</p><h2 id="Weather-cleaning"><a class="docs-heading-anchor" href="#Weather-cleaning">Weather cleaning</a><a id="Weather-cleaning-1"></a><a class="docs-heading-anchor-permalink" href="#Weather-cleaning" title="Permalink"></a></h2><p>Perhaps I want to know weather influences the departure delay. To do this, I will need to join weather data into the flights data. Start by cleaning the weather data using basically the same steps as above. Get the first row, <a href="../interface/#LightQuery.rename-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>rename</code></a>, <a href="../interface/#LightQuery.remove-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>remove</code></a>, and <a href="../interface/#LightQuery.transform-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>transform</code></a> to add units.</p><p>TODO: collect weather then try again</p><pre><code class="language-julia-repl">julia&gt; weathers_file = CSV.File(&quot;weather.csv&quot;);
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1597 |    EWR |         EGE |      N27733 | 287 minute |  1726 mi |       -2 minute |     13 minute | 2013-01-01T09:28:00-05:00 | 2013-01-01T12:20:00-07:00 |
+|      AA |    575 |    JFK |         EGE |      N5DRAA | 280 minute |  1747 mi |       -5 minute |      3 minute | 2013-01-01T17:00:00-05:00 | 2013-01-01T19:50:00-07:00 |
+|      UA |   1597 |    EWR |         EGE |      N24702 | 261 minute |  1726 mi |        1 minute |      3 minute | 2013-01-02T09:28:00-05:00 | 2013-01-02T12:20:00-07:00 |
+|      AA |    575 |    JFK |         EGE |      N631AA | 260 minute |  1747 mi |        5 minute |     16 minute | 2013-01-02T17:00:00-05:00 | 2013-01-02T19:50:00-07:00 |</code></pre><p>You can see just in these rows that there is an inconsistency in the data. The distance for the first two rows should be the same as the distance for the second two rows.</p><h2 id="Weather-cleaning"><a class="docs-heading-anchor" href="#Weather-cleaning">Weather cleaning</a><a id="Weather-cleaning-1"></a><a class="docs-heading-anchor-permalink" href="#Weather-cleaning" title="Permalink"></a></h2><p>Perhaps I want to know weather influences the departure delay. To do this, I will need to join weather data into the flights data. Start by cleaning the weather data using basically the same steps as above. Get the first row, <a href="../interface/#LightQuery.rename-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>rename</code></a>, <a href="../interface/#LightQuery.remove-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>remove</code></a>, and <a href="../interface/#LightQuery.transform-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>transform</code></a> to add units.</p><p>TODO: collect weather then try again</p><pre><code class="language-julia-repl">julia&gt; weathers_file = CSV.File(&quot;weather.csv&quot;);
 
 julia&gt; const Weather = row_info(weathers_file);
 
@@ -320,12 +320,12 @@ julia&gt; weathers =
 
 julia&gt; Peek(weathers)
 Showing 4 of 26115 rows
-|     name&quot;time_hour&quot; | name&quot;airport_code&quot; | name&quot;dew_point&quot; |     name&quot;humidity&quot; | name&quot;precipitation&quot; | name&quot;pressure&quot; | name&quot;temperature&quot; | name&quot;visibility&quot; | name&quot;wind_direction&quot; | name&quot;wind_gust&quot; |  name&quot;wind_speed&quot; |           name&quot;date_time&quot; |
-| -------------------:| ------------------:| ---------------:| ------------------:| -------------------:| --------------:| -----------------:| ----------------:| --------------------:| ---------------:| -----------------:| -------------------------:|
-| 2013-01-01 01:00:00 |                EWR |        26.06 °F |             0.5937 |            0.0 inch |    1012.0 mbar |          39.02 °F |          10.0 mi |                 270° |         missing | 10.35702 mi hr^-1 | 2013-01-01T01:00:00-05:00 |
-| 2013-01-01 02:00:00 |                EWR |        26.96 °F | 0.6163000000000001 |            0.0 inch |    1012.3 mbar |          39.02 °F |          10.0 mi |                 250° |         missing |  8.05546 mi hr^-1 | 2013-01-01T02:00:00-05:00 |
-| 2013-01-01 03:00:00 |                EWR |        28.04 °F | 0.6443000000000001 |            0.0 inch |    1012.5 mbar |          39.02 °F |          10.0 mi |                 240° |         missing |  11.5078 mi hr^-1 | 2013-01-01T03:00:00-05:00 |
-| 2013-01-01 04:00:00 |                EWR |        28.04 °F |             0.6221 |            0.0 inch |    1012.2 mbar |          39.92 °F |          10.0 mi |                 250° |         missing | 12.65858 mi hr^-1 | 2013-01-01T04:00:00-05:00 |</code></pre><h2 id="Joining-flights-and-weather"><a class="docs-heading-anchor" href="#Joining-flights-and-weather">Joining flights and weather</a><a id="Joining-flights-and-weather-1"></a><a class="docs-heading-anchor-permalink" href="#Joining-flights-and-weather" title="Permalink"></a></h2><p>I happen to know that the weather data is already sorted by <code>airport_code</code> and <code>hour</code>. However, we will need to presort and group the flights before we can join in the weather file. Joining in LightQuery is never many-to-one; you always need to explicitly group first. This is slightly less convenient but allows some extra flexibility.</p><p><a href="../interface/#LightQuery.order-Tuple{Any,Any}"><code>order</code></a> and <a href="../interface/#LightQuery.Group-Tuple{By}"><code>Group</code></a> <code>flights</code> <a href="../interface/#LightQuery.By"><code>By</code></a> matching variables. We will join the flights to the weather data by rounding down the scheduled departure time of the flight to the nearest hour. Only use data <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a> the <code>departure_delay</code> is present.</p><pre><code class="language-julia-repl">julia&gt; grouped_flights =
+|           time_hour | airport_code | dew_point |           humidity | precipitation |    pressure | temperature | visibility | wind_direction | wind_gust |        wind_speed |                 date_time |
+| -------------------:| ------------:| ---------:| ------------------:| -------------:| -----------:| -----------:| ----------:| --------------:| ---------:| -----------------:| -------------------------:|
+| 2013-01-01 01:00:00 |          EWR |  26.06 °F |             0.5937 |      0.0 inch | 1012.0 mbar |    39.02 °F |    10.0 mi |           270° |   missing | 10.35702 mi hr^-1 | 2013-01-01T01:00:00-05:00 |
+| 2013-01-01 02:00:00 |          EWR |  26.96 °F | 0.6163000000000001 |      0.0 inch | 1012.3 mbar |    39.02 °F |    10.0 mi |           250° |   missing |  8.05546 mi hr^-1 | 2013-01-01T02:00:00-05:00 |
+| 2013-01-01 03:00:00 |          EWR |  28.04 °F | 0.6443000000000001 |      0.0 inch | 1012.5 mbar |    39.02 °F |    10.0 mi |           240° |   missing |  11.5078 mi hr^-1 | 2013-01-01T03:00:00-05:00 |
+| 2013-01-01 04:00:00 |          EWR |  28.04 °F |             0.6221 |      0.0 inch | 1012.2 mbar |    39.92 °F |    10.0 mi |           250° |   missing | 12.65858 mi hr^-1 | 2013-01-01T04:00:00-05:00 |</code></pre><h2 id="Joining-flights-and-weather"><a class="docs-heading-anchor" href="#Joining-flights-and-weather">Joining flights and weather</a><a id="Joining-flights-and-weather-1"></a><a class="docs-heading-anchor-permalink" href="#Joining-flights-and-weather" title="Permalink"></a></h2><p>I happen to know that the weather data is already sorted by <code>airport_code</code> and <code>hour</code>. However, we will need to presort and group the flights before we can join in the weather file. Joining in LightQuery is never many-to-one; you always need to explicitly group first. This is slightly less convenient but allows some extra flexibility.</p><p><a href="../interface/#LightQuery.order-Tuple{Any,Any}"><code>order</code></a> and <a href="../interface/#LightQuery.Group-Tuple{By}"><code>Group</code></a> <code>flights</code> <a href="../interface/#LightQuery.By"><code>By</code></a> matching variables. We will join the flights to the weather data by rounding down the scheduled departure time of the flight to the nearest hour. Only use data <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a> the <code>departure_delay</code> is present.</p><pre><code class="language-julia-repl">julia&gt; grouped_flights =
         @&gt; flights |&gt;
         when(_, @_ _.departure_delay !== missing) |&gt;
         order(_, (name&quot;origin&quot;, name&quot;scheduled_departure_time&quot;)) |&gt;
@@ -347,20 +347,20 @@ julia&gt; flights_key
 (&quot;EWR&quot;, ZonedDateTime(2013, 1, 1, 5, tz&quot;America/New_York&quot;))
 
 julia&gt; Peek(flights_value)
-| name&quot;carrier&quot; | name&quot;flight&quot; | name&quot;origin&quot; | name&quot;destination&quot; | name&quot;tail_number&quot; | name&quot;air_time&quot; | name&quot;distance&quot; | name&quot;departure_delay&quot; | name&quot;arrival_delay&quot; | name&quot;scheduled_departure_time&quot; | name&quot;scheduled_arrival_time&quot; |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            UA |         1545 |          EWR |               IAH |            N14228 |     227 minute |        1400 mi |              2 minute |           11 minute |      2013-01-01T05:15:00-05:00 |    2013-01-01T08:19:00-06:00 |
-|            UA |         1696 |          EWR |               ORD |            N39463 |     150 minute |         719 mi |             -4 minute |           12 minute |      2013-01-01T05:58:00-05:00 |    2013-01-01T07:28:00-06:00 |</code></pre><p>We&#39;re interested in <code>visibility</code> and <code>departure_delay</code>. We have one row of weather data on the left but multiple flights on the right. Thus, for each flight, we will need to add in the weather data we are interested in.</p><pre><code class="language-julia-repl">julia&gt; visibility = weather.visibility;
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1545 |    EWR |         IAH |      N14228 | 227 minute |  1400 mi |        2 minute |     11 minute | 2013-01-01T05:15:00-05:00 | 2013-01-01T08:19:00-06:00 |
+|      UA |   1696 |    EWR |         ORD |      N39463 | 150 minute |   719 mi |       -4 minute |     12 minute | 2013-01-01T05:58:00-05:00 | 2013-01-01T07:28:00-06:00 |</code></pre><p>We&#39;re interested in <code>visibility</code> and <code>departure_delay</code>. We have one row of weather data on the left but multiple flights on the right. Thus, for each flight, we will need to add in the weather data we are interested in.</p><pre><code class="language-julia-repl">julia&gt; visibility = weather.visibility;
 
 julia&gt; over(flights_value, @_ (
             visibility = visibility,
             departure_delay = _.departure_delay
         )) |&gt;
         Peek
-| name&quot;visibility&quot; | name&quot;departure_delay&quot; |
-| ----------------:| ---------------------:|
-|          10.0 mi |              2 minute |
-|          10.0 mi |             -4 minute |</code></pre><p>We will need to conduct these steps for each match. So put them together into a function.</p><pre><code class="language-julia-repl">julia&gt; function interested_in(a_match)
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|    10.0 mi |        2 minute |
+|    10.0 mi |       -4 minute |</code></pre><p>We will need to conduct these steps for each match. So put them together into a function.</p><pre><code class="language-julia-repl">julia&gt; function interested_in(a_match)
             weather, (flights_key, flights_value) = a_match
             visibility = weather.visibility
             over(flights_value, @_ (
@@ -370,25 +370,24 @@ julia&gt; over(flights_value, @_ (
         end;
 
 julia&gt; Peek(interested_in(a_match))
-| name&quot;visibility&quot; | name&quot;departure_delay&quot; |
-| ----------------:| ---------------------:|
-|          10.0 mi |              2 minute |
-|          10.0 mi |             -4 minute |</code></pre><p>For each match, we are returning several rows. Use <code>Base.Iterators.flatten</code> to unnest data and get a single iterator of rows. Collect the result.</p><pre><code class="language-julia-repl">julia&gt; data =
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|    10.0 mi |        2 minute |
+|    10.0 mi |       -4 minute |</code></pre><p>For each match, we are returning several rows. Use <code>Base.Iterators.flatten</code> to unnest data and get a single iterator of rows. Collect the result.</p><pre><code class="language-julia-repl">julia&gt; data =
         @&gt; weathers_to_flights |&gt;
         over(_, interested_in) |&gt;
         flatten |&gt;
-        collect
         make_columns |&gt;
-        Rows;
+        Rows(; _...);
 
 julia&gt; Peek(data)
 Showing 4 of 6313 rows
-| name&quot;visibility&quot; | name&quot;departure_delay&quot; |
-| ----------------:| ---------------------:|
-|          10.0 mi |              2 minute |
-|          10.0 mi |             -4 minute |
-|          10.0 mi |             -5 minute |
-|          10.0 mi |             -2 minute |</code></pre><h2 id="Visibility-vs.-departure-delay"><a class="docs-heading-anchor" href="#Visibility-vs.-departure-delay">Visibility vs. departure delay</a><a id="Visibility-vs.-departure-delay-1"></a><a class="docs-heading-anchor-permalink" href="#Visibility-vs.-departure-delay" title="Permalink"></a></h2><p>Now we can finally answer the question we are interested in. How does visibility affect <code>departure_delay</code>? First, let&#39;s group by visibility.</p><pre><code class="language-julia-repl">julia&gt; by_visibility =
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|    10.0 mi |        2 minute |
+|    10.0 mi |       -4 minute |
+|    10.0 mi |       -5 minute |
+|    10.0 mi |       -2 minute |</code></pre><h2 id="Visibility-vs.-departure-delay"><a class="docs-heading-anchor" href="#Visibility-vs.-departure-delay">Visibility vs. departure delay</a><a id="Visibility-vs.-departure-delay-1"></a><a class="docs-heading-anchor-permalink" href="#Visibility-vs.-departure-delay" title="Permalink"></a></h2><p>Now we can finally answer the question we are interested in. How does visibility affect <code>departure_delay</code>? First, let&#39;s group by visibility.</p><pre><code class="language-julia-repl">julia&gt; by_visibility =
         @&gt; data |&gt;
         order(_, name&quot;visibility&quot;) |&gt;
         Group(By(_, name&quot;visibility&quot;));
@@ -399,11 +398,11 @@ julia&gt; key(visibility_group)
 4.0 mi
 
 julia&gt; value(visibility_group) |&gt; Peek
-| name&quot;visibility&quot; | name&quot;departure_delay&quot; |
-| ----------------:| ---------------------:|
-|           4.0 mi |             -6 minute |
-|           4.0 mi |             44 minute |
-|           4.0 mi |             -4 minute |</code></pre><p>For each group, we can calculate the mean <code>departure_delay</code>.</p><pre><code class="language-julia-repl">julia&gt; using Statistics: mean
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|     4.0 mi |       -6 minute |
+|     4.0 mi |       44 minute |
+|     4.0 mi |       -4 minute |</code></pre><p>For each group, we can calculate the mean <code>departure_delay</code>.</p><pre><code class="language-julia-repl">julia&gt; using Statistics: mean
 
 julia&gt; @&gt; visibility_group |&gt;
         value |&gt;
@@ -423,11 +422,11 @@ julia&gt; @&gt; by_visibility |&gt;
             over(_, get_mean_departure_delay) |&gt;
             Peek(_, 20)
 Showing at most 20 rows
-| name&quot;visibility&quot; | name&quot;mean_departure_delay&quot; | name&quot;count&quot; |
-| ----------------:| --------------------------:| -----------:|
-|           4.0 mi |  11.333333333333334 minute |           3 |
-|           6.0 mi |   9.514285714285714 minute |          70 |
-|           7.0 mi |               -0.12 minute |          25 |
-|           8.0 mi |   5.428571428571429 minute |         112 |
-|           9.0 mi |  1.8585365853658538 minute |         205 |
-|          10.0 mi |   9.119701593760597 minute |        5898 |</code></pre><p>This data suggests that low visibility levels lead to larger departure delays, on average.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Usage and performance notes</a><a class="docs-footer-nextpage" href="../reshaping_tutorial/">Reshaping tutorial »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 15 July 2020 02:52">Wednesday 15 July 2020</span>. Using Julia version 1.3.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+| visibility |      mean_departure_delay | count |
+| ----------:| -------------------------:| -----:|
+|     4.0 mi | 11.333333333333334 minute |     3 |
+|     6.0 mi |  9.514285714285714 minute |    70 |
+|     7.0 mi |              -0.12 minute |    25 |
+|     8.0 mi |  5.428571428571429 minute |   112 |
+|     9.0 mi | 1.8585365853658538 minute |   205 |
+|    10.0 mi |  9.119701593760597 minute |  5898 |</code></pre><p>This data suggests that low visibility levels lead to larger departure delays, on average.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Usage and performance notes</a><a class="docs-footer-nextpage" href="../reshaping_tutorial/">Reshaping tutorial »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 15 July 2020 13:58">Wednesday 15 July 2020</span>. Using Julia version 1.3.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

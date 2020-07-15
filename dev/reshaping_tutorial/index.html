@@ -69,16 +69,16 @@ true</code></pre><p>Each line will return several days. Use <code>flatten</code>
         over(_, get_month_variable) |&gt;
         flatten |&gt;
         make_columns |&gt;
-        Rows;
+        Rows(; _...);
 
 julia&gt; Peek(climate_data)
 Showing 4 of 1231 rows
-| name&quot;variable&quot; | name&quot;value&quot; | name&quot;date&quot; |
-| --------------:| -----------:| ----------:|
-|          :TMAX |         289 | 1949-01-01 |
-|          :TMAX |         289 | 1949-01-02 |
-|          :TMAX |         283 | 1949-01-03 |
-|          :TMAX |         283 | 1949-01-04 |</code></pre><p>Let&#39;s sort and group the data by date. This will allow us to combine various measures into one row for each date.</p><pre><code class="language-julia-repl">julia&gt; by_date =
+| variable | value |       date |
+| --------:| -----:| ----------:|
+|    :TMAX |   289 | 1949-01-01 |
+|    :TMAX |   289 | 1949-01-02 |
+|    :TMAX |   283 | 1949-01-03 |
+|    :TMAX |   283 | 1949-01-04 |</code></pre><p>Let&#39;s sort and group the data by date. This will allow us to combine various measures into one row for each date.</p><pre><code class="language-julia-repl">julia&gt; by_date =
         @&gt; climate_data |&gt;
         order(_, name&quot;date&quot;) |&gt;
         Group(By(_, name&quot;date&quot;));
@@ -90,12 +90,12 @@ julia&gt; key(day_variables)
 
 julia&gt; value(day_variables) |&gt; Peek
 Showing 4 of 5 rows
-| name&quot;variable&quot; | name&quot;value&quot; | name&quot;date&quot; |
-| --------------:| -----------:| ----------:|
-|          :TMAX |         289 | 1949-01-01 |
-|          :TMIN |         217 | 1949-01-01 |
-|          :PRCP |           0 | 1949-01-01 |
-|          :SNOW |           0 | 1949-01-01 |</code></pre><p>We can directly convert this group of measurements into a <code>NamedTuple</code>. Use <a href="../interface/#LightQuery.Name-Tuple{Any}"><code>Name</code></a> to make turn variables into true names, and splat the result into a tuple. You can simply call <code>NamedTuple</code> on the result.</p><pre><code class="language-julia-repl">julia&gt; spread_variables(day_variables) = NamedTuple((
+| variable | value |       date |
+| --------:| -----:| ----------:|
+|    :TMAX |   289 | 1949-01-01 |
+|    :TMIN |   217 | 1949-01-01 |
+|    :PRCP |     0 | 1949-01-01 |
+|    :SNOW |     0 | 1949-01-01 |</code></pre><p>We can directly convert this group of measurements into a <code>NamedTuple</code>. Use <a href="../interface/#LightQuery.Name-Tuple{Any}"><code>Name</code></a> to make turn variables into true names, and splat the result into a tuple. You can simply call <code>NamedTuple</code> on the result.</p><pre><code class="language-julia-repl">julia&gt; spread_variables(day_variables) = NamedTuple((
             (Name(:date), key(day_variables)),
             over(
                 value(day_variables),
@@ -116,9 +116,9 @@ true</code></pre><p>Finally, we can run this reshaping over each day in the data
         over(_, spread_variables) |&gt;
         Peek
 Showing at most 4 rows
-| name&quot;WT16&quot; | name&quot;date&quot; | name&quot;TMAX&quot; | name&quot;TMIN&quot; | name&quot;PRCP&quot; | name&quot;SNOW&quot; | name&quot;SNWD&quot; |
-| ----------:| ----------:| ----------:| ----------:| ----------:| ----------:| ----------:|
-|    missing | 1949-01-01 |        289 |        217 |          0 |          0 |          0 |
-|          1 | 1949-01-02 |        289 |        228 |         30 |          0 |          0 |
-|    missing | 1949-01-03 |        283 |        222 |          0 |          0 |          0 |
-|          1 | 1949-01-04 |        283 |        233 |          0 |          0 |          0 |</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../beginner_tutorial/">« Beginner tutorial</a><a class="docs-footer-nextpage" href="../interface/">Interface »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 15 July 2020 02:52">Wednesday 15 July 2020</span>. Using Julia version 1.3.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+|    WT16 |       date | TMAX | TMIN | PRCP | SNOW | SNWD |
+| -------:| ----------:| ----:| ----:| ----:| ----:| ----:|
+| missing | 1949-01-01 |  289 |  217 |    0 |    0 |    0 |
+|       1 | 1949-01-02 |  289 |  228 |   30 |    0 |    0 |
+| missing | 1949-01-03 |  283 |  222 |    0 |    0 |    0 |
+|       1 | 1949-01-04 |  283 |  233 |    0 |    0 |    0 |</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../beginner_tutorial/">« Beginner tutorial</a><a class="docs-footer-nextpage" href="../interface/">Interface »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 15 July 2020 13:58">Wednesday 15 July 2020</span>. Using Julia version 1.3.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
