@@ -3,12 +3,7 @@
     using Base: promote_typejoin
 
     # backport #30076 just for Rows
-    @inline function collect_to!(
-        destination::Rows{Item},
-        iterator,
-        offset,
-        state,
-    ) where {Item}
+    function collect_to!(destination::Rows{Item}, iterator, offset, state) where {Item}
         # collect to destination array, checking the type of each result. if a result does not
         # match, widen the result type and re-dispatch.
         index = offset
@@ -27,7 +22,7 @@
         destination
     end
 
-    @inline function setindex_widen_up_to(
+    function setindex_widen_up_to(
         destination::AbstractArray{Item},
         item,
         index,
@@ -38,7 +33,7 @@
         return new
     end
 
-    @inline function grow_to!(destination::Rows, iterator, state)
+    function grow_to!(destination::Rows, iterator, state)
         Item = eltype(destination)
         result = iterate(iterator, state)
         while result !== nothing
@@ -54,7 +49,7 @@
         destination
     end
 
-    @inline function push_widen(destination, item)
+    function push_widen(destination, item)
         new = sizehint!(
             empty(destination, promote_typejoin(eltype(destination), typeof(item))),
             length(destination),

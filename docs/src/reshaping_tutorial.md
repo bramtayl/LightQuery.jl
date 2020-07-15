@@ -24,12 +24,12 @@ julia> close(file)
 Oh boy this is some messy data. Let's start by parsing the first chunk, which contains within it the year and the month.
 
 ```jldoctest reshaping
-julia> month_variable = @name (
+julia> month_variable = (
             year = parse(Int, SubString(line, 12, 15)),
             month = parse(Int, SubString(line, 16, 17)),
             variable = Symbol(SubString(line, 18, 21))
         )
-((name"year", 1949), (name"month", 1), (name"variable", :TMAX))
+(year = 1949, month = 1, variable = :TMAX)
 ```
 
 The next chucks each represent a day. Let's parse a day. `missing` is represented by `-9999`.
@@ -38,7 +38,7 @@ The next chucks each represent a day. Let's parse a day. `missing` is represente
 julia> function get_day(line, day)
             start = 14 + 8 * day
             value = parse(Int, line[start:start + 4])
-            @name (day = day, value =
+            (day = day, value =
                 if value == -9999
                     missing
                 else
@@ -47,40 +47,40 @@ julia> function get_day(line, day)
             )
         end;
 
+
 julia> get_day(line, 1)
-((name"day", 1), (name"value", 289))
+(day = 1, value = 289)
 ```
 
 Now, we can get data for every day of the month.
 
 ```jldoctest reshaping
-julia> days = @> over(1:31, @_ (
-            month_variable...,
-            get_day(line, _)...
-        ));
+julia> days = @> over(1:31, @_ merge(month_variable, get_day(line, _)));
 
 julia> first(days)
-((name"year", 1949), (name"month", 1), (name"variable", :TMAX), (name"day", 1), (name"value", 289))
+(year = 1949, month = 1, variable = :TMAX, day = 1, value = 289)
 ```
 
 Use [`when`](@ref) to remove missing data;
 
 ```jldoctest reshaping
-julia> days = @name when(days, @_ _.value !== missing);
+julia> days = when(days, @_ _.value !== missing);
+
 
 julia> first(days)
-((name"year", 1949), (name"month", 1), (name"variable", :TMAX), (name"day", 1), (name"value", 289))
+(year = 1949, month = 1, variable = :TMAX, day = 1, value = 289)
 ```
 
 Use [`transform`](@ref) a true data and [`remove`](@ref) the old fields.
 
 ```jldoctest reshaping
 julia> get_date(day) =
-        @name @> day |>
+        @> day |>
         transform(_, date = Date(_.year, _.month, _.day)) |>
         remove(_, name"year", name"month", name"day");
 
-julia> get_date(first(days)) == @name (
+
+julia> get_date(first(days)) == (
             variable = :TMAX,
             value = 289,
             date = Date("1949-01-01")
@@ -92,20 +92,18 @@ We can combine these steps to process a whole month.
 
 ```jldoctest reshaping
 julia> function get_month_variable(line)
-            month_variable = @name (
+            month_variable = (
                 year = parse(Int, SubString(line, 12, 15)),
                 month = parse(Int, SubString(line, 16, 17)),
                 variable = Symbol(SubString(line, 18, 21))
             )
-            @name @> over(1:31, @_ (
-                month_variable...,
-                get_day(line, _)...
-            )) |>
+            @> over(1:31, @_ merge(month_variable, get_day(line, _))) |>
             when(_, @_ _.value !== missing) |>
             over(_, get_date)
         end;
 
-julia> first(get_month_variable(line)) == @name (
+
+julia> first(get_month_variable(line)) == (
             variable = :TMAX,
             value = 289,
             date = Date("1949-01-01")
@@ -156,18 +154,19 @@ Showing 4 of 5 rows
 |          :SNOW |           0 | 1949-01-01 |
 ```
 
-We can directly convert this group of measurements into a [`named_tuple`](@ref). Do do this, use Use [`Name`](@ref) to make turn variables into true names, and splat the result into a tuple.
+We can directly convert this group of measurements into a `NamedTuple`. Use [`Name`](@ref) to make turn variables into true names, and splat the result into a tuple. You can simply call `NamedTuple` on the result.
 
 ```jldoctest reshaping
-julia> spread_variables(day_variables) = @name (
-            date = key(day_variables),
+julia> spread_variables(day_variables) = NamedTuple((
+            (Name(:date), key(day_variables)),
             over(
                 value(day_variables),
                 @_ (Name(_.variable), _.value)
             )...
-        );
+        ));
 
-julia> spread_variables(day_variables) == @name (
+
+julia> spread_variables(day_variables) == (
             date = Date("1949-01-01"),
             TMAX = 289,
             TMIN = 217,
@@ -178,7 +177,7 @@ julia> spread_variables(day_variables) == @name (
 true
 ```
 
-Finally, we can run this reshaping over each day in the data using [`over`](@ref),
+Finally, we can run this reshaping over each day in the data using [`over`](@ref).
 
 ```jldoctest reshaping
 julia> @> by_date |>

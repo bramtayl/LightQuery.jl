@@ -73,7 +73,9 @@ Terser function syntax. The arguments are inside the `body`; the first argument 
 ```jldoctest anonymous
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred (@_ _ + 1)(1)
 2
@@ -119,6 +121,7 @@ If body is in the form `object_ |> call_`, call [`@_`](@ref) on `call`, and recu
 
 ```jldoctest chain
 julia> using LightQuery
+
 
 julia> @> 0 |> _ - 1 |> abs
 1

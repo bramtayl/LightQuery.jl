@@ -1,58 +1,79 @@
-const Some{AType} = Tuple{AType,Vararg{AType}}
+const SomeOf{AType} = NTuple{N,AType} where {N}
 
 @inline function flatten_unrolled()
     ()
 end
-@inline function flatten_unrolled(item, rest...)
-    item..., flatten_unrolled(rest...)...
+@inline function flatten_unrolled(container, rest...)
+    container..., flatten_unrolled(rest...)...
 end
 
-@inline function reduce_unrolled(call, item)
+function my_flatten(containers)
+    if length(containers) > 16
+        (flatten(containers)...,)
+    else
+        flatten_unrolled(containers...)
+    end
+end
+
+@inline function all_unrolled(item)
     item
 end
-@inline function reduce_unrolled(call, item1, item2, rest...)
-    reduce_unrolled(call, call(item1, item2), rest...)
-end
-
-@inline function map_unrolled(call, variables::Tuple{})
-    ()
-end
-@inline function map_unrolled(call, variables)
-    call(first(variables)), map_unrolled(call, tail(variables))...
-end
-
-@inline function map_unrolled(call, variables1::Tuple{}, variables2::Tuple{})
-    ()
-end
-@inline function map_unrolled(call, variables1, variables2)
-    call(first(variables1), first(variables2)),
-    map_unrolled(call, tail(variables1), tail(variables2))...
-end
-
-@inline function partial_map(call, fixed, variables::Tuple{})
-    ()
-end
-@inline function partial_map(call, fixed, variables)
-    call(fixed, first(variables)), partial_map(call, fixed, tail(variables))...
-end
-
-@inline function partial_map(call, fixed, variables1::Tuple{}, variables2::Tuple{})
-    ()
-end
-@inline function partial_map(call, fixed, variables1, variables2)
-    call(fixed, first(variables1), first(variables2)),
-    partial_map(call, fixed, tail(variables1), tail(variables2))...
-end
-
-
-@inline function filter_unrolled(call)
-    ()
-end
-@inline function filter_unrolled(call, item, rest...)
-    if call(item)
-        item, filter_unrolled(call, rest...)...
+@inline function all_unrolled(item1, rest...)
+    if item1
+        all_unrolled(rest...)
     else
-        rest
+        false
+    end
+end
+
+function my_all(items)
+    if length(items) > LONG
+        all(items)
+    else
+        all_unrolled(items...)
+    end
+end
+
+@inline function partial_map_unrolled(call, fixed, variables::Tuple{})
+    ()
+end
+@inline function partial_map_unrolled(call, fixed, variables)
+    call(fixed, first(variables)), partial_map_unrolled(call, fixed, tail(variables))...
+end
+@inline function partial_map_unrolled(call, fixed, variables1::Tuple{}, variables2::Tuple{})
+    ()
+end
+@inline function partial_map_unrolled(call, fixed, variables1, variables2)
+    call(fixed, first(variables1), first(variables2)),
+    partial_map_unrolled(call, fixed, tail(variables1), tail(variables2))...
+end
+@inline function partial_map_unrolled(call, fixed, variables1, ::Tuple{})
+    error("Mismatch in partial map: $variable1 left over")
+end
+@inline function partial_map_unrolled(call, fixed, ::Tuple{}, variables2)
+    error("Mismatch in partial map: $variable2 left over")
+end
+
+function partial_map(call, fixed, variables)
+    if length(variables) > LONG
+        map(let call = call, fixed = fixed
+            function (variable)
+                call(fixed, variable)
+            end
+        end, variables)
+    else
+        partial_map_unrolled(call, fixed, variables)
+    end
+end
+function partial_map(call, fixed, variables1, variables2)
+    if length(variables1) > LONG || length(variables2) > LONG
+        map(let call = call, fixed = fixed
+            function (variable1, variable2)
+                call(fixed, variable1, variable2)
+            end
+        end, variables1, variables2)
+    else
+        partial_map_unrolled(call, fixed, variables1, variables2)
     end
 end
 
@@ -63,13 +84,23 @@ end
     else
         in_unrolled(needle, stack...)
     end
-@inline diff_unrolled(less) = ()
-@inline diff_unrolled(less, first_more, mores...) =
+
+@inline setdiff_unrolled(less) = ()
+@inline function setdiff_unrolled(less, first_more, mores...)
     if in_unrolled(first_more, less...)
-        diff_unrolled(less, mores...)
+        setdiff_unrolled(less, mores...)
     else
-        first_more, diff_unrolled(less, mores...)...
+        first_more, setdiff_unrolled(less, mores...)...
     end
+end
+
+function my_setdiff(more, less)
+    if length(more) > 16
+        (setdiff(more, less)...,)
+    else
+        setdiff_unrolled(less, more...)
+    end
+end
 
 """
     over(iterator, call)
@@ -79,7 +110,9 @@ Lazy `map` with the reverse argument order.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred collect(over([1, -2, -3, 4], abs))
 4-element Array{Int64,1}:
@@ -89,7 +122,7 @@ julia> @inferred collect(over([1, -2, -3, 4], abs))
  4
 ```
 """
-@inline function over(iterator, call)
+function over(iterator, call)
     Generator(call, iterator)
 end
 export over
@@ -102,7 +135,9 @@ Lazy `filter` with the reverse argument order.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred collect(when(1:4, iseven))
 2-element Array{Int64,1}:
@@ -110,7 +145,7 @@ julia> @inferred collect(when(1:4, iseven))
  4
 ```
 """
-@inline function when(iterator, call)
+function when(iterator, call)
     Iterators.filter(call, iterator)
 end
 export when
@@ -123,7 +158,9 @@ The `key` in a `key => value` `pair`.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred key(:a => 1)
 :a
@@ -132,10 +169,10 @@ julia> @inferred key((:a, 1))
 :a
 ```
 """
-@inline function key((a_key, a_value))
+function key((a_key, a_value))
     a_key
 end
-@inline function key(pair::Pair)
+function key(pair::Pair)
     pair.first
 end
 export key
@@ -148,7 +185,9 @@ The `value` in a `key => value` `pair`.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred value(:a => 1)
 1
@@ -157,10 +196,10 @@ julia> @inferred value((:a, 1))
 1
 ```
 """
-@inline function value((a_key, a_value))
+function value((a_key, a_value))
     a_value
 end
-@inline function value(pair::Pair)
+function value(pair::Pair)
     pair.second
 end
 export value
@@ -173,11 +212,14 @@ If `something` is `missing`, return `missing`, otherwise, `something`.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
 
+
 julia> function test(x)
-            first(@if_known(x))
-        end;
+           first(@if_known(x))
+       end;
+
 
 julia> @inferred test((1, 2))
 1

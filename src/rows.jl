@@ -6,7 +6,9 @@
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred collect(Enumerate(when([4, 3, 2, 1], iseven)))
 2-element Array{Tuple{Int64,Int64},1}:
@@ -18,27 +20,27 @@ struct Enumerate{Unenumerated}
     unenumerated::Unenumerated
 end
 
-@inline function IteratorEltype(::Type{Enumerate{Unenumerated}}) where {Unenumerated}
+function IteratorEltype(::Type{Enumerate{Unenumerated}}) where {Unenumerated}
     EltypeUnknown()
 end
-@inline function IteratorSize(::Type{Enumerate{Unenumerated}}) where {Unenumerated}
+function IteratorSize(::Type{Enumerate{Unenumerated}}) where {Unenumerated}
     IteratorSize(Unenumerated)
 end
-@inline function length(enumerated::Enumerate)
+function length(enumerated::Enumerate)
     length(enumerated.unenumerated)
 end
-@inline function size(enumerated::Enumerate)
+function size(enumerated::Enumerate)
     size(enumerated.unenumerated)
 end
-@inline function axes(enumerated::Enumerate)
+function axes(enumerated::Enumerate)
     axes(enumerated.unenumerated)
 end
 
-@inline function iterate(enumerated::Enumerate)
+function iterate(enumerated::Enumerate)
     item, state = @ifsomething iterate(enumerated.unenumerated)
     (make_index(enumerated.unenumerated, state), item), state
 end
-@inline function iterate(enumerated::Enumerate, state)
+function iterate(enumerated::Enumerate, state)
     item, state = @ifsomething iterate(enumerated.unenumerated, state)
     (make_index(enumerated.unenumerated, state), item), state
 end
@@ -50,25 +52,22 @@ struct OrderView{Element,Dimensions,Unordered,IndexKeys} <:
     index_keys::IndexKeys
 end
 
-@inline function OrderView(
-    unordered::Unordered,
-    index_keys::IndexKeys,
-) where {Unordered,IndexKeys}
+function OrderView(unordered::Unordered, index_keys::IndexKeys) where {Unordered,IndexKeys}
     OrderView{eltype(Unordered),ndims(IndexKeys),Unordered,IndexKeys}(unordered, index_keys)
 end
 
-@inline function parent(order_view::OrderView)
+function parent(order_view::OrderView)
     order_view.index_keys
 end
 
-@inline function axes(order_view::OrderView, dimensions...)
+function axes(order_view::OrderView, dimensions...)
     axes(order_view.index_keys, dimensions...)
 end
-@inline function size(order_view::OrderView, dimensions...)
+function size(order_view::OrderView, dimensions...)
     size(order_view.index_keys, dimensions...)
 end
 
-@inline function getindex(order_view::OrderView, index::Int...)
+@propagate_inbounds function getindex(order_view::OrderView, index::Int...)
     order_view.unordered[key(order_view.index_keys[index...])]
 end
 
@@ -80,7 +79,9 @@ Generalized sort. `keywords` will be passed to `sort!`; see the documentation th
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> collect(@inferred order([-2, 1], abs))
 2-element Array{Int64,1}:
@@ -88,7 +89,7 @@ julia> collect(@inferred order([-2, 1], abs))
  -2
 ```
 """
-@inline function order(unordered, key_function; keywords...)
+function order(unordered, key_function; keywords...)
     index_keys = collect(Enumerate(over(unordered, key_function)))
     sort!(index_keys, by = value; keywords...)
     OrderView(unordered, index_keys)
@@ -103,7 +104,9 @@ Reverse sorting order.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> collect(@inferred order([1, -2], Backwards))
 2-element Array{Int64,1}:
@@ -117,11 +120,7 @@ end
 
 export Backwards
 
-@inline function show(io::IO, descending::Backwards)
-    print(io, "Backwards($(descending.increasing))")
-end
-
-@inline function isless(descending_1::Backwards, descending_2::Backwards)
+function isless(descending_1::Backwards, descending_2::Backwards)
     isless(descending_2.increasing, descending_1.increasing)
 end
 
@@ -130,18 +129,18 @@ struct Indexed{Key,Value,Unindexed,KeyToIndex} <: AbstractDict{Key,Value}
     key_to_index::KeyToIndex
 end
 
-@inline function Indexed{Key,Value}(
+function Indexed{Key,Value}(
     unindexed::Unindexed,
     key_to_index::KeyToIndex,
 ) where {Key,Value,Unindexed,KeyToIndex}
     Indexed{Key,Value,Unindexed,KeyToIndex}(unindexed, key_to_index)
 end
 
-@inline function getindex(indexed::Indexed, a_key)
+@propagate_inbounds function getindex(indexed::Indexed, a_key)
     indexed.unindexed[indexed.key_to_index[a_key]]
 end
 
-@inline function get(indexed::Indexed, a_key, default)
+@propagate_inbounds function get(indexed::Indexed, a_key, default)
     index = get(indexed.key_to_index, a_key, nothing)
     if index === nothing
         default
@@ -150,41 +149,33 @@ end
     end
 end
 
-@inline function haskey(indexed::Indexed, a_key)
+function haskey(indexed::Indexed, a_key)
     haskey(indexed.key_to_index, a_key)
 end
 
-@inline function iterate(indexed::Indexed, state...)
+function iterate(indexed::Indexed, state...)
     key_index, next_state = @ifsomething iterate(indexed.key_to_index, state...)
     (key(key_index) => indexed.unindexed[value(key_index)]), next_state
 end
 
-@inline function IteratorSize(
-    ::Type{Indexed{Unindexed,KeyToIndex}},
-) where {Unindexed,KeyToIndex}
+function IteratorSize(::Type{Indexed{Unindexed,KeyToIndex}}) where {Unindexed,KeyToIndex}
     IteratorSize(KeyToIndex)
 end
-@inline function length(indexed::Indexed)
+function length(indexed::Indexed)
     length(indexed.key_to_index)
 end
-@inline function size(indexed::Indexed)
+function size(indexed::Indexed)
     size(indexed.key_to_index)
 end
-@inline function axes(indexed::Indexed)
+function axes(indexed::Indexed)
     axes(indexed.key_to_index)
 end
 
-@inline function IteratorEltype(
-    ::Type{Indexed{Unindexed,KeyToIndex}},
-) where {Unindexed,KeyToIndex}
+function IteratorEltype(::Type{Indexed{Unindexed,KeyToIndex}}) where {Unindexed,KeyToIndex}
     combine_iterator_eltype(IteratorEltype(Unindexed), IteratorEltype(KeyToIndex))
 end
-@inline function eltype(::Type{Indexed{Unindexed,KeyToIndex}}) where {Unindexed,KeyToIndex}
+function eltype(::Type{Indexed{Unindexed,KeyToIndex}}) where {Unindexed,KeyToIndex}
     Pair{keytype(KeyToIndex),eltype(Unindexed)}
-end
-
-@inline function key_index(key_function, (index, item))
-    key_function(item) => index
 end
 
 """
@@ -195,7 +186,9 @@ Index `unindexed` by the results of `key_function`. Results of `key_function` mu
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> result = @inferred index([-2, 1], abs)
 LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,Int64}} with 2 entries:
@@ -206,12 +199,12 @@ julia> @inferred result[2]
 -2
 ```
 """
-@inline function index(unindexed, key_function)
+function index(unindexed, key_function)
     key_to_index = collect_similar(
         Dict{Union{},Union{}}(),
         Generator(let key_function = key_function
-            @inline function key_index_capture(index_item)
-                key_index(key_function, index_item)
+            function ((index, item),)
+                key_function(item) => index
             end
         end, Enumerate(unindexed)),
     )
@@ -228,7 +221,9 @@ Mark that `sorted` has been pre-sorted by `key_function`. Use with
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred By([1, -2], abs)
 By{Array{Int64,1},typeof(abs)}([1, -2], abs)
@@ -253,7 +248,9 @@ Group consecutive keys in `ungrouped`.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred collect(Group(By([1, -1, -2, 2, 3, -3], abs)))
 3-element Array{Tuple{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
@@ -270,13 +267,12 @@ Requires a presorted object (see [`By`](@ref)); [`order`](@ref) first if not.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
 
-julia> first_group =
-        @> [2, 1, 2, 1] |>
-        order(_, identity) |>
-        Group(By(_, identity)) |>
-        first;
+
+julia> first_group = @> [2, 1, 2, 1] |> order(_, identity) |> Group(By(_, identity)) |> first;
+
 
 julia> key(first_group)
 1
@@ -287,18 +283,18 @@ julia> collect(value(first_group))
  1
 ```
 """
-@inline function Group(sorted::By)
+function Group(sorted::By)
     Group(sorted.sorted, sorted.key_function)
 end
 
-@inline function IteratorSize(::Type{<:Group})
+function IteratorSize(::Type{<:Group})
     SizeUnknown()
 end
-@inline function IteratorEltype(::Type{<:Group})
+function IteratorEltype(::Type{<:Group})
     EltypeUnknown()
 end
 
-@inline function get_group(
+function get_group(
     group,
     state,
     old_key_result,
@@ -312,7 +308,7 @@ end
     (state, new_left_index, new_key_result, is_last)
 end
 
-@inline function iterate(group::Group, (state, old_left_index, old_key_result, is_last))
+function iterate(group::Group, (state, old_left_index, old_key_result, is_last))
     if is_last
         nothing
     else
@@ -343,7 +339,7 @@ end
         )
     end
 end
-@inline function iterate(group::Group)
+function iterate(group::Group)
     item, state = @ifsomething iterate(group.ungrouped)
     iterate(
         group,
@@ -354,18 +350,18 @@ export Group
 
 abstract type Join{Left<:By,Right<:By} end
 
-@inline function combine_iterator_eltype(::HasEltype, ::HasEltype)
+function combine_iterator_eltype(::HasEltype, ::HasEltype)
     HasEltype()
 end
-@inline function combine_iterator_eltype(x, y)
+function combine_iterator_eltype(x, y)
     EltypeUnknown()
 end
 
-@inline function next_history(side)
+function next_history(side)
     item, state = @ifsomething iterate(side.sorted)
     (state, item, side.key_function(item))
 end
-@inline function next_history(side, (state, item, key_result))
+function next_history(side, (state, item, key_result))
     new_item, new_state = @ifsomething iterate(side.sorted, state)
     (new_state, new_item, side.key_function(new_item))
 end
@@ -380,7 +376,9 @@ repeats, [`Group`](@ref) first. See [`By`](@ref).
 ```jldoctest
 julia> using LightQuery
 
+
 julia> using Test: @inferred
+
 
 julia> @inferred collect(InnerJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 2-element Array{Tuple{Int64,Int64},1}:
@@ -403,18 +401,18 @@ struct InnerJoin{Left<:By,Right<:By} <: Join{Left,Right}
 end
 export InnerJoin
 
-@inline function IteratorEltype(
+function IteratorEltype(
     ::Type{InnerJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(
+function eltype(
     ::Type{InnerJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     Tuple{eltype(LeftIterator),eltype(RightIterator)}
 end
 
-@inline function compare(joined::InnerJoin, ::Nothing, ::Nothing)
+function compare(joined::InnerJoin, ::Nothing, ::Nothing)
     nothing
 end
 
@@ -428,6 +426,7 @@ See [`By`](@ref).
 
 ```jldoctest
 julia> using LightQuery
+
 
 julia> collect(LeftJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 4-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
@@ -453,33 +452,33 @@ struct LeftJoin{Left<:By,Right<:By} <: Join{Left,Right}
 end
 export LeftJoin
 
-@inline function IteratorEltype(
+function IteratorEltype(
     ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(
+function eltype(
     ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     Tuple{eltype(LeftIterator),Union{Missing,eltype(RightIterator)}}
 end
 
-@inline function IteratorSize(
+function IteratorSize(
     ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     IteratorSize(LeftIterator)
 end
-@inline function size(joined::LeftJoin)
+function size(joined::LeftJoin)
     size(joined.left.sorted)
 end
-@inline function length(joined::LeftJoin)
+function length(joined::LeftJoin)
     length(joined.left.sorted)
 end
-@inline function axes(joined::LeftJoin)
+function axes(joined::LeftJoin)
     axes(joined.left.sorted)
 end
 
-@inline function compare(joined::LeftJoin, ::Nothing, ::Nothing)
+function compare(joined::LeftJoin, ::Nothing, ::Nothing)
     nothing
 end
 
@@ -493,6 +492,7 @@ strictly sorted (no repeats). If there are repeats, [`Group`](@ref) first. See
 
 ```jldoctest
 julia> using LightQuery
+
 
 julia> collect(RightJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 4-element Array{Tuple{Union{Missing, Int64},Int64},1}:
@@ -518,33 +518,33 @@ struct RightJoin{Left<:By,Right<:By} <: Join{Left,Right}
 end
 export RightJoin
 
-@inline function IteratorEltype(
+function IteratorEltype(
     ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(
+function eltype(
     ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     Tuple{Union{Missing,eltype(LeftIterator)},eltype(RightIterator)}
 end
 
-@inline function IteratorSize(
+function IteratorSize(
     ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     IteratorSize(RightIterator)
 end
-@inline function size(joined::RightJoin)
+function size(joined::RightJoin)
     size(joined.right.sorted)
 end
-@inline function length(joined::RightJoin)
+function length(joined::RightJoin)
     length(joined.right.sorted)
 end
-@inline function axes(joined::RightJoin)
+function axes(joined::RightJoin)
     axes(joined.right.sorted)
 end
 
-@inline function compare(joined::RightJoin, ::Nothing, ::Nothing)
+function compare(joined::RightJoin, ::Nothing, ::Nothing)
     nothing
 end
 
@@ -558,6 +558,7 @@ first. See [`By`](@ref).
 
 ```jldoctest
 julia> using LightQuery
+
 
 julia> collect(OuterJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
 6-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
@@ -586,18 +587,18 @@ struct OuterJoin{Left<:By,Right<:By} <: Join{Left,Right}
 end
 export OuterJoin
 
-@inline function IteratorEltype(
+function IteratorEltype(
     ::Type{OuterJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
-@inline function eltype(
+function eltype(
     ::Type{OuterJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
 ) where {LeftIterator,LeftKey,RightIterator,RightKey}
     Tuple{Union{Missing,eltype(LeftIterator)},Union{Missing,eltype(RightIterator)}}
 end
 
-@inline function compare(joined::OuterJoin, ::Nothing, ::Nothing)
+function compare(joined::OuterJoin, ::Nothing, ::Nothing)
     nothing
 end
 
@@ -605,39 +606,48 @@ function IteratorSize(::Type{AType}) where {AType<:Union{InnerJoin,OuterJoin}}
     SizeUnknown()
 end
 
-@inline function next_left(joined::Union{InnerJoin,RightJoin}, left_history, right_history)
-    iterate(joined, (left_history, right_history, true, false))
+function next_left(joined::Union{InnerJoin, RightJoin}, left_history, right_history)
+    left_history = next_history(joined.left, left_history)
+    while left_history !== nothing && isless(left_history[3], right_history[3])
+        left_history = next_history(joined.left, left_history)
+    end
+    compare(joined, left_history, right_history)
 end
-@inline function next_left(joined::Union{LeftJoin,OuterJoin}, left_history, right_history)
+
+function next_left(joined::Union{LeftJoin,OuterJoin}, left_history, right_history)
     left_state, left_item, left_key_result = left_history
     (left_item, missing), (left_history, right_history, true, false)
 end
 
-@inline function next_right(joined::Union{InnerJoin,LeftJoin}, left_history, right_history)
-    iterate(joined, (left_history, right_history, false, true))
+function next_right(joined::Union{InnerJoin,LeftJoin}, left_history, right_history)
+    right_history = next_history(joined.right, right_history)
+    while right_history !== nothing && isless(right_history[3], left_history[3])
+        right_history = next_history(joined.right, right_history)
+    end
+    compare(joined, left_history, right_history)
 end
-@inline function next_right(joined::Union{RightJoin,OuterJoin}, left_history, right_history)
+function next_right(joined::Union{RightJoin,OuterJoin}, left_history, right_history)
     right_state, right_item, right_key_result = right_history
     (missing, right_item), (left_history, right_history, false, true)
 end
 
-@inline function compare(joined::Union{InnerJoin,LeftJoin}, ::Nothing, right_history)
+function compare(joined::Union{InnerJoin,LeftJoin}, ::Nothing, right_history)
     nothing
 end
-@inline function compare(joined::Union{LeftJoin,OuterJoin}, left_history, ::Nothing)
+function compare(joined::Union{LeftJoin,OuterJoin}, left_history, ::Nothing)
     left_state, left_item, left_key_result = left_history
     (left_item, missing), (left_history, nothing, true, false)
 end
 
-@inline function compare(joined::Union{InnerJoin,RightJoin}, left_history, ::Nothing)
+function compare(joined::Union{InnerJoin,RightJoin}, left_history, ::Nothing)
     nothing
 end
-@inline function compare(joined::Union{RightJoin,OuterJoin}, ::Nothing, right_history)
+function compare(joined::Union{RightJoin,OuterJoin}, ::Nothing, right_history)
     right_state, right_item, right_key_result = right_history
     (missing, right_item), (nothing, right_history, false, true)
 end
 
-@inline function compare(joined, left_history, right_history)
+function compare(joined, left_history, right_history)
     left_state, left_item, left_key_result = left_history
     right_state, right_item, right_key_result = right_history
     if isless(left_key_result, right_key_result)
@@ -649,15 +659,16 @@ end
     end
 end
 
-@inline function iterate(::Join, ::Nothing)
+function iterate(::Join, ::Nothing)
     nothing
 end
-@inline function iterate(joined::Join)
+function iterate(joined::Join)
     compare(joined, next_history(joined.left), next_history(joined.right))
 end
-@inline function iterate(joined::Join, (left_history, right_history, next_left, next_right))
-    if next_left
-        if next_right
+
+function iterate(joined::Join, (left_history, right_history, the_next_left, the_next_right))
+    if the_next_left
+        if the_next_right
             compare(
                 joined,
                 next_history(joined.left, left_history),
@@ -667,7 +678,7 @@ end
             compare(joined, next_history(joined.left, left_history), right_history)
         end
     else
-        if next_right
+        if the_next_right
             compare(joined, left_history, next_history(joined.right, right_history))
         else
             throw(StackOverflowError())
@@ -675,23 +686,19 @@ end
     end
 end
 
-@inline function setindex_pair!(dictionary, (a_key, a_value))
-    dictionary[a_key] = a_value
-end
-
 # piracy
-@inline function copyto!(
+@propagate_inbounds function copyto!(
     dictionary::Dict{Key,Value},
     pairs::AbstractVector{Tuple{Key,Value}},
 ) where {Key,Value}
     foreach(let dictionary = dictionary
-        function setindex_pair!(pair)
-            setindex_pair!(dictionary, pair)
+        @propagate_inbounds function ((a_key, a_value),)
+            dictionary[a_key] = a_value
         end
     end, dictionary)
     nothing
 end
-@inline function similar(old::Dict, ::Type{Tuple{Key,Value}}) where {Key,Value}
+function similar(old::Dict, ::Type{Tuple{Key,Value}}) where {Key,Value}
     Dict{Key,Value}(old)
 end
 
@@ -703,6 +710,7 @@ Allow optimizations based on length.
 ```jldoctest
 julia> using LightQuery
 
+
 julia> collect(Length(when(1:4, iseven), 2))
 2-element Array{Int64,1}:
  2
@@ -713,10 +721,10 @@ struct Length{Iterator}
     iterator::Iterator
     new_length::Int
 end
-@inline IteratorEltype(::Type{Length{Iterator}}) where {Iterator} = IteratorEltype(Iterator)
-@inline eltype(::Type{Length{Iterator}}) where {Iterator} = eltype(Iterator)
-@inline IteratorLength(::Type{<:Length}) = HasLength()
-@inline length(fixed::Length) = fixed.new_length
-@inline iterate(fixed::Length) = iterate(fixed.iterator)
-@inline iterate(fixed::Length, state) = iterate(fixed.iterator, state)
+IteratorEltype(::Type{Length{Iterator}}) where {Iterator} = IteratorEltype(Iterator)
+eltype(::Type{Length{Iterator}}) where {Iterator} = eltype(Iterator)
+IteratorLength(::Type{<:Length}) = HasLength()
+length(fixed::Length) = fixed.new_length
+iterate(fixed::Length) = iterate(fixed.iterator)
+iterate(fixed::Length, state) = iterate(fixed.iterator, state)
 export Length

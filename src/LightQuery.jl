@@ -1,5 +1,7 @@
 module LightQuery
 
+# TODO: remove take
+
 import Base:
     axes,
     collect_similar,
@@ -46,7 +48,7 @@ using Base:
     @propagate_inbounds,
     SizeUnknown,
     tail
-import Base.Iterators: take
+import Base.Iterators: flatten, take
 using Base.Iterators: Filter
 using Base.Meta: quot
 using Compat: hasproperty
@@ -55,6 +57,8 @@ using IterTools: @ifsomething
 import MacroTools
 using MacroTools: @capture
 using Markdown: MD, Table
+
+const LONG = 16
 
 include("utilities.jl")
 include("macros.jl")
