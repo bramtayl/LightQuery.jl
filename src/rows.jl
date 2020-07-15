@@ -36,13 +36,15 @@ function axes(enumerated::Enumerate)
     axes(enumerated.unenumerated)
 end
 
-function iterate(enumerated::Enumerate)
-    item, state = @ifsomething iterate(enumerated.unenumerated)
+process_enumerate(enumerated, (item, state)) =
     (make_index(enumerated.unenumerated, state), item), state
+
+function iterate(enumerated::Enumerate)
+    process_enumerate(enumerated, @ifsomething iterate(enumerated.unenumerated))
+
 end
 function iterate(enumerated::Enumerate, state)
-    item, state = @ifsomething iterate(enumerated.unenumerated, state)
-    (make_index(enumerated.unenumerated, state), item), state
+    process_enumerate(enumerated, @ifsomething iterate(enumerated.unenumerated, state))
 end
 export Enumerate
 
@@ -142,6 +144,7 @@ end
 
 @propagate_inbounds function get(indexed::Indexed, a_key, default)
     index = get(indexed.key_to_index, a_key, nothing)
+    # TODO: perhaps nothing could be a value?
     if index === nothing
         default
     else
@@ -158,7 +161,7 @@ function iterate(indexed::Indexed, state...)
     (key(key_index) => indexed.unindexed[value(key_index)]), next_state
 end
 
-function IteratorSize(::Type{Indexed{Unindexed,KeyToIndex}}) where {Unindexed,KeyToIndex}
+function IteratorSize(::Type{<: Indexed{<:Any,KeyToIndex}}) where {KeyToIndex}
     IteratorSize(KeyToIndex)
 end
 function length(indexed::Indexed)
@@ -243,7 +246,7 @@ end
 """
     Group(ungrouped::By)
 
-Group consecutive keys in `ungrouped`.
+Group consecutive items in `ungrouped`.
 
 ```jldoctest
 julia> using LightQuery
@@ -402,13 +405,14 @@ end
 export InnerJoin
 
 function IteratorEltype(
-    ::Type{InnerJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:InnerJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
+
 function eltype(
-    ::Type{InnerJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:InnerJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     Tuple{eltype(LeftIterator),eltype(RightIterator)}
 end
 
@@ -453,19 +457,19 @@ end
 export LeftJoin
 
 function IteratorEltype(
-    ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:LeftJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
 function eltype(
-    ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:LeftJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     Tuple{eltype(LeftIterator),Union{Missing,eltype(RightIterator)}}
 end
 
 function IteratorSize(
-    ::Type{LeftJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:LeftJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     IteratorSize(LeftIterator)
 end
 function size(joined::LeftJoin)
@@ -519,19 +523,19 @@ end
 export RightJoin
 
 function IteratorEltype(
-    ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:RightJoin{<:By{LeftIterator},By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
 function eltype(
-    ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:RightJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     Tuple{Union{Missing,eltype(LeftIterator)},eltype(RightIterator)}
 end
 
 function IteratorSize(
-    ::Type{RightJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:RightJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     IteratorSize(RightIterator)
 end
 function size(joined::RightJoin)
@@ -588,13 +592,13 @@ end
 export OuterJoin
 
 function IteratorEltype(
-    ::Type{OuterJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:OuterJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     combine_iterator_eltype(IteratorEltype(LeftIterator), IteratorEltype(RightIterator))
 end
 function eltype(
-    ::Type{OuterJoin{By{LeftIterator,LeftKey},By{RightIterator,RightKey}}},
-) where {LeftIterator,LeftKey,RightIterator,RightKey}
+    ::Type{<:OuterJoin{<:By{LeftIterator},<:By{RightIterator}}},
+) where {LeftIterator,RightIterator}
     Tuple{Union{Missing,eltype(LeftIterator)},Union{Missing,eltype(RightIterator)}}
 end
 
@@ -602,7 +606,7 @@ function compare(joined::OuterJoin, ::Nothing, ::Nothing)
     nothing
 end
 
-function IteratorSize(::Type{AType}) where {AType<:Union{InnerJoin,OuterJoin}}
+function IteratorSize(::Type{<:Union{InnerJoin,OuterJoin}})
     SizeUnknown()
 end
 

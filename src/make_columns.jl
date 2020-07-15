@@ -14,12 +14,11 @@ end
 export Rows
 
 function same_axes(first_column, rest...)
-    my_all((
-        true,
+    my_all(
         partial_map(function (reference_axes, item)
             axes(item) == reference_axes
-        end, axes(first_column), rest)...,
-    ))
+        end, axes(first_column), rest)
+    )
 end
 function same_axes()
     true
@@ -39,9 +38,11 @@ end
         the_names,
     )
 end
-@propagate_inbounds function Rows(named_columns::MyNamedTuple)
+
+@propagate_inbounds function Rows(named_columns)
     Rows(map(value, named_columns), map(key, named_columns))
 end
+
 """
     Rows(named_columns)
 
@@ -54,7 +55,7 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 
-julia> lazy = @inferred Rows((a = [1, 2], b = [1.0, 2.0]))
+julia> lazy = @inferred Rows(a = [1, 2], b = [1.0, 2.0])
 2-element Rows{NamedTuple{(:a, :b),Tuple{Int64,Float64}},1,Tuple{Array{Int64,1},Array{Float64,1}},Tuple{Name{:a},Name{:b}}}:
  (a = 1, b = 1.0)
  (a = 2, b = 2.0)
@@ -64,7 +65,7 @@ julia> @inferred collect(lazy)
  (a = 1, b = 1.0)
  (a = 2, b = 2.0)
 
-julia> @inferred Rows((a = [1, 2],))
+julia> @inferred Rows(a = [1, 2])
 2-element Rows{NamedTuple{(:a,),Tuple{Int64}},1,Tuple{Array{Int64,1}},Tuple{Name{:a}}}:
  (a = 1,)
  (a = 2,)
@@ -74,13 +75,13 @@ All arguments to Rows must have the same axes. Use `@inbounds` to override the
 check.
 
 ```jldoctest Rows
-julia> result = Rows((a = 1:2, b = 1:3))
+julia> result = Rows(a = 1:2, b = 1:3)
 ERROR: DimensionMismatch("All columns passed to `Rows` must have the same axes")
 [...]
 ```
 """
-@propagate_inbounds function Rows(named_columns)
-    Rows(named_tuple(named_columns))
+@propagate_inbounds function Rows(; columns...)
+    Rows(named_tuple(columns.data))
 end
 
 function get_model(columns)
@@ -116,7 +117,7 @@ end
 end
 
 @propagate_inbounds function setindex!(rows::Rows, row::MyNamedTuple, an_index::Int...)
-    partial_map(
+    partial_for_each(
         (@propagate_inbounds function ((columns, an_index), (name, value))
             name(columns)[an_index...] = value
             nothing
@@ -124,18 +125,16 @@ end
         (to_columns(rows), an_index),
         row,
     )
-    nothing
 end
 @propagate_inbounds function setindex!(rows::Rows, row, an_index::Int...)
     setindex!(rows, named_tuple(row), an_index...)
 end
 
 function push!(rows::Rows, row::MyNamedTuple)
-    partial_map(function (columns, (name, value))
+    partial_for_each(function (columns, (name, value))
         push!(name(columns), value)
         nothing
     end, to_columns(rows), row)
-    nothing
 end
 function push!(rows::Rows, row)
     push!(rows, named_tuple(row))
@@ -163,7 +162,7 @@ function similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow}
     @inbounds Rows(partial_map(
         function (
             (model, dimensions),
-            (name, val_Value)::Tuple{Name,Val{Value}},
+            (name, val_Value)::Tuple{<:Any,Val{Value}},
         ) where {Value}
             name, similar(model, Value, dimensions)
         end,
@@ -305,7 +304,7 @@ julia> make_columns(when(over(1:4, unstable), row -> true))
 """
 function make_columns(rows)
     NamedTuple(to_columns(_collect(
-        (@inbounds Rows(())),
+        Rows(),
         rows,
         EltypeUnknown(),
         IteratorSize(rows),

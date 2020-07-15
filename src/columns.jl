@@ -61,7 +61,6 @@ julia> @inferred NamedTuple(((name"a", 1), (name"b", 2)))
 @pure function Name(name)
     Name{name}()
 end
-Name(name::Name) = name
 export Name
 
 """
@@ -89,8 +88,7 @@ function show(output::IO, ::Name{name}) where {name}
     print(output, "name\"", name, '"')
 end
 
-const Named = Tuple{Name,Any}
-const MyNamedTuple = SomeOf{Named}
+const MyNamedTuple = SomeOf{Tuple{Name,Any}}
 
 @inline function recursive_get(initial, name)
     throw(BoundsError(initial, (name,)))
@@ -106,25 +104,24 @@ end
 function (::Name{name})(object) where {name}
     getproperty(object, name)
 end
-function (name::Name)(data::MyNamedTuple)
-    if length(data) > 16
+@propagate_inbounds function (name::Name)(data::MyNamedTuple)
+    if length(data) > LONG
         index = findfirst(let name = name
             function ((check_name, value),)
                 name === check_name
             end
         end, data)
-        if index === nothing
+        @boundscheck if index === nothing
             throw(BoundsError(data, (name,)))
-        else
-            data[index][2]
         end
+        data[index][2]
     else
         recursive_get(initial, name, data...)
     end
 end
 
 function get_pair(data, name)
-    Name(name), name(data)
+    name, name(data)
 end
 
 function (some_names::SomeOf{Name})(data::MyNamedTuple)
@@ -306,30 +303,6 @@ end
 
 export spread
 
-"""
-    apply(names, items)
-
-Apply [`Name`](@ref)s to unnamed values.
-
-```jldoctest
-julia> using LightQuery
-
-
-julia> using Test: @inferred
-
-
-julia> @inferred apply(
-           (name"a", name"b", name"c", name"d", name"e", name"f"),
-           (1, 1.0, 1, 1.0, 1, 1.0),
-       )
-(a = 1, b = 1.0, c = 1, d = 1.0, e = 1, f = 1.0)
-```
-"""
-function apply(the_names, them)
-    NamedTuple(map(tuple, the_names, them))
-end
-export apply
-
 struct InRow{name,AColumn}
     column::AColumn
 end
@@ -344,6 +317,10 @@ function (in_row::InRow)(row::Row)
 end
 function (in_rows::SomeOf{InRow})(data::Row)
     NamedTuple(partial_map(get_pair, data, in_rows))
+end
+
+function get_pair(data::Row, in_row::InRow{name}) where name
+    Name{name}(), in_row(data)
 end
 
 """

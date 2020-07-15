@@ -148,16 +148,16 @@ julia> first(airports)
 I will repeat the following sequence of operations many times in this tutorial. Call [`make_columns`](@ref) to store the data as columns. Then, because it is useful to view the data as rows, use [`Rows`](@ref) to lazily view the data row-wise. You can use [`Peek`](@ref) to look at the first few rows of data.
 
 ```jldoctest flights
-julia> airports = Rows(make_columns(airports));
+julia> airports = Rows(; make_columns(airports)...);
 
 julia> Peek(airports)
 Showing 4 of 1458 rows
-|                    name"name" | name"airport_code" | name"altitude" | name"latitude" | name"longitude" |                name"time_zone" |
-| -----------------------------:| ------------------:| --------------:| --------------:| ---------------:| ------------------------------:|
-|             Lansdowne Airport |                04G |        1044 ft |    41.1304722° |    -80.6195833° | America/New_York (UTC-5/UTC-4) |
-| Moton Field Municipal Airport |                06A |         264 ft |    32.4605722° |    -85.6800278° |  America/Chicago (UTC-6/UTC-5) |
-|           Schaumburg Regional |                06C |         801 ft |    41.9893408° |    -88.1012428° |  America/Chicago (UTC-6/UTC-5) |
-|               Randall Airport |                06N |         523 ft |     41.431912° |    -74.3915611° | America/New_York (UTC-5/UTC-4) |
+|                          name | airport_code | altitude |    latitude |    longitude |                      time_zone |
+| -----------------------------:| ------------:| --------:| -----------:| ------------:| ------------------------------:|
+|             Lansdowne Airport |          04G |  1044 ft | 41.1304722° | -80.6195833° | America/New_York (UTC-5/UTC-4) |
+| Moton Field Municipal Airport |          06A |   264 ft | 32.4605722° | -85.6800278° |  America/Chicago (UTC-6/UTC-5) |
+|           Schaumburg Regional |          06C |   801 ft | 41.9893408° | -88.1012428° |  America/Chicago (UTC-6/UTC-5) |
+|               Randall Airport |          06N |   523 ft |  41.431912° | -74.3915611° | America/New_York (UTC-5/UTC-4) |
 ```
 
 You can use [`index`](@ref) to be able to quickly retrieve airports by code. This will be helpful later. This is very similar to making a `Dict`.
@@ -332,16 +332,16 @@ julia> flights =
         @> flights |>
         Iterators.take(_, 6400) |>
         make_columns |>
-        Rows;
+        Rows(; _...);
 
 julia> Peek(flights)
 Showing 4 of 6400 rows
-| name"carrier" | name"flight" | name"origin" | name"destination" | name"tail_number" | name"air_time" | name"distance" | name"departure_delay" | name"arrival_delay" | name"scheduled_departure_time" | name"scheduled_arrival_time" |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            UA |         1545 |          EWR |               IAH |            N14228 |     227 minute |        1400 mi |              2 minute |           11 minute |      2013-01-01T05:15:00-05:00 |    2013-01-01T08:19:00-06:00 |
-|            UA |         1714 |          LGA |               IAH |            N24211 |     227 minute |        1416 mi |              4 minute |           20 minute |      2013-01-01T05:29:00-05:00 |    2013-01-01T08:30:00-06:00 |
-|            AA |         1141 |          JFK |               MIA |            N619AA |     160 minute |        1089 mi |              2 minute |           33 minute |      2013-01-01T05:40:00-05:00 |    2013-01-01T08:50:00-05:00 |
-|            B6 |          725 |          JFK |               BQN |            N804JB |     183 minute |        1576 mi |             -1 minute |          -18 minute |      2013-01-01T05:45:00-05:00 |                      missing |
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1545 |    EWR |         IAH |      N14228 | 227 minute |  1400 mi |        2 minute |     11 minute | 2013-01-01T05:15:00-05:00 | 2013-01-01T08:19:00-06:00 |
+|      UA |   1714 |    LGA |         IAH |      N24211 | 227 minute |  1416 mi |        4 minute |     20 minute | 2013-01-01T05:29:00-05:00 | 2013-01-01T08:30:00-06:00 |
+|      AA |   1141 |    JFK |         MIA |      N619AA | 160 minute |  1089 mi |        2 minute |     33 minute | 2013-01-01T05:40:00-05:00 | 2013-01-01T08:50:00-05:00 |
+|      B6 |    725 |    JFK |         BQN |      N804JB | 183 minute |  1576 mi |       -1 minute |    -18 minute | 2013-01-01T05:45:00-05:00 |                   missing |
 ```
 
 ## Grouping and validating flights
@@ -368,12 +368,12 @@ julia> key(path)
 
 julia> value(path) |> Peek
 Showing 4 of 16 rows
-| name"carrier" | name"flight" | name"origin" | name"destination" | name"tail_number" | name"air_time" | name"distance" | name"departure_delay" | name"arrival_delay" | name"scheduled_departure_time" | name"scheduled_arrival_time" |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            EV |         4112 |          EWR |               ALB |            N13538 |      33 minute |         143 mi |             -2 minute |          -10 minute |      2013-01-01T13:17:00-05:00 |    2013-01-01T14:23:00-05:00 |
-|            EV |         3260 |          EWR |               ALB |            N19554 |      36 minute |         143 mi |             34 minute |           40 minute |      2013-01-01T16:21:00-05:00 |    2013-01-01T17:24:00-05:00 |
-|            EV |         4170 |          EWR |               ALB |            N12540 |      31 minute |         143 mi |             52 minute |           44 minute |      2013-01-01T20:04:00-05:00 |    2013-01-01T21:12:00-05:00 |
-|            EV |         4316 |          EWR |               ALB |            N14153 |      33 minute |         143 mi |              5 minute |          -14 minute |      2013-01-02T13:27:00-05:00 |    2013-01-02T14:33:00-05:00 |
+| carrier | flight | origin | destination | tail_number |  air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ---------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      EV |   4112 |    EWR |         ALB |      N13538 | 33 minute |   143 mi |       -2 minute |    -10 minute | 2013-01-01T13:17:00-05:00 | 2013-01-01T14:23:00-05:00 |
+|      EV |   3260 |    EWR |         ALB |      N19554 | 36 minute |   143 mi |       34 minute |     40 minute | 2013-01-01T16:21:00-05:00 | 2013-01-01T17:24:00-05:00 |
+|      EV |   4170 |    EWR |         ALB |      N12540 | 31 minute |   143 mi |       52 minute |     44 minute | 2013-01-01T20:04:00-05:00 | 2013-01-01T21:12:00-05:00 |
+|      EV |   4316 |    EWR |         ALB |      N14153 | 33 minute |   143 mi |        5 minute |    -14 minute | 2013-01-02T13:27:00-05:00 | 2013-01-02T14:33:00-05:00 |
 ```
 
 For the purposes of our analysis, all we need is the `key`. As always, store the data as columns using [`make_columns`](@ref), lazily view it as rows using [`Rows`](@ref), and use [`Peek`](@ref) to view the first few rows.
@@ -383,16 +383,16 @@ julia> paths =
         @> paths_grouped |>
         over(_, key) |>
         make_columns |>
-        Rows;
+        Rows(; _ ...);
 
 julia> Peek(paths)
 Showing 4 of 186 rows
-| name"origin" | name"destination" | name"distance" |
-| ------------:| -----------------:| --------------:|
-|          EWR |               ALB |         143 mi |
-|          EWR |               ATL |         746 mi |
-|          EWR |               AUS |        1504 mi |
-|          EWR |               AVL |         583 mi |
+| origin | destination | distance |
+| ------:| -----------:| --------:|
+|    EWR |         ALB |   143 mi |
+|    EWR |         ATL |   746 mi |
+|    EWR |         AUS |  1504 mi |
+|    EWR |         AVL |   583 mi |
 ```
 
 Let's run our data through a second round of grouping. This time, we will group data only by origin and destination. Theoretically, each group should only be one row long, because the distance between an origin and destination airport should always be the same. Our data is already sorted, so we do not need to sort it again before grouping. Again, use [`Group`](@ref) and [`By`](@ref) to group the rows. Again, we can pass a tuple of [`Name`](@ref)s as a selector function. Then, for each group, we can find the number of rows it contains.
@@ -412,9 +412,9 @@ julia> key(first_path_group)
 (origin = "EWR", destination = "ALB")
 
 julia> Peek(value(first_path_group))
-| name"origin" | name"destination" | name"distance" |
-| ------------:| -----------------:| --------------:|
-|          EWR |               ALB |         143 mi |
+| origin | destination | distance |
+| ------:| -----------:| --------:|
+|    EWR |         ALB |   143 mi |
 
 julia> function with_number((key, value))
             transform(key, number = length(value))
@@ -433,12 +433,12 @@ julia> distinct_distances =
 
 julia> Peek(distinct_distances)
 Showing at most 4 rows
-| name"origin" | name"destination" | name"number" |
-| ------------:| -----------------:| ------------:|
-|          EWR |               ALB |            1 |
-|          EWR |               ATL |            1 |
-|          EWR |               AUS |            1 |
-|          EWR |               AVL |            1 |
+| origin | destination | number |
+| ------:| -----------:| ------:|
+|    EWR |         ALB |      1 |
+|    EWR |         ATL |      1 |
+|    EWR |         AUS |      1 |
+|    EWR |         AVL |      1 |
 ```
 
 Let's see [`when`](@ref) there are multiple distances for the same path. `when` is simply `Iterators.filter` with the argument order reversed. This facilitates chaining. Again, use [`@_`](@ref) to create an anonymous function to pass to [`when`](@ref).
@@ -448,8 +448,8 @@ julia> @> distinct_distances |>
         when(_, @_ _.number != 1) |>
         Peek
 Showing at most 4 rows
-| name"origin" | name"destination" | name"number" |
-| ------------:| -----------------:| ------------:|
+| origin | destination | number |
+| ------:| -----------:| ------:|
 ```
 
 It looks like there is a consistency with flights which arrive at at the `EGE` airport. Let's take a [`Peek`](@ref) at flights going to `"EGE"` using [`when`](@ref). Again, use [`@_`](@ref) to create an anonymous function to pass to [`when`](@ref).
@@ -459,12 +459,12 @@ julia> @> flights |>
         when(_, @_ _.destination == "EGE") |>
         Peek
 Showing at most 4 rows
-| name"carrier" | name"flight" | name"origin" | name"destination" | name"tail_number" | name"air_time" | name"distance" | name"departure_delay" | name"arrival_delay" | name"scheduled_departure_time" | name"scheduled_arrival_time" |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            UA |         1597 |          EWR |               EGE |            N27733 |     287 minute |        1726 mi |             -2 minute |           13 minute |      2013-01-01T09:28:00-05:00 |    2013-01-01T12:20:00-07:00 |
-|            AA |          575 |          JFK |               EGE |            N5DRAA |     280 minute |        1747 mi |             -5 minute |            3 minute |      2013-01-01T17:00:00-05:00 |    2013-01-01T19:50:00-07:00 |
-|            UA |         1597 |          EWR |               EGE |            N24702 |     261 minute |        1726 mi |              1 minute |            3 minute |      2013-01-02T09:28:00-05:00 |    2013-01-02T12:20:00-07:00 |
-|            AA |          575 |          JFK |               EGE |            N631AA |     260 minute |        1747 mi |              5 minute |           16 minute |      2013-01-02T17:00:00-05:00 |    2013-01-02T19:50:00-07:00 |
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1597 |    EWR |         EGE |      N27733 | 287 minute |  1726 mi |       -2 minute |     13 minute | 2013-01-01T09:28:00-05:00 | 2013-01-01T12:20:00-07:00 |
+|      AA |    575 |    JFK |         EGE |      N5DRAA | 280 minute |  1747 mi |       -5 minute |      3 minute | 2013-01-01T17:00:00-05:00 | 2013-01-01T19:50:00-07:00 |
+|      UA |   1597 |    EWR |         EGE |      N24702 | 261 minute |  1726 mi |        1 minute |      3 minute | 2013-01-02T09:28:00-05:00 | 2013-01-02T12:20:00-07:00 |
+|      AA |    575 |    JFK |         EGE |      N631AA | 260 minute |  1747 mi |        5 minute |     16 minute | 2013-01-02T17:00:00-05:00 | 2013-01-02T19:50:00-07:00 |
 ```
 
 You can see just in these rows that there is an inconsistency in the data. The distance for the first two rows should be the same as the distance for the second two rows.
@@ -525,12 +525,12 @@ julia> weathers =
 
 julia> Peek(weathers)
 Showing 4 of 26115 rows
-|     name"time_hour" | name"airport_code" | name"dew_point" |     name"humidity" | name"precipitation" | name"pressure" | name"temperature" | name"visibility" | name"wind_direction" | name"wind_gust" |  name"wind_speed" |           name"date_time" |
-| -------------------:| ------------------:| ---------------:| ------------------:| -------------------:| --------------:| -----------------:| ----------------:| --------------------:| ---------------:| -----------------:| -------------------------:|
-| 2013-01-01 01:00:00 |                EWR |        26.06 °F |             0.5937 |            0.0 inch |    1012.0 mbar |          39.02 °F |          10.0 mi |                 270° |         missing | 10.35702 mi hr^-1 | 2013-01-01T01:00:00-05:00 |
-| 2013-01-01 02:00:00 |                EWR |        26.96 °F | 0.6163000000000001 |            0.0 inch |    1012.3 mbar |          39.02 °F |          10.0 mi |                 250° |         missing |  8.05546 mi hr^-1 | 2013-01-01T02:00:00-05:00 |
-| 2013-01-01 03:00:00 |                EWR |        28.04 °F | 0.6443000000000001 |            0.0 inch |    1012.5 mbar |          39.02 °F |          10.0 mi |                 240° |         missing |  11.5078 mi hr^-1 | 2013-01-01T03:00:00-05:00 |
-| 2013-01-01 04:00:00 |                EWR |        28.04 °F |             0.6221 |            0.0 inch |    1012.2 mbar |          39.92 °F |          10.0 mi |                 250° |         missing | 12.65858 mi hr^-1 | 2013-01-01T04:00:00-05:00 |
+|           time_hour | airport_code | dew_point |           humidity | precipitation |    pressure | temperature | visibility | wind_direction | wind_gust |        wind_speed |                 date_time |
+| -------------------:| ------------:| ---------:| ------------------:| -------------:| -----------:| -----------:| ----------:| --------------:| ---------:| -----------------:| -------------------------:|
+| 2013-01-01 01:00:00 |          EWR |  26.06 °F |             0.5937 |      0.0 inch | 1012.0 mbar |    39.02 °F |    10.0 mi |           270° |   missing | 10.35702 mi hr^-1 | 2013-01-01T01:00:00-05:00 |
+| 2013-01-01 02:00:00 |          EWR |  26.96 °F | 0.6163000000000001 |      0.0 inch | 1012.3 mbar |    39.02 °F |    10.0 mi |           250° |   missing |  8.05546 mi hr^-1 | 2013-01-01T02:00:00-05:00 |
+| 2013-01-01 03:00:00 |          EWR |  28.04 °F | 0.6443000000000001 |      0.0 inch | 1012.5 mbar |    39.02 °F |    10.0 mi |           240° |   missing |  11.5078 mi hr^-1 | 2013-01-01T03:00:00-05:00 |
+| 2013-01-01 04:00:00 |          EWR |  28.04 °F |             0.6221 |      0.0 inch | 1012.2 mbar |    39.92 °F |    10.0 mi |           250° |   missing | 12.65858 mi hr^-1 | 2013-01-01T04:00:00-05:00 |
 ```
 
 ## Joining flights and weather
@@ -574,10 +574,10 @@ julia> flights_key
 ("EWR", ZonedDateTime(2013, 1, 1, 5, tz"America/New_York"))
 
 julia> Peek(flights_value)
-| name"carrier" | name"flight" | name"origin" | name"destination" | name"tail_number" | name"air_time" | name"distance" | name"departure_delay" | name"arrival_delay" | name"scheduled_departure_time" | name"scheduled_arrival_time" |
-| -------------:| ------------:| ------------:| -----------------:| -----------------:| --------------:| --------------:| ---------------------:| -------------------:| ------------------------------:| ----------------------------:|
-|            UA |         1545 |          EWR |               IAH |            N14228 |     227 minute |        1400 mi |              2 minute |           11 minute |      2013-01-01T05:15:00-05:00 |    2013-01-01T08:19:00-06:00 |
-|            UA |         1696 |          EWR |               ORD |            N39463 |     150 minute |         719 mi |             -4 minute |           12 minute |      2013-01-01T05:58:00-05:00 |    2013-01-01T07:28:00-06:00 |
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1545 |    EWR |         IAH |      N14228 | 227 minute |  1400 mi |        2 minute |     11 minute | 2013-01-01T05:15:00-05:00 | 2013-01-01T08:19:00-06:00 |
+|      UA |   1696 |    EWR |         ORD |      N39463 | 150 minute |   719 mi |       -4 minute |     12 minute | 2013-01-01T05:58:00-05:00 | 2013-01-01T07:28:00-06:00 |
 ```
 
 We're interested in `visibility` and `departure_delay`. We have one row of weather data on the left but multiple flights on the right. Thus, for each flight, we will need to add in the weather data we are interested in.
@@ -590,10 +590,10 @@ julia> over(flights_value, @_ (
             departure_delay = _.departure_delay
         )) |>
         Peek
-| name"visibility" | name"departure_delay" |
-| ----------------:| ---------------------:|
-|          10.0 mi |              2 minute |
-|          10.0 mi |             -4 minute |
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|    10.0 mi |        2 minute |
+|    10.0 mi |       -4 minute |
 ```
 
 We will need to conduct these steps for each match. So put them together into a function.
@@ -609,10 +609,10 @@ julia> function interested_in(a_match)
         end;
 
 julia> Peek(interested_in(a_match))
-| name"visibility" | name"departure_delay" |
-| ----------------:| ---------------------:|
-|          10.0 mi |              2 minute |
-|          10.0 mi |             -4 minute |
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|    10.0 mi |        2 minute |
+|    10.0 mi |       -4 minute |
 ```
 
 For each match, we are returning several rows. Use `Base.Iterators.flatten` to unnest data and get a single iterator of rows. Collect the result.
@@ -622,18 +622,17 @@ julia> data =
         @> weathers_to_flights |>
         over(_, interested_in) |>
         flatten |>
-        collect
         make_columns |>
-        Rows;
+        Rows(; _...);
 
 julia> Peek(data)
 Showing 4 of 6313 rows
-| name"visibility" | name"departure_delay" |
-| ----------------:| ---------------------:|
-|          10.0 mi |              2 minute |
-|          10.0 mi |             -4 minute |
-|          10.0 mi |             -5 minute |
-|          10.0 mi |             -2 minute |
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|    10.0 mi |        2 minute |
+|    10.0 mi |       -4 minute |
+|    10.0 mi |       -5 minute |
+|    10.0 mi |       -2 minute |
 ```
 
 ## Visibility vs. departure delay
@@ -652,11 +651,11 @@ julia> key(visibility_group)
 4.0 mi
 
 julia> value(visibility_group) |> Peek
-| name"visibility" | name"departure_delay" |
-| ----------------:| ---------------------:|
-|           4.0 mi |             -6 minute |
-|           4.0 mi |             44 minute |
-|           4.0 mi |             -4 minute |
+| visibility | departure_delay |
+| ----------:| ---------------:|
+|     4.0 mi |       -6 minute |
+|     4.0 mi |       44 minute |
+|     4.0 mi |       -4 minute |
 ```
 
 For each group, we can calculate the mean `departure_delay`.
@@ -688,14 +687,14 @@ julia> @> by_visibility |>
             over(_, get_mean_departure_delay) |>
             Peek(_, 20)
 Showing at most 20 rows
-| name"visibility" | name"mean_departure_delay" | name"count" |
-| ----------------:| --------------------------:| -----------:|
-|           4.0 mi |  11.333333333333334 minute |           3 |
-|           6.0 mi |   9.514285714285714 minute |          70 |
-|           7.0 mi |               -0.12 minute |          25 |
-|           8.0 mi |   5.428571428571429 minute |         112 |
-|           9.0 mi |  1.8585365853658538 minute |         205 |
-|          10.0 mi |   9.119701593760597 minute |        5898 |
+| visibility |      mean_departure_delay | count |
+| ----------:| -------------------------:| -----:|
+|     4.0 mi | 11.333333333333334 minute |     3 |
+|     6.0 mi |  9.514285714285714 minute |    70 |
+|     7.0 mi |              -0.12 minute |    25 |
+|     8.0 mi |  5.428571428571429 minute |   112 |
+|     9.0 mi | 1.8585365853658538 minute |   205 |
+|    10.0 mi |  9.119701593760597 minute |  5898 |
 ```
 
 This data suggests that low visibility levels lead to larger departure delays, on average.

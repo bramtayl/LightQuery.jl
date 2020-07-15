@@ -13,14 +13,14 @@ Peek an iterator which returns named tuples. Will show no more than `maximum_len
 julia> using LightQuery
 
 
-julia> Peek(Rows((a = 1:5, b = 5:-1:1)))
+julia> Peek(Rows(a = 1:5, b = 5:-1:1))
 Showing 4 of 5 rows
-| name"a" | name"b" |
-| -------:| -------:|
-|       1 |       5 |
-|       2 |       4 |
-|       3 |       3 |
-|       4 |       2 |
+|   a |   b |
+| ---:| ---:|
+|   1 |   5 |
+|   2 |   4 |
+|   3 |   3 |
+|   4 |   2 |
 ```
 """
 function Peek(rows)
@@ -41,9 +41,9 @@ function show(output::IO, peek::Peek)
     else
         println(output, "Showing at most $(maximum_length) rows")
     end
-    columns = named_tuple(make_columns(take(rows, maximum_length)))
-    rows = map(make_any, zip(map(value, columns)...))
-    pushfirst!(rows, make_any(map(key, columns)))
+    columns = make_columns(take(rows, maximum_length))
+    rows = map(make_any, zip(columns...))
+    pushfirst!(rows, make_any(String.(propertynames(columns))))
     show(output, MD(Table(rows, make_any(map(function (column)
         :r
     end, columns)))))
@@ -61,26 +61,23 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 
-julia> @inferred reduce_rows(Rows((a = [1, 1], b = [1.0, 1.0])), +, name"a", name"b")
+julia> @inferred reduce_rows(Rows(a = [1, 1], b = [1.0, 1.0]), +, name"a", name"b")
 (a = 2, b = 2.0)
 ```
 """
 function reduce_rows(rows, a_function, columns...)
-    NamedTuple(reduce(
+    reduce(
         let a_function = a_function, columns = columns
             function (row1, row2)
                 map(
-                    tuple,
-                    columns,
-                    map(
-                        a_function,
-                        map(value, columns(named_tuple(row1))),
-                        map(value, columns(named_tuple(row2))),
-                    ),
+                    a_function,
+                    columns(row1),
+                    columns(row2),
                 )
             end
         end,
         rows,
-    ))
+    )
 end
+
 export reduce_rows

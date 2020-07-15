@@ -119,16 +119,16 @@ julia> climate_data =
         over(_, get_month_variable) |>
         flatten |>
         make_columns |>
-        Rows;
+        Rows(; _...);
 
 julia> Peek(climate_data)
 Showing 4 of 1231 rows
-| name"variable" | name"value" | name"date" |
-| --------------:| -----------:| ----------:|
-|          :TMAX |         289 | 1949-01-01 |
-|          :TMAX |         289 | 1949-01-02 |
-|          :TMAX |         283 | 1949-01-03 |
-|          :TMAX |         283 | 1949-01-04 |
+| variable | value |       date |
+| --------:| -----:| ----------:|
+|    :TMAX |   289 | 1949-01-01 |
+|    :TMAX |   289 | 1949-01-02 |
+|    :TMAX |   283 | 1949-01-03 |
+|    :TMAX |   283 | 1949-01-04 |
 ```
 
 Let's sort and group the data by date. This will allow us to combine various measures into one row for each date.
@@ -146,12 +146,12 @@ julia> key(day_variables)
 
 julia> value(day_variables) |> Peek
 Showing 4 of 5 rows
-| name"variable" | name"value" | name"date" |
-| --------------:| -----------:| ----------:|
-|          :TMAX |         289 | 1949-01-01 |
-|          :TMIN |         217 | 1949-01-01 |
-|          :PRCP |           0 | 1949-01-01 |
-|          :SNOW |           0 | 1949-01-01 |
+| variable | value |       date |
+| --------:| -----:| ----------:|
+|    :TMAX |   289 | 1949-01-01 |
+|    :TMIN |   217 | 1949-01-01 |
+|    :PRCP |     0 | 1949-01-01 |
+|    :SNOW |     0 | 1949-01-01 |
 ```
 
 We can directly convert this group of measurements into a `NamedTuple`. Use [`Name`](@ref) to make turn variables into true names, and splat the result into a tuple. You can simply call `NamedTuple` on the result.
@@ -184,10 +184,10 @@ julia> @> by_date |>
         over(_, spread_variables) |>
         Peek
 Showing at most 4 rows
-| name"WT16" | name"date" | name"TMAX" | name"TMIN" | name"PRCP" | name"SNOW" | name"SNWD" |
-| ----------:| ----------:| ----------:| ----------:| ----------:| ----------:| ----------:|
-|    missing | 1949-01-01 |        289 |        217 |          0 |          0 |          0 |
-|          1 | 1949-01-02 |        289 |        228 |         30 |          0 |          0 |
-|    missing | 1949-01-03 |        283 |        222 |          0 |          0 |          0 |
-|          1 | 1949-01-04 |        283 |        233 |          0 |          0 |          0 |
+|    WT16 |       date | TMAX | TMIN | PRCP | SNOW | SNWD |
+| -------:| ----------:| ----:| ----:| ----:| ----:| ----:|
+| missing | 1949-01-01 |  289 |  217 |    0 |    0 |    0 |
+|       1 | 1949-01-02 |  289 |  228 |   30 |    0 |    0 |
+| missing | 1949-01-03 |  283 |  222 |    0 |    0 |    0 |
+|       1 | 1949-01-04 |  283 |  233 |    0 |    0 |    0 |
 ```

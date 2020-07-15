@@ -15,8 +15,8 @@ function my_flatten(containers)
     end
 end
 
-@inline function all_unrolled(item)
-    item
+@inline function all_unrolled()
+    true
 end
 @inline function all_unrolled(item1, rest...)
     if item1
@@ -48,32 +48,53 @@ end
     partial_map_unrolled(call, fixed, tail(variables1), tail(variables2))...
 end
 @inline function partial_map_unrolled(call, fixed, variables1, ::Tuple{})
-    error("Mismatch in partial map: $variable1 left over")
+    error("Mismatch in partial map: $variables1 left over")
 end
 @inline function partial_map_unrolled(call, fixed, ::Tuple{}, variables2)
-    error("Mismatch in partial map: $variable2 left over")
+    error("Mismatch in partial map: $variables2 left over")
+end
+
+function inner_map_1(call, fixed)
+    function (variable)
+        call(fixed, variable)
+    end
+end
+function inner_map_2(call, fixed)
+    function (variable1, variable2)
+        call(fixed, variable1, variable2)
+    end
 end
 
 function partial_map(call, fixed, variables)
     if length(variables) > LONG
-        map(let call = call, fixed = fixed
-            function (variable)
-                call(fixed, variable)
-            end
-        end, variables)
+        map(inner_map_1(call, fixed), variables)
     else
         partial_map_unrolled(call, fixed, variables)
     end
 end
 function partial_map(call, fixed, variables1, variables2)
-    if length(variables1) > LONG || length(variables2) > LONG
-        map(let call = call, fixed = fixed
-            function (variable1, variable2)
-                call(fixed, variable1, variable2)
-            end
-        end, variables1, variables2)
+    if length(variables1) > LONG
+        map(inner_map_2(call, fixed), variables1, variables2)
     else
         partial_map_unrolled(call, fixed, variables1, variables2)
+    end
+end
+function partial_for_each(call, fixed, variables)
+    if length(variables) > LONG
+        foreach(inner_map_1(call, fixed), variables)
+        nothing
+    else
+        partial_map_unrolled(call, fixed, variables)
+        nothing
+    end
+end
+function partial_for_each(call, fixed, variables1, variables2)
+    if length(variables1) > LONG
+        foreach(inner_map_2(call, fixed), variables1, variables2)
+        nothing
+    else
+        partial_map_unrolled(call, fixed, variables1, variables2)
+        nothing
     end
 end
 
@@ -87,10 +108,11 @@ end
 
 @inline setdiff_unrolled(less) = ()
 @inline function setdiff_unrolled(less, first_more, mores...)
+    rest = setdiff_unrolled(less, mores...)
     if in_unrolled(first_more, less...)
-        setdiff_unrolled(less, mores...)
+        rest
     else
-        first_more, setdiff_unrolled(less, mores...)...
+        first_more, rest...
     end
 end
 
