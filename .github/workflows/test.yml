@@ -23,6 +23,7 @@ jobs:
       - uses: codecov/codecov-action@v1
         with:
           file: ./lcov.info
+          fail_ci_if_error: false
       - uses: domluna/JuliaFormatter-action@master
         with:
           args: -v .

@@ -26,6 +26,7 @@ import Base:
     NamedTuple,
     ndims,
     parent,
+    propertynames,
     push!,
     setindex!,
     size,
@@ -57,8 +58,6 @@ using IterTools: @ifsomething
 import MacroTools
 using MacroTools: @capture
 using Markdown: MD, Table
-
-const LONG = 16
 
 include("utilities.jl")
 include("macros.jl")

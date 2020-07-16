@@ -434,8 +434,6 @@ You can see just in these rows that there is an inconsistency in the data. The d
 
 Perhaps I want to know weather influences the departure delay. To do this, I will need to join weather data into the flights data. Start by cleaning the weather data using basically the same steps as above. Get the first row, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
 
-TODO: collect weather then try again
-
 ```jldoctest flights
 julia> weathers_file = Rows(File("weather.csv"));
 

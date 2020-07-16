@@ -13,25 +13,25 @@ struct Rows{Row,Dimensions,Columns,Names} <: AbstractArray{Row,Dimensions}
 end
 export Rows
 
-function same_axes(first_column, rest...)
+@inline function same_axes(first_column, rest...)
     my_all(
         partial_map(function (reference_axes, item)
             axes(item) == reference_axes
         end, axes(first_column), rest)
     )
 end
-function same_axes()
+@inline function same_axes()
     true
 end
-@propagate_inbounds function Rows{Row,Dimension}(
+@inline  function Rows{Row,Dimension}(
     columns::Columns,
     the_names::Names,
 ) where {Row,Dimension,Columns,Names}
     Rows{Row,Dimension,Columns,Names}(columns, the_names)
 end
-@propagate_inbounds function Rows(columns, the_names)
+@inline function Rows(columns, the_names)
     Rows{
-        NamedTuple{map(unname, the_names),Tuple{map(eltype, columns)...}},
+        NamedTuple{my_map(unname, the_names),Tuple{my_map(eltype, columns)...}},
         ndims(get_model(columns)),
     }(
         columns,
@@ -39,8 +39,8 @@ end
     )
 end
 
-@propagate_inbounds function Rows(named_columns)
-    Rows(map(value, named_columns), map(key, named_columns))
+@inline function Rows(named_columns)
+    Rows(my_map(value, named_columns), my_map(key, named_columns))
 end
 
 """
@@ -89,36 +89,33 @@ julia> first(Rows(File("test.csv")))
 (a = 1, b = 1.0, f = 1.0, d = 1.0, e = 1, c = 1)
 ```
 """
-@propagate_inbounds function Rows(; columns...)
+@inline function Rows(; columns...)
     Rows(named_tuple(columns.data))
 end
-function Rows(file::File)
-    @inbounds Rows(; getfield(file, :lookup)...)
-end
 
-function get_model(columns)
+@inline function get_model(columns)
     first(columns)
 end
-function get_model(::Tuple{})
+@inline function get_model(::Tuple{})
     1:0
 end
 
-function parent(rows::Rows)
+@inline function parent(rows::Rows)
     get_model(rows.columns)
 end
 
-function to_columns(rows::Rows)
-    map(tuple, rows.names, rows.columns)
+@inline function to_columns(rows::Rows)
+    my_map(tuple, rows.names, rows.columns)
 end
 
-function axes(rows::Rows, dimensions...)
+@inline function axes(rows::Rows, dimensions...)
     axes(parent(rows), dimensions...)
 end
-function size(rows::Rows, dimensions...)
+@inline function size(rows::Rows, dimensions...)
     size(parent(rows), dimensions...)
 end
 
-@propagate_inbounds function getindex(rows::Rows, an_index::Int...)
+@inline function getindex(rows::Rows, an_index::Int...)
     NamedTuple(partial_map(
         (@propagate_inbounds function ((columns, an_index), name)
             name, name(columns)[an_index...]
@@ -128,49 +125,51 @@ end
     )...)
 end
 
-@propagate_inbounds function setindex!(rows::Rows, row::MyNamedTuple, an_index::Int...)
-    partial_for_each(
-        (@propagate_inbounds function ((columns, an_index), (name, value))
+@inline function setindex!(rows::Rows, row::MyNamedTuple, an_index::Int...)
+    partial_map(
+        (@inline function ((columns, an_index), (name, value))
             name(columns)[an_index...] = value
             nothing
         end),
         (to_columns(rows), an_index),
         row,
     )
+    nothing
 end
-@propagate_inbounds function setindex!(rows::Rows, row, an_index::Int...)
+@inline function setindex!(rows::Rows, row, an_index::Int...)
     setindex!(rows, named_tuple(row), an_index...)
 end
 
-function push!(rows::Rows, row::MyNamedTuple)
-    partial_for_each(function (columns, (name, value))
+@inline function push!(rows::Rows, row::MyNamedTuple)
+    partial_map((@inline function (columns, (name, value))
         push!(name(columns), value)
         nothing
-    end, to_columns(rows), row)
+    end), to_columns(rows), row)
+    nothing
 end
-function push!(rows::Rows, row)
+@inline function push!(rows::Rows, row)
     push!(rows, named_tuple(row))
 end
 
-function val_fieldtypes(something)
+@inline function val_fieldtypes(something)
     ()
 end
 @pure function val_fieldtypes(a_type::DataType)
     if a_type.abstract || (a_type.name == Tuple.name && isvatuple(a_type))
         ()
     else
-        map(Val, (a_type.types...,))
+        my_map(Val, (a_type.types...,))
     end
 end
 
-function decompose_row_type(::Type{<:NamedTuple{Names,ATuple}}) where {Names,ATuple}
-    map(tuple, to_Names(Names), val_fieldtypes(ATuple))
+@inline function decompose_row_type(::Type{<:NamedTuple{Names,ATuple}}) where {Names,ATuple}
+    my_map(tuple, to_Names(Names), val_fieldtypes(ATuple))
 end
-function decompose_row_type(uninferred)
+@inline function decompose_row_type(uninferred)
     ()
 end
 
-function similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow}
+@inline function similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow}
     @inbounds Rows(partial_map(
         function (
             (model, dimensions),
@@ -183,11 +182,11 @@ function similar(rows::Rows, ::Type{ARow}, dimensions::Dims) where {ARow}
     ))
 end
 
-function empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow,NewRow}
+@inline function empty(column::Rows{OldRow}, ::Type{NewRow} = OldRow) where {OldRow,NewRow}
     similar(column, NewRow)
 end
 
-function widen_column(
+@inline function widen_column(
     ::HasLength,
     new_length,
     an_index,
@@ -198,10 +197,10 @@ function widen_column(
     @inbounds column[an_index] = item
     name, column
 end
-function widen_column(::HasLength, new_length, an_index, name, column::AbstractArray, item)
+@inline function widen_column(::HasLength, new_length, an_index, name, column::AbstractArray, item)
     name, setindex_widen_up_to(column, item, an_index)
 end
-function widen_column(
+@inline function widen_column(
     ::SizeUnknown,
     new_length,
     an_index,
@@ -212,7 +211,7 @@ function widen_column(
     push!(column, item)
     name, column
 end
-function widen_column(
+@inline function widen_column(
     ::SizeUnknown,
     new_length,
     an_index,
@@ -222,7 +221,7 @@ function widen_column(
 )
     name, push_widen(column, item)
 end
-function widen_column(
+@inline function widen_column(
     iterator_size,
     new_length,
     an_index,
@@ -234,42 +233,42 @@ function widen_column(
     @inbounds new_column[an_index] = item
     name, new_column
 end
-function widen_column(iterator_size, new_length, an_index, name, ::Missing, ::Missing)
+@inline function widen_column(iterator_size, new_length, an_index, name, ::Missing, ::Missing)
     name, Array{Missing}(missing, new_length)
 end
 
-function get_new_length(::SizeUnknown, rows, an_index)
+@inline function get_new_length(::SizeUnknown, rows, an_index)
     an_index
 end
-function get_new_length(::HasLength, rows, an_index)
+@inline function get_new_length(::HasLength, rows, an_index)
     length(LinearIndices(rows))
 end
 
-function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
+@inline function widen_named(iterator_size, rows, row, an_index = length(rows) + 1)
     named_columns = to_columns(rows)
-    column_names = map(key, named_columns)
-    value_names = map(key, row)
+    column_names = my_map(key, named_columns)
+    value_names = my_map(key, row)
     just_column_names = my_setdiff(column_names, value_names)
     in_both_names = my_setdiff(column_names, just_column_names)
     @inbounds Rows(partial_map(
-        function (fixeds, variables)
+        (@inline function (fixeds, variables)
             widen_column(fixeds..., variables...)
-        end,
+        end),
         (iterator_size, get_new_length(iterator_size, rows, an_index), an_index),
         (
-            map(function ((name, column),)
+            my_map((@inline function ((name, column),)
                 name, column, missing
-            end, just_column_names(named_columns))...,
-            map(
-                function ((column_name, column), (value_name, value))
+            end), just_column_names(named_columns))...,
+            my_map(
+                (@inline function ((column_name, column), (value_name, value))
                     column_name, column, value
-                end,
+                end),
                 in_both_names(named_columns),
                 in_both_names(row),
             )...,
-            map(function ((name, value),)
+            my_map((@inline function ((name, value),)
                 name, missing, value
-            end, my_setdiff(value_names, column_names)(row))...,
+            end), my_setdiff(value_names, column_names)(row))...,
         ),
     ))
 end
@@ -314,7 +313,7 @@ julia> make_columns(when(over(1:4, unstable), row -> true))
 (d = Union{Missing, String}["1", "2", missing, missing], a = Union{Missing, Int64}[missing, missing, 3, 4], b = Union{Missing, String}["1", "2", missing, missing], c = Union{Missing, Int64}[missing, missing, 3, 4])
 ```
 """
-function make_columns(rows)
+@inline function make_columns(rows)
     NamedTuple(to_columns(_collect(
         Rows(),
         rows,

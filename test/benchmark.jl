@@ -1,41 +1,39 @@
-using LightQuery: @>, By, Group, @name, make_columns, over, row_info, Rows, value
 using CSV: File
-import CSV
 using DataFrames: by, DataFrame
-using Tables: schema
-using BenchmarkTools: @btime
+using LightQuery: @>, @_, By, Group, over, make_columns, @name_str, Rows, value
+import Base: NamedTuple
 
-cd("/home/brandon/perf")
+cd("/home/brandon/benchmark")
+download("http://rapidsai-data.s3-website.us-east-2.amazonaws.com/notebook-mortgage-data/mortgage_2000.tgz", "mortgage_2000.tgz")
+run(`tar --gzip --extract --file=mortgage_2000.tgz`)
+cd("perf")
 
-filename =
-    file = File(
-        "Performance_2000Q1.txt_0",
-        delim = '|',
-        header = Symbol.(string.("Column", 1:31)),
-        missingstrings = ["NULL", ""],
-        dateformat = "mm/dd/yyyy",
-        truestrings = ["Y"],
-        falsestrings = ["N"],
-    )
+file = File(
+    "Performance_2000Q1.txt",
+    delim = '|',
+    header = Symbol.(string.("Column", 1:31)),
+    missingstrings = ["NULL", ""],
+    dateformat = "mm/dd/yyyy",
+    truestrings = ["Y"],
+    falsestrings = ["N"],
+)
 
 function process_with_lightquery(file)
-    Line = row_info(schema(file))
-
-    @name @> file |>
-             over(_, @_ (:Column1,)(Line(_))) |>
-             make_columns |>
-             Rows |>
-             Group(By(_, :Column1)) |>
-             over(_, @_ (Count = length(value(_)),)) |>
-             make_columns
+    @> file |>
+    NamedTuple |>
+    # as soon as an unstable column is added, performance goes out the window...
+    (name"Column1", name"Column2", name"Column3")(_) |>
+    Rows(; _...) |>
+    Group(By(_, name"Column1")) |>
+    over(_, @_ (Count = length(value(_)),)) |>
+    make_columns
 end
 
-println("LightQuery")
-@btime process_with_lightquery(file)
+@time process_with_dataframes_meta(file)
 
 function process_with_dataframes_meta(file)
-    by(DataFrame(file), :Column1, :Column1 => length)
+    subset = DataFrame(file)[:, [:Column1]]
+    by(subset, :Column1, :Column1 => length)
 end
 
-println("DataFrames")
-@btime process_with_dataframes_meta(file)
+@time process_with_dataframes_meta(file)

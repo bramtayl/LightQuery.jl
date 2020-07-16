@@ -80,7 +80,7 @@ julia> @inferred unname(Name(:a))
 :a
 ```
 """
-function unname(::Name{name}) where {name}
+@inline function unname(::Name{name}) where {name}
     name
 end
 export unname
@@ -102,34 +102,23 @@ end
     end
 end
 
-function (::Name{name})(object) where {name}
+@inline function (::Name{name})(object) where {name}
     getproperty(object, name)
 end
-@propagate_inbounds function (name::Name)(data::MyNamedTuple)
-    if length(data) > LONG
-        index = findfirst(let name = name
-            function ((check_name, value),)
-                name === check_name
-            end
-        end, data)
-        @boundscheck if index === nothing
-            throw(BoundsError(data, (name,)))
-        end
-        data[index][2]
-    else
-        recursive_get(data, name, data...)
-    end
+@inline function (name::Name)(data::MyNamedTuple)
+    # TODO: avoid recursion for large tuples
+    recursive_get(data, name, data...)
 end
 
-function get_pair(data, name)
+@inline function get_pair(data, name)
     name, name(data)
 end
 
-function (some_names::SomeOf{Name})(data::MyNamedTuple)
+@inline function (some_names::SomeOf{Name})(data::MyNamedTuple)
     partial_map(get_pair, data, some_names)
 end
 # TODO: a version which works on all types?
-function (some_names::SomeOf{Name})(data::NamedTuple)
+@inline function (some_names::SomeOf{Name})(data::NamedTuple)
     NamedTuple(some_names(named_tuple(data))...)
 end
 
@@ -139,20 +128,24 @@ end
 
 # to override recusion limit on constant propagation
 @pure function to_Names(some_names::SomeOf{Symbol})
-    map(Name, some_names)
+    my_map(Name, some_names)
 end
-function to_Names(them)
-    map(Name, Tuple(them))
+@inline function to_Names(them)
+    my_map(Name, Tuple(them))
 end
 
-function NamedTuple(data::Tuple{Name,Any}...)
-    NamedTuple{map(function ((key, value),)
+@inline function NamedTuple(data::Tuple{Name,Any}...)
+    NamedTuple{my_map((@inline function ((key, value),)
         unname(key)
-    end, data)}(map(value, data))
+    end), data)}(my_map(value, data))
 end
 
-function named_tuple(data)
+@inline function named_tuple(data)
     partial_map(get_pair, data, to_Names(propertynames(data)))
+end
+# arghhh im a pirate
+@pure function propertynames(data::NamedTuple{names, <:Any}) where {names}
+    names
 end
 export MyNamedTuple
 
@@ -175,10 +168,10 @@ julia> @inferred remove(data, name"c", name"f")
 (a = 1, b = 1.0, d = 1.0, e = 1)
 ```
 """
-function remove(data::MyNamedTuple, old_names...)
-    my_setdiff(map(key, data), old_names)(data)
+@inline function remove(data::MyNamedTuple, old_names...)
+    my_setdiff(my_map(key, data), old_names)(data)
 end
-function remove(data, old_names...)
+@inline function remove(data, old_names...)
     NamedTuple(remove(named_tuple(data), old_names...)...)
 end
 
@@ -203,18 +196,18 @@ julia> @inferred transform(data, c = 2.0, f = 2, g = 1, h = 1.0)
 (a = 1, b = 1.0, d = 1.0, e = 1, c = 2.0, f = 2, g = 1, h = 1.0)
 ```
 """
-function transform(data::MyNamedTuple, assignments...)
-    remove(data, map(key, assignments)...)..., assignments...
+@inline function transform(data::MyNamedTuple, assignments...)
+    remove(data, my_map(key, assignments)...)..., assignments...
 end
-function transform(data; assignments...)
+@inline function transform(data; assignments...)
     NamedTuple(transform(named_tuple(data), named_tuple(assignments.data)...)...)
 end
 export transform
 
-maybe_named_tuple(something) = something
-maybe_named_tuple(something::MyNamedTuple) = NamedTuple(something...)
+@inline maybe_named_tuple(something) = something
+@inline maybe_named_tuple(something::MyNamedTuple) = NamedTuple(something...)
 
-function rename_one(data, (new_name, old_name))
+@inline function rename_one(data, (new_name, old_name))
     new_name, maybe_named_tuple(old_name(data))
 end
 """
@@ -236,11 +229,11 @@ julia> @inferred rename(data, c2 = name"c", f2 = name"f")
 (a = 1, b = 1.0, d = 1.0, e = 1, c2 = 1, f2 = 1.0)
 ```
 """
-function rename(data::MyNamedTuple, new_name_old_names...)
-    remove(data, map(value, new_name_old_names)...)...,
+@inline function rename(data::MyNamedTuple, new_name_old_names...)
+    remove(data, my_map(value, new_name_old_names)...)...,
     partial_map(rename_one, data, new_name_old_names)...
 end
-function rename(data; new_name_old_names...)
+@inline function rename(data; new_name_old_names...)
     NamedTuple(rename(named_tuple(data), named_tuple(new_name_old_names.data)...)...)
 end
 export rename
@@ -264,11 +257,11 @@ julia> @inferred gather(data, g = (name"b", name"e"), h = (name"c", name"f"))
 (a = 1, d = 1.0, g = (b = 1.0, e = 1), h = (c = 1, f = 1.0))
 ```
 """
-function gather(data::MyNamedTuple, new_name_old_names...)
-    remove(data, my_flatten(map(value, new_name_old_names))...)...,
+@inline function gather(data::MyNamedTuple, new_name_old_names...)
+    remove(data, my_flatten(my_map(value, new_name_old_names))...)...,
     partial_map(rename_one, data, new_name_old_names)...
 end
-function gather(data; new_name_old_names...)
+@inline function gather(data; new_name_old_names...)
     NamedTuple(gather(named_tuple(data), named_tuple(new_name_old_names.data)...)...)
 end
 export gather
@@ -292,13 +285,13 @@ julia> @inferred spread(gathered, name"g", name"h")
 (a = 1, d = 1.0, b = 1.0, e = 1, c = 1, f = 1.0)
 ```
 """
-function spread(data::MyNamedTuple, some_names...)
+@inline function spread(data::MyNamedTuple, some_names...)
     remove(data, some_names...)...,
-    my_flatten(map((function ((name, value),)
+    my_flatten(my_map((@inline function ((name, value),)
         named_tuple(value)
     end), some_names(data)))...
 end
-function spread(data, some_names...)
+@inline function spread(data, some_names...)
     NamedTuple(spread(named_tuple(data), some_names...)...)
 end
 

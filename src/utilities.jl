@@ -7,12 +7,9 @@ end
     container..., flatten_unrolled(rest...)...
 end
 
-function my_flatten(containers)
-    if length(containers) > LONG
-        (flatten(containers)...,)
-    else
-        flatten_unrolled(containers...)
-    end
+@inline function my_flatten(containers)
+    # TODO: avoid recursion for large tuples
+    flatten_unrolled(containers...)
 end
 
 @inline function all_unrolled()
@@ -26,12 +23,38 @@ end
     end
 end
 
-function my_all(items)
-    if length(items) > LONG
-        all(items)
-    else
-        all_unrolled(items...)
-    end
+@inline function my_all(items)
+    # TODO: avoid recursion for large tuples
+    all_unrolled(items...)
+end
+
+@inline function map_unrolled(call, variables::Tuple{})
+    ()
+end
+@inline function map_unrolled(call, variables)
+    call(first(variables)), map_unrolled(call, tail(variables))...
+end
+@inline function map_unrolled(call, variables1::Tuple{}, variables2::Tuple{})
+    ()
+end
+@inline function map_unrolled(call, variables1, variables2)
+    call(first(variables1), first(variables2)),
+    map_unrolled(call, tail(variables1), tail(variables2))...
+end
+@inline function map_unrolled(call, variables1, ::Tuple{})
+    error("Mismatch in map: $variables1 left over")
+end
+@inline function map_unrolled(call, ::Tuple{}, variables2)
+    error("Mismatch in map: $variables2 left over")
+end
+
+@inline function my_map(call, variables)
+    # TODO: avoid recursion for large tuples
+    map_unrolled(call, variables)
+end
+@inline function my_map(call, variables1, variables2)
+    # TODO: avoid recursion for large tuples
+    map_unrolled(call, variables1, variables2)
 end
 
 @inline function partial_map_unrolled(call, fixed, variables::Tuple{})
@@ -54,48 +77,13 @@ end
     error("Mismatch in partial map: $variables2 left over")
 end
 
-function inner_map_1(call, fixed)
-    function (variable)
-        call(fixed, variable)
-    end
+@inline function partial_map(call, fixed, variables)
+    # TODO: avoid recursion for large tuples
+    partial_map_unrolled(call, fixed, variables)
 end
-function inner_map_2(call, fixed)
-    function (variable1, variable2)
-        call(fixed, variable1, variable2)
-    end
-end
-
-function partial_map(call, fixed, variables)
-    if length(variables) > LONG
-        map(inner_map_1(call, fixed), variables)
-    else
-        partial_map_unrolled(call, fixed, variables)
-    end
-end
-function partial_map(call, fixed, variables1, variables2)
-    if length(variables1) > LONG
-        map(inner_map_2(call, fixed), variables1, variables2)
-    else
-        partial_map_unrolled(call, fixed, variables1, variables2)
-    end
-end
-function partial_for_each(call, fixed, variables)
-    if length(variables) > LONG
-        foreach(inner_map_1(call, fixed), variables)
-        nothing
-    else
-        partial_map_unrolled(call, fixed, variables)
-        nothing
-    end
-end
-function partial_for_each(call, fixed, variables1, variables2)
-    if length(variables1) > LONG
-        foreach(inner_map_2(call, fixed), variables1, variables2)
-        nothing
-    else
-        partial_map_unrolled(call, fixed, variables1, variables2)
-        nothing
-    end
+@inline function partial_map(call, fixed, variables1, variables2)
+    # TODO: avoid recursion for large tuples
+    partial_map_unrolled(call, fixed, variables1, variables2)
 end
 
 @inline in_unrolled(needle) = false
@@ -116,12 +104,9 @@ end
     end
 end
 
-function my_setdiff(more, less)
-    if length(more) > LONG
-        (setdiff(more, less)...,)
-    else
-        setdiff_unrolled(less, more...)
-    end
+@inline function my_setdiff(more, less)
+    # TODO: avoid recursion for large tuples
+    setdiff_unrolled(less, more...)
 end
 
 """
@@ -144,7 +129,7 @@ julia> @inferred collect(over([1, -2, -3, 4], abs))
  4
 ```
 """
-function over(iterator, call)
+@inline function over(iterator, call)
     Generator(call, iterator)
 end
 export over
@@ -167,7 +152,7 @@ julia> @inferred collect(when(1:4, iseven))
  4
 ```
 """
-function when(iterator, call)
+@inline function when(iterator, call)
     Iterators.filter(call, iterator)
 end
 export when
@@ -191,10 +176,10 @@ julia> @inferred key((:a, 1))
 :a
 ```
 """
-function key((a_key, a_value))
+@inline function key((a_key, a_value))
     a_key
 end
-function key(pair::Pair)
+@inline function key(pair::Pair)
     pair.first
 end
 export key
@@ -218,10 +203,10 @@ julia> @inferred value((:a, 1))
 1
 ```
 """
-function value((a_key, a_value))
+@inline function value((a_key, a_value))
     a_value
 end
-function value(pair::Pair)
+@inline function value(pair::Pair)
     pair.second
 end
 export value
