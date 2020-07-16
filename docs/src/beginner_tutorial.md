@@ -24,6 +24,8 @@ julia> using Dates: Date, DateTime, Hour
 
 julia> using Base.Iterators: flatten
 
+julia> using Tables: columntable
+
 julia> using TimeZones: Class, Local, TimeZone, VariableTimeZone, ZonedDateTime
 
 julia> using Unitful: °, °F, ft, hr, inch, mbar, mi, minute
@@ -36,19 +38,25 @@ julia> cd(joinpath(pkgdir(LightQuery), "test"));
 
 The first step in cleaning up this data is to create a dataset about airports. The airports data crucially contains timezone information which we will need to adjust flight times.
 
-Use [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File) to import the airports data. Immediately use [`Rows`](@ref) to iterate over the rows of the file.
+Use [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File) to import the airports data.
 
 ```jldoctest flights
 julia> using CSV: File
 
-julia> airports_file = Rows(File("airports.csv", missingstrings = ["", "\\N"]));
+julia> airports_file = File("airports.csv", missingstrings = ["", "\\N"]);
+```
+
+You can use `Tables.columntable` to get the columns of the file. Then, immediately use [`Rows`](@ref) to iterate over the rows of the file. `columntable` is a key entry-point to LightQuery, because so many packages implement the Tables interace.
+
+```jldoctest flights
+julia> airports_file = Rows(; columntable(airports_file)...);
 ```
 
 Let's read in the first row and try to process it.
 
 ```jldoctest flights
 julia> airport = first(airports_file)
-(dst = "A", tz = -5, tzone = "America/New_York", name = "Lansdowne Airport", lat = 41.1304722, alt = 1044, faa = "04G", lon = -80.6195833)
+(faa = "04G", name = "Lansdowne Airport", lat = 41.1304722, lon = -80.6195833, alt = 1044, tz = -5, dst = "A", tzone = "America/New_York")
 ```
 
 Next, [`rename`](@ref) the variables to be human readable.
@@ -149,10 +157,13 @@ julia> const indexed_airports = index(airports, name"airport_code");
 
 ## Flights cleaning
 
-Now that we have built our airports dataset, we can start working on the flights data. Start by using [`CSV.File`](http://juliadata.github.io/CSV.jl/stable/#CSV.File) to lazily import the flights data.
+Now that we have built our airports dataset, we can start working on the flights data. We're following basically the same steps as we did above.
 
 ```jldoctest flights
-julia> flights_file = Rows(File("flights.csv"));
+julia> flights_file =
+        @> File("flights.csv") |>
+        columntable |>
+        Rows(; _...);
 ```
 
 Again, we will build a function to clean up a row of data. We will again use the first row to build and test our function. I will skip over several steps that we already used in the airports data: get the first flight, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
@@ -184,7 +195,7 @@ julia> flight =
             departure_delay = _.departure_delay * minute,
             distance = _.distance * mi
         )
-(flight = 1545, origin = "EWR", year = 2013, carrier = "UA", day = 1, month = 1, destination = "IAH", scheduled_arrival_time = 819, scheduled_departure_time = 515, tail_number = "N14228", air_time = 227 minute, arrival_delay = 11 minute, departure_delay = 2 minute, distance = 1400 mi)
+(year = 2013, month = 1, day = 1, carrier = "UA", flight = 1545, origin = "EWR", destination = "IAH", scheduled_arrival_time = 819, scheduled_departure_time = 515, tail_number = "N14228", air_time = 227 minute, arrival_delay = 11 minute, departure_delay = 2 minute, distance = 1400 mi)
 ```
 
 Let's find the `time_zone` of the `airport` the `flight` departed from. Use [`@if_known`](@ref) to handle `missing` data.
@@ -292,7 +303,7 @@ julia> function get_flight(indexed_airports, row)
         end;
 
 julia> get_flight(indexed_airports, first(flights_file))
-(flight = 1545, origin = "EWR", carrier = "UA", destination = "IAH", tail_number = "N14228", air_time = 227 minute, distance = 1400 mi, departure_delay = 2 minute, arrival_delay = 11 minute, scheduled_departure_time = ZonedDateTime(2013, 1, 1, 5, 15, tz"America/New_York"), scheduled_arrival_time = ZonedDateTime(2013, 1, 1, 8, 19, tz"America/Chicago"))
+(carrier = "UA", flight = 1545, origin = "EWR", destination = "IAH", tail_number = "N14228", air_time = 227 minute, distance = 1400 mi, departure_delay = 2 minute, arrival_delay = 11 minute, scheduled_departure_time = ZonedDateTime(2013, 1, 1, 5, 15, tz"America/New_York"), scheduled_arrival_time = ZonedDateTime(2013, 1, 1, 8, 19, tz"America/Chicago"))
 ```
 
 Again, use [`over`](@ref) to lazily map this function over each row. Here we are using the [`@_`](@ref) macro to create an anonymous function as tersely as possible. Finally, we will again use [`make_columns`](@ref) and [`Rows`](@ref) to store the data column-wise and view it row-wise. Again use [`Peek`](@ref) to view the first few rows.
@@ -327,12 +338,12 @@ julia> key(path)
 
 julia> value(path) |> Peek
 Showing 4 of 439 rows
-| flight | origin | carrier | destination | tail_number |  air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
-| ------:| ------:| -------:| -----------:| -----------:| ---------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
-|   4112 |    EWR |      EV |         ALB |      N13538 | 33 minute |   143 mi |       -2 minute |    -10 minute | 2013-01-01T13:17:00-05:00 | 2013-01-01T14:23:00-05:00 |
-|   3260 |    EWR |      EV |         ALB |      N19554 | 36 minute |   143 mi |       34 minute |     40 minute | 2013-01-01T16:21:00-05:00 | 2013-01-01T17:24:00-05:00 |
-|   4170 |    EWR |      EV |         ALB |      N12540 | 31 minute |   143 mi |       52 minute |     44 minute | 2013-01-01T20:04:00-05:00 | 2013-01-01T21:12:00-05:00 |
-|   4316 |    EWR |      EV |         ALB |      N14153 | 33 minute |   143 mi |        5 minute |    -14 minute | 2013-01-02T13:27:00-05:00 | 2013-01-02T14:33:00-05:00 |
+| carrier | flight | origin | destination | tail_number |  air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ---------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      EV |   4112 |    EWR |         ALB |      N13538 | 33 minute |   143 mi |       -2 minute |    -10 minute | 2013-01-01T13:17:00-05:00 | 2013-01-01T14:23:00-05:00 |
+|      EV |   3260 |    EWR |         ALB |      N19554 | 36 minute |   143 mi |       34 minute |     40 minute | 2013-01-01T16:21:00-05:00 | 2013-01-01T17:24:00-05:00 |
+|      EV |   4170 |    EWR |         ALB |      N12540 | 31 minute |   143 mi |       52 minute |     44 minute | 2013-01-01T20:04:00-05:00 | 2013-01-01T21:12:00-05:00 |
+|      EV |   4316 |    EWR |         ALB |      N14153 | 33 minute |   143 mi |        5 minute |    -14 minute | 2013-01-02T13:27:00-05:00 | 2013-01-02T14:33:00-05:00 |
 ```
 
 For the purposes of our analysis, all we need is the `key`. As always, store the data as columns using [`make_columns`](@ref), lazily view it as rows using [`Rows`](@ref), and use [`Peek`](@ref) to view the first few rows.
@@ -420,12 +431,12 @@ julia> @> flights |>
         when(_, @_ _.destination == "EGE") |>
         Peek
 Showing at most 4 rows
-| flight | origin | carrier | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
-| ------:| ------:| -------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
-|   1597 |    EWR |      UA |         EGE |      N27733 | 287 minute |  1726 mi |       -2 minute |     13 minute | 2013-01-01T09:28:00-05:00 | 2013-01-01T12:20:00-07:00 |
-|    575 |    JFK |      AA |         EGE |      N5DRAA | 280 minute |  1747 mi |       -5 minute |      3 minute | 2013-01-01T17:00:00-05:00 | 2013-01-01T19:50:00-07:00 |
-|   1597 |    EWR |      UA |         EGE |      N24702 | 261 minute |  1726 mi |        1 minute |      3 minute | 2013-01-02T09:28:00-05:00 | 2013-01-02T12:20:00-07:00 |
-|    575 |    JFK |      AA |         EGE |      N631AA | 260 minute |  1747 mi |        5 minute |     16 minute | 2013-01-02T17:00:00-05:00 | 2013-01-02T19:50:00-07:00 |
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1597 |    EWR |         EGE |      N27733 | 287 minute |  1726 mi |       -2 minute |     13 minute | 2013-01-01T09:28:00-05:00 | 2013-01-01T12:20:00-07:00 |
+|      AA |    575 |    JFK |         EGE |      N5DRAA | 280 minute |  1747 mi |       -5 minute |      3 minute | 2013-01-01T17:00:00-05:00 | 2013-01-01T19:50:00-07:00 |
+|      UA |   1597 |    EWR |         EGE |      N24702 | 261 minute |  1726 mi |        1 minute |      3 minute | 2013-01-02T09:28:00-05:00 | 2013-01-02T12:20:00-07:00 |
+|      AA |    575 |    JFK |         EGE |      N631AA | 260 minute |  1747 mi |        5 minute |     16 minute | 2013-01-02T17:00:00-05:00 | 2013-01-02T19:50:00-07:00 |
 ```
 
 You can see just in these rows that there is an inconsistency in the data. The distance for the first two rows should be the same as the distance for the second two rows.
@@ -435,7 +446,10 @@ You can see just in these rows that there is an inconsistency in the data. The d
 Perhaps I want to know weather influences the departure delay. To do this, I will need to join weather data into the flights data. Start by cleaning the weather data using basically the same steps as above. Get the first row, [`rename`](@ref), [`remove`](@ref), and [`transform`](@ref) to add units.
 
 ```jldoctest flights
-julia> weathers_file = Rows(File("weather.csv"));
+julia> weathers_file =
+        @> File("weather.csv") |>
+        columntable |>
+        Rows(; _...);
 
 julia> function get_weather(indexed_airports, row)
             @> row |>
@@ -530,10 +544,10 @@ julia> flights_key
 ("EWR", ZonedDateTime(2013, 1, 1, 5, tz"America/New_York"))
 
 julia> Peek(flights_value)
-| flight | origin | carrier | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
-| ------:| ------:| -------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
-|   1545 |    EWR |      UA |         IAH |      N14228 | 227 minute |  1400 mi |        2 minute |     11 minute | 2013-01-01T05:15:00-05:00 | 2013-01-01T08:19:00-06:00 |
-|   1696 |    EWR |      UA |         ORD |      N39463 | 150 minute |   719 mi |       -4 minute |     12 minute | 2013-01-01T05:58:00-05:00 | 2013-01-01T07:28:00-06:00 |
+| carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
+| -------:| ------:| ------:| -----------:| -----------:| ----------:| --------:| ---------------:| -------------:| -------------------------:| -------------------------:|
+|      UA |   1545 |    EWR |         IAH |      N14228 | 227 minute |  1400 mi |        2 minute |     11 minute | 2013-01-01T05:15:00-05:00 | 2013-01-01T08:19:00-06:00 |
+|      UA |   1696 |    EWR |         ORD |      N39463 | 150 minute |   719 mi |       -4 minute |     12 minute | 2013-01-01T05:58:00-05:00 | 2013-01-01T07:28:00-06:00 |
 ```
 
 We're interested in `visibility` and `departure_delay`. We have one row of weather data on the left but multiple flights on the right. Thus, for each flight, we will need to add in the weather data we are interested in.

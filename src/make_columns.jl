@@ -79,15 +79,6 @@ julia> result = Rows(a = 1:2, b = 1:3)
 ERROR: DimensionMismatch("All columns passed to `Rows` must have the same axes")
 [...]
 ```
-
-You can also use rows on CSV files:
-
-```jldoctest Rows
-julia> using CSV: File
-
-julia> first(Rows(File("test.csv")))
-(a = 1, b = 1.0, f = 1.0, d = 1.0, e = 1, c = 1)
-```
 """
 @inline function Rows(; columns...)
     Rows(named_tuple(columns.data))
