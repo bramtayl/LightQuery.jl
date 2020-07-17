@@ -1,7 +1,8 @@
-using CSV: File
-using DataFrames: by, DataFrame
 using LightQuery: @>, @_, By, Group, over, make_columns, @name_str, Rows, value
-import Base: NamedTuple
+
+using CSV: File
+using DataFrames: DataFrame, groupby, combine
+using Tables: columntable
 
 cd("/home/brandon/benchmark")
 download("http://rapidsai-data.s3-website.us-east-2.amazonaws.com/notebook-mortgage-data/mortgage_2000.tgz", "mortgage_2000.tgz")
@@ -18,22 +19,14 @@ file = File(
     falsestrings = ["N"],
 )
 
-function process_with_lightquery(file)
-    @> file |>
-    NamedTuple |>
-    # as soon as an unstable column is added, performance goes out the window...
-    (name"Column1", name"Column2", name"Column3")(_) |>
-    Rows(; _...) |>
+# just the type stable ones
+columns = (name"Column1", name"Column2", name"Column4", name"Column6", name"Column10", name"Column11", name"Column12")(columntable(file))
+
+function process_with_lightquery(columns)
+    @> Rows(; columns...) |>
     Group(By(_, name"Column1")) |>
     over(_, @_ (Count = length(value(_)),)) |>
     make_columns
 end
 
-@time process_with_dataframes_meta(file)
-
-function process_with_dataframes_meta(file)
-    subset = DataFrame(file)[:, [:Column1]]
-    by(subset, :Column1, :Column1 => length)
-end
-
-@time process_with_dataframes_meta(file)
+@time process_with_lightquery(columns)
