@@ -55,16 +55,16 @@ julia> get_day(line, 1)
 Now, we can get data for every day of the month.
 
 ```jldoctest reshaping
-julia> days = @> over(1:31, @_ merge(month_variable, get_day(line, _)));
+julia> days = Iterators.map((@_ merge(month_variable, get_day(line, _))), 1:31);
 
 julia> first(days)
 (year = 1949, month = 1, variable = :TMAX, day = 1, value = 289)
 ```
 
-Use [`when`](@ref) to remove missing data;
+Use `Iterators.filter` to remove missing data;
 
 ```jldoctest reshaping
-julia> days = when(days, @_ _.value !== missing);
+julia> days = Iterators.filter((@_ _.value !== missing), days);
 
 
 julia> first(days)
@@ -97,9 +97,9 @@ julia> function get_month_variable(line)
                 month = parse(Int, SubString(line, 16, 17)),
                 variable = Symbol(SubString(line, 18, 21))
             )
-            @> over(1:31, @_ merge(month_variable, get_day(line, _))) |>
-            when(_, @_ _.value !== missing) |>
-            over(_, get_date)
+            @> Iterators.map((@_ merge(month_variable, get_day(line, _))), 1:31) |>
+            Iterators.filter((@_ _.value !== missing), _) |>
+            Iterators.map(get_date, _)
         end;
 
 
@@ -116,7 +116,7 @@ Each line will return several days. Use `flatten` to unnest the data.
 ```jldoctest reshaping
 julia> climate_data =
         @> eachline("climate.txt") |>
-        over(_, get_month_variable) |>
+        Iterators.map(get_month_variable, _) |>
         flatten |>
         make_columns |>
         Rows(; _...);
@@ -158,9 +158,9 @@ Use [`transform`](@ref) to add all the new variables to the day key.
 
 ```jldoctest reshaping
 julia> spread_variables(day_variables) = transform((date = key(day_variables),);
-            over(
-                value(day_variables),
-                @_ _.variable => _.value
+            Iterators.map(
+                (@_ _.variable => _.value),
+                value(day_variables)
             )...
         );
 
@@ -176,11 +176,11 @@ julia> spread_variables(day_variables) == (
 true
 ```
 
-Finally, we can run this reshaping over each day in the data using [`over`](@ref).
+Finally, we can run this reshaping over each day in the data using `Iterators.map`.
 
 ```jldoctest reshaping
 julia> @> by_date |>
-        over(_, spread_variables) |>
+        Iterators.map(spread_variables, _) |>
         Peek
 Showing at most 4 rows
 |    WT16 |       date | TMAX | TMIN | PRCP | SNOW | SNWD |

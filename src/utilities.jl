@@ -110,54 +110,6 @@ end
 end
 
 """
-    over(iterator, call)
-
-Lazy `map` with the reverse argument order.
-
-```jldoctest
-julia> using LightQuery
-
-
-julia> using Test: @inferred
-
-
-julia> @inferred collect(over([1, -2, -3, 4], abs))
-4-element Vector{Int64}:
- 1
- 2
- 3
- 4
-```
-"""
-@inline function over(iterator, call)
-    Generator(call, iterator)
-end
-export over
-
-"""
-    when(iterator, call)
-
-Lazy `filter` with the reverse argument order.
-
-```jldoctest
-julia> using LightQuery
-
-
-julia> using Test: @inferred
-
-
-julia> @inferred collect(when(1:4, iseven))
-2-element Vector{Int64}:
- 2
- 4
-```
-"""
-@inline function when(iterator, call)
-    Iterators.filter(call, iterator)
-end
-export when
-
-"""
     key(pair)
 
 The `key` in a `key => value` `pair`.

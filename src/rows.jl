@@ -10,7 +10,7 @@ julia> using LightQuery
 julia> using Test: @inferred
 
 
-julia> @inferred collect(Enumerate(when([4, 3, 2, 1], iseven)))
+julia> @inferred collect(Enumerate(Iterators.filter(iseven, [4, 3, 2, 1])))
 2-element Vector{Tuple{Int64,Int64}}:
  (1, 4)
  (3, 2)
@@ -92,7 +92,7 @@ julia> collect(@inferred order([-2, 1], abs))
 ```
 """
 @inline function order(unordered, key_function; keywords...)
-    index_keys = collect(Enumerate(over(unordered, key_function)))
+    index_keys = collect(Enumerate(Iterators.map(key_function, unordered)))
     sort!(index_keys, by = value; keywords...)
     OrderView(unordered, index_keys)
 end
@@ -715,7 +715,7 @@ Allow optimizations based on length.
 julia> using LightQuery
 
 
-julia> collect(Length(when(1:4, iseven), 2))
+julia> collect(Length(Iterators.filter(iseven, 1:4), 2))
 2-element Vector{Int64}:
  2
  4

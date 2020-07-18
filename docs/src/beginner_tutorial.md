@@ -137,10 +137,10 @@ julia> get_airport(first(airports_file))
 (name = "Lansdowne Airport", airport_code = "04G", altitude = 1044 ft, latitude = 41.1304722°, longitude = -80.6195833°, time_zone = tz"America/New_York")
 ```
 
-Use [`over`](@ref) to lazily map this function over each row of the airports file. `over` is simply `Base.Generator` with the argument order reversed. This facilitates chaining.
+Use `Iterators.map` to lazily map this function over each row of the airports file.
 
 ```jldoctest flights
-julia> airports = over(airports_file, get_airport);
+julia> airports = Iterators.map(get_airport, airports_file);
 ```
 
 I will repeat the following sequence of operations many times in this tutorial. Call [`make_columns`](@ref) to store the data as columns. Then, because it is useful to view the data as rows, use [`Rows`](@ref) to lazily view the data row-wise. You can use [`Peek`](@ref) to look at the first few rows of data.
@@ -237,9 +237,7 @@ julia> get_time(indexed_airports, flight, airport, time) =
                 flight.month,
                 flight.day,
                 divrem(time, 100)...,
-                @if_known (
-                    @if_known get(indexed_airports, airport, missing)
-                ).time_zone
+                @if_known (@if_known get(indexed_airports, airport, missing)).time_zone
             );
 
 julia> get_time(
@@ -306,12 +304,12 @@ julia> get_flight(indexed_airports, first(flights_file))
 (carrier = "UA", flight = 1545, origin = "EWR", destination = "IAH", tail_number = "N14228", air_time = 227 minute, distance = 1400 mi, departure_delay = 2 minute, arrival_delay = 11 minute, scheduled_departure_time = ZonedDateTime(2013, 1, 1, 5, 15, tz"America/New_York"), scheduled_arrival_time = ZonedDateTime(2013, 1, 1, 8, 19, tz"America/Chicago"))
 ```
 
-Again, use [`over`](@ref) to lazily map this function over each row. Here we are using the [`@_`](@ref) macro to create an anonymous function as tersely as possible. Finally, we will again use [`make_columns`](@ref) and [`Rows`](@ref) to store the data column-wise and view it row-wise. Again use [`Peek`](@ref) to view the first few rows.
+Again, use `Iterators.map` to lazily map this function over each row. Here we are using the [`@_`](@ref) macro to create an anonymous function as tersely as possible. Finally, we will again use [`make_columns`](@ref) and [`Rows`](@ref) to store the data column-wise and view it row-wise. Again use [`Peek`](@ref) to view the first few rows.
 
 ```jldoctest flights
 julia> flights =
         @> flights_file |>
-        over(_, @_ get_flight(indexed_airports, _));
+        Iterators.map((@_ get_flight(indexed_airports, _)), _);
 ```
 
 ## Grouping and validating flights
@@ -351,7 +349,7 @@ For the purposes of our analysis, all we need is the `key`. As always, store the
 ```jldoctest flights
 julia> paths =
         @> paths_grouped |>
-        over(_, key) |>
+        Iterators.map(key, _) |>
         make_columns |>
         Rows(; _ ...);
 
@@ -399,7 +397,7 @@ We can take a [`Peek`](@ref) at the first few results.
 ```jldoctest flights
 julia> distinct_distances =
         @> path_groups |>
-        over(_, with_number);
+        Iterators.map(with_number, _);
 
 julia> Peek(distinct_distances)
 Showing at most 4 rows
@@ -411,11 +409,11 @@ Showing at most 4 rows
 |    EWR |         AUS |      1 |
 ```
 
-Let's see [`when`](@ref) there are multiple distances for the same path. `when` is simply `Iterators.filter` with the argument order reversed. This facilitates chaining. Again, use [`@_`](@ref) to create an anonymous function to pass to [`when`](@ref).
+Let's see when there are multiple distances for the same path using `Iterators.filter`. Again, use [`@_`](@ref) to create an anonymous function to pass to `Iterators.filter`.
 
 ```jldoctest flights
 julia> @> distinct_distances |>
-        when(_, @_ _.number != 1) |>
+        Iterators.filter((@_ _.number != 1), _) |>
         Peek
 Showing at most 4 rows
 | origin | destination | number |
@@ -424,11 +422,11 @@ Showing at most 4 rows
 |    JFK |         EGE |      2 |
 ```
 
-It looks like there is a consistency with flights which arrive at at the `EGE` airport. Let's take a [`Peek`](@ref) at flights going to `"EGE"` using [`when`](@ref). Again, use [`@_`](@ref) to create an anonymous function to pass to [`when`](@ref).
+It looks like there is a consistency with flights which arrive at at the `EGE` airport. Let's take a [`Peek`](@ref) at flights going to `"EGE"` using `Iterators.filter`. Again, use [`@_`](@ref) to create an anonymous function to pass to `Iterators.filter`.
 
 ```jldoctest flights
 julia> @> flights |>
-        when(_, @_ _.destination == "EGE") |>
+        Iterators.filter((@_ _.destination == "EGE"), _) |>
         Peek
 Showing at most 4 rows
 | carrier | flight | origin | destination | tail_number |   air_time | distance | departure_delay | arrival_delay |  scheduled_departure_time |    scheduled_arrival_time |
@@ -491,7 +489,7 @@ julia> function get_weather(indexed_airports, row)
 
 julia> weathers =
         @> weathers_file |>
-        over(_, @_ get_weather(indexed_airports, _));
+        Iterators.map((@_ get_weather(indexed_airports, _)), _);
 
 julia> Peek(weathers)
 Showing 4 of 26115 rows
@@ -507,12 +505,12 @@ Showing 4 of 26115 rows
 
 I happen to know that the weather data is already sorted by `airport_code` and `hour`. However, we will need to presort and group the flights before we can join in the weather file. Joining in LightQuery is never many-to-one; you always need to explicitly group first. This is slightly less convenient but allows some extra flexibility.
 
-[`order`](@ref) and [`Group`](@ref) `flights` [`By`](@ref) matching variables. We will join the flights to the weather data by rounding down the scheduled departure time of the flight to the nearest hour. Only use data [`when`](@ref) the `departure_delay` is present.
+[`order`](@ref) and [`Group`](@ref) `flights` [`By`](@ref) matching variables. We will join the flights to the weather data by rounding down the scheduled departure time of the flight to the nearest hour. Only use data when the `departure_delay` is present.
 
 ```jldoctest flights
 julia> grouped_flights =
         @> flights |>
-        when(_, @_ _.departure_delay !== missing) |>
+        Iterators.filter((@_ _.departure_delay !== missing), _) |>
         order(_, (name"origin", name"scheduled_departure_time")) |>
         Group(By(_, @_ (_.origin, floor(_.scheduled_departure_time, Hour))));
 
@@ -555,10 +553,10 @@ We're interested in `visibility` and `departure_delay`. We have one row of weath
 ```jldoctest flights
 julia> visibility = weather.visibility;
 
-julia> over(flights_value, @_ (
+julia> Iterators.map((@_ (
             visibility = visibility,
             departure_delay = _.departure_delay
-        )) |>
+        )), flights_value) |>
         Peek
 | visibility | departure_delay |
 | ----------:| ---------------:|
@@ -572,10 +570,10 @@ We will need to conduct these steps for each match. So put them together into a 
 julia> function interested_in(a_match)
             weather, (flights_key, flights_value) = a_match
             visibility = weather.visibility
-            over(flights_value, @_ (
+            Iterators.map((@_ (
                 visibility = visibility,
                 departure_delay = _.departure_delay
-            ))
+            )), flights_value)
         end;
 
 julia> Peek(interested_in(a_match))
@@ -590,7 +588,7 @@ For each match, we are returning several rows. Use `Base.Iterators.flatten` to u
 ```jldoctest flights
 julia> data =
         @> weathers_to_flights |>
-        over(_, interested_in) |>
+        Iterators.map(interested_in, _) |>
         flatten |>
         make_columns |>
         Rows(; _...);
@@ -637,7 +635,7 @@ julia> using Statistics: mean
 
 julia> @> visibility_group |>
         value |>
-        over(_, name"departure_delay") |>
+        Iterators.map(name"departure_delay", _) |>
         mean
 32.252873563218394 minute
 ```
@@ -650,13 +648,13 @@ julia> get_mean_departure_delay(visibility_group) = (
             mean_departure_delay =
                 (@> visibility_group |>
                     value |>
-                    over(_, name"departure_delay") |>
+                    Iterators.map(name"departure_delay", _) |>
                     mean),
             count = length(value(visibility_group))
         );
 
 julia> @> by_visibility |>
-            over(_, get_mean_departure_delay) |>
+            Iterators.map(get_mean_departure_delay, _) |>
             Peek(_, 20)
 Showing at most 20 rows
 | visibility |      mean_departure_delay |  count |

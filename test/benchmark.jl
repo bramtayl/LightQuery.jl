@@ -25,7 +25,7 @@ columns = (name"Column1", name"Column2", name"Column4", name"Column6", name"Colu
 function process_with_lightquery(columns)
     @> Rows(; columns...) |>
     Group(By(_, name"Column1")) |>
-    over(_, @_ (Count = length(value(_)),)) |>
+    Iterators.map((@_ (Count = length(value(_)),)), _) |>
     make_columns
 end
 
