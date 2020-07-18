@@ -29,10 +29,10 @@ julia&gt; close(file)</code></pre><p>Oh boy this is some messy data. Let&#39;s s
 
 
 julia&gt; get_day(line, 1)
-(day = 1, value = 289)</code></pre><p>Now, we can get data for every day of the month.</p><pre><code class="language-julia-repl">julia&gt; days = @&gt; over(1:31, @_ merge(month_variable, get_day(line, _)));
+(day = 1, value = 289)</code></pre><p>Now, we can get data for every day of the month.</p><pre><code class="language-julia-repl">julia&gt; days = Iterators.map((@_ merge(month_variable, get_day(line, _))), 1:31);
 
 julia&gt; first(days)
-(year = 1949, month = 1, variable = :TMAX, day = 1, value = 289)</code></pre><p>Use <a href="../interface/#LightQuery.when-Tuple{Any,Any}"><code>when</code></a> to remove missing data;</p><pre><code class="language-julia-repl">julia&gt; days = when(days, @_ _.value !== missing);
+(year = 1949, month = 1, variable = :TMAX, day = 1, value = 289)</code></pre><p>Use <code>Iterators.filter</code> to remove missing data;</p><pre><code class="language-julia-repl">julia&gt; days = Iterators.filter((@_ _.value !== missing), days);
 
 
 julia&gt; first(days)
@@ -53,9 +53,9 @@ true</code></pre><p>We can combine these steps to process a whole month.</p><pre
                 month = parse(Int, SubString(line, 16, 17)),
                 variable = Symbol(SubString(line, 18, 21))
             )
-            @&gt; over(1:31, @_ merge(month_variable, get_day(line, _))) |&gt;
-            when(_, @_ _.value !== missing) |&gt;
-            over(_, get_date)
+            @&gt; Iterators.map((@_ merge(month_variable, get_day(line, _))), 1:31) |&gt;
+            Iterators.filter((@_ _.value !== missing), _) |&gt;
+            Iterators.map(get_date, _)
         end;
 
 
@@ -66,7 +66,7 @@ julia&gt; first(get_month_variable(line)) == (
         )
 true</code></pre><p>Each line will return several days. Use <code>flatten</code> to unnest the data.</p><pre><code class="language-julia-repl">julia&gt; climate_data =
         @&gt; eachline(&quot;climate.txt&quot;) |&gt;
-        over(_, get_month_variable) |&gt;
+        Iterators.map(get_month_variable, _) |&gt;
         flatten |&gt;
         make_columns |&gt;
         Rows(; _...);
@@ -96,9 +96,9 @@ Showing 4 of 5 rows
 |    :TMIN |   217 | 1949-01-01 |
 |    :PRCP |     0 | 1949-01-01 |
 |    :SNOW |     0 | 1949-01-01 |</code></pre><p>Use <a href="../interface/#LightQuery.transform-Tuple{Tuple{Vararg{Tuple{Name,Any},N}} where N,Vararg{Any,N} where N}"><code>transform</code></a> to add all the new variables to the day key.</p><pre><code class="language-julia-repl">julia&gt; spread_variables(day_variables) = transform((date = key(day_variables),);
-            over(
-                value(day_variables),
-                @_ _.variable =&gt; _.value
+            Iterators.map(
+                (@_ _.variable =&gt; _.value),
+                value(day_variables)
             )...
         );
 
@@ -111,8 +111,8 @@ julia&gt; spread_variables(day_variables) == (
             SNOW = 0,
             SNWD = 0
         )
-true</code></pre><p>Finally, we can run this reshaping over each day in the data using <a href="../interface/#LightQuery.over-Tuple{Any,Any}"><code>over</code></a>.</p><pre><code class="language-julia-repl">julia&gt; @&gt; by_date |&gt;
-        over(_, spread_variables) |&gt;
+true</code></pre><p>Finally, we can run this reshaping over each day in the data using <code>Iterators.map</code>.</p><pre><code class="language-julia-repl">julia&gt; @&gt; by_date |&gt;
+        Iterators.map(spread_variables, _) |&gt;
         Peek
 Showing at most 4 rows
 |    WT16 |       date | TMAX | TMIN | PRCP | SNOW | SNWD |
@@ -120,4 +120,4 @@ Showing at most 4 rows
 | missing | 1949-01-01 |  289 |  217 |    0 |    0 |    0 |
 |       1 | 1949-01-02 |  289 |  228 |   30 |    0 |    0 |
 | missing | 1949-01-03 |  283 |  222 |    0 |    0 |    0 |
-|       1 | 1949-01-04 |  283 |  233 |    0 |    0 |    0 |</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../beginner_tutorial/">« Beginner tutorial</a><a class="docs-footer-nextpage" href="../interface/">Interface »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 17 July 2020 14:57">Friday 17 July 2020</span>. Using Julia version 1.6.0-DEV.482.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+|       1 | 1949-01-04 |  283 |  233 |    0 |    0 |    0 |</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../beginner_tutorial/">« Beginner tutorial</a><a class="docs-footer-nextpage" href="../interface/">Interface »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 18 July 2020 16:27">Saturday 18 July 2020</span>. Using Julia version 1.6.0-DEV.487.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
