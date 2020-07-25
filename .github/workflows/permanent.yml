@@ -4,7 +4,7 @@ on:
     branches:
       - 'master'
 jobs:
-  document:
+  permanent:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,8 +17,3 @@ jobs:
       - uses: JuliaRegistries/TagBot@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - run: julia -e 'using Pkg; Pkg.add("CompatHelper")'
-      - run: julia -e 'using CompatHelper; CompatHelper.main()'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMPATHELPER_PRIV: ${{ secrets.COMPATHELPER_PRIV }}
