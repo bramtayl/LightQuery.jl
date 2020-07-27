@@ -5,3 +5,5 @@ LightQuery is highly optimized for long datasets with a small number of columns 
 You can avoid most allocations in LightQuery by keeping your data pre-sorted. If your data is not pre-sorted, then the majority of run-time will likely be spent in sorting.
 
 LightQuery requires that all of your columns have the same indices. The `Rows` constructor will check whether this is the case; to override these checks, use `@inbounds`.
+
+LightQuery has trouble dealing with missing data represented as `Union{Missing, T}` due to performance issues in Base. Hopefully, these will get sorted out soon. In the mean-time, `DataValues` work.
