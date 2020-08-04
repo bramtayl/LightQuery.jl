@@ -9,8 +9,6 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.4'
-          - '1.5'
           - 'nightly'
     steps:
       - uses: actions/checkout@v2

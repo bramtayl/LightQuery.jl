@@ -65,10 +65,10 @@ julia> @inferred reduce_rows(Rows(a = [1, 1], b = [1.0, 1.0]), +, name"a", name"
 (a = 2, b = 2.0)
 ```
 """
-@inline function reduce_rows(rows, a_function, columns...)
+function reduce_rows(rows, a_function, columns...)
     reduce(
         let a_function = a_function, columns = columns
-            @inline function (row1, row2)
+            function (row1, row2)
                 map(
                     a_function,
                     columns(row1),

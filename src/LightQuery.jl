@@ -26,6 +26,7 @@ import Base:
     NamedTuple,
     ndims,
     parent,
+    @propagate_inbounds,
     propertynames,
     push!,
     setindex!,
@@ -47,7 +48,6 @@ using Base:
     HasShape,
     isvatuple,
     @pure,
-    @propagate_inbounds,
     SizeUnknown,
     tail
 import Base.Iterators: flatten, take

@@ -60,7 +60,7 @@ function anonymous(location, body::Expr)
                 gensym("@_"),
                 Iterators.map(value, sort!(collect(underscores_to_gensyms), by = first))...,
             ),
-            Expr(:block, Expr(:meta, :inline), location, substituted_body),
+            Expr(:block, location, substituted_body),
         )
     end
 end

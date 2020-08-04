@@ -1,13 +1,13 @@
 const SomeOf{AType} = NTuple{N,AType} where {N}
 
-@inline function flatten_unrolled()
+function flatten_unrolled()
     ()
 end
-@inline function flatten_unrolled(container, rest...)
+function flatten_unrolled(container, rest...)
     container..., flatten_unrolled(rest...)...
 end
 
-@inline function my_flatten(containers)
+function my_flatten(containers)
     # TODO: avoid recursion for large tuples
     flatten_unrolled(containers...)
 end
@@ -23,65 +23,65 @@ end
     end
 end
 
-@inline function my_all(items)
+function my_all(items)
     # TODO: avoid recursion for large tuples
     all_unrolled(items...)
 end
 
-@inline function map_unrolled(call, variables::Tuple{})
+function map_unrolled(call, variables::Tuple{})
     ()
 end
-@inline function map_unrolled(call, variables)
+function map_unrolled(call, variables)
     call(first(variables)), map_unrolled(call, tail(variables))...
 end
-@inline function map_unrolled(call, variables1::Tuple{}, variables2::Tuple{})
+function map_unrolled(call, variables1::Tuple{}, variables2::Tuple{})
     ()
 end
-@inline function map_unrolled(call, variables1, variables2)
+function map_unrolled(call, variables1, variables2)
     call(first(variables1), first(variables2)),
     map_unrolled(call, tail(variables1), tail(variables2))...
 end
-@inline function map_unrolled(call, variables1, ::Tuple{})
+function map_unrolled(call, variables1, ::Tuple{})
     error("Mismatch in map: $variables1 left over")
 end
-@inline function map_unrolled(call, ::Tuple{}, variables2)
+function map_unrolled(call, ::Tuple{}, variables2)
     error("Mismatch in map: $variables2 left over")
 end
 
-@inline function my_map(call, variables)
+function my_map(call, variables)
     # TODO: avoid recursion for large tuples
     map_unrolled(call, variables)
 end
-@inline function my_map(call, variables1, variables2)
+function my_map(call, variables1, variables2)
     # TODO: avoid recursion for large tuples
     map_unrolled(call, variables1, variables2)
 end
 
-@inline function partial_map_unrolled(call, fixed, variables::Tuple{})
+function partial_map_unrolled(call, fixed, variables::Tuple{})
     ()
 end
-@inline function partial_map_unrolled(call, fixed, variables)
+function partial_map_unrolled(call, fixed, variables)
     call(fixed, first(variables)), partial_map_unrolled(call, fixed, tail(variables))...
 end
-@inline function partial_map_unrolled(call, fixed, variables1::Tuple{}, variables2::Tuple{})
+function partial_map_unrolled(call, fixed, variables1::Tuple{}, variables2::Tuple{})
     ()
 end
-@inline function partial_map_unrolled(call, fixed, variables1, variables2)
+function partial_map_unrolled(call, fixed, variables1, variables2)
     call(fixed, first(variables1), first(variables2)),
     partial_map_unrolled(call, fixed, tail(variables1), tail(variables2))...
 end
-@inline function partial_map_unrolled(call, fixed, variables1, ::Tuple{})
+function partial_map_unrolled(call, fixed, variables1, ::Tuple{})
     error("Mismatch in partial map: $variables1 left over")
 end
-@inline function partial_map_unrolled(call, fixed, ::Tuple{}, variables2)
+function partial_map_unrolled(call, fixed, ::Tuple{}, variables2)
     error("Mismatch in partial map: $variables2 left over")
 end
 
-@inline function partial_map(call, fixed, variables)
+function partial_map(call, fixed, variables)
     # TODO: avoid recursion for large tuples
     partial_map_unrolled(call, fixed, variables)
 end
-@inline function partial_map(call, fixed, variables1, variables2)
+function partial_map(call, fixed, variables1, variables2)
     # TODO: avoid recursion for large tuples
     partial_map_unrolled(call, fixed, variables1, variables2)
 end
@@ -94,8 +94,8 @@ end
         in_unrolled(needle, stack...)
     end
 
-@inline setdiff_unrolled(less) = ()
-@inline function setdiff_unrolled(less, first_more, mores...)
+setdiff_unrolled(less) = ()
+function setdiff_unrolled(less, first_more, mores...)
     rest = setdiff_unrolled(less, mores...)
     if in_unrolled(first_more, less...)
         rest
@@ -104,7 +104,7 @@ end
     end
 end
 
-@inline function my_setdiff(more, less)
+function my_setdiff(more, less)
     # TODO: avoid recursion for large tuples
     setdiff_unrolled(less, more...)
 end
@@ -128,10 +128,10 @@ julia> @inferred key((:a, 1))
 :a
 ```
 """
-@inline function key((a_key, a_value))
+function key((a_key, a_value))
     a_key
 end
-@inline function key(pair::Pair)
+function key(pair::Pair)
     pair.first
 end
 export key
@@ -155,10 +155,10 @@ julia> @inferred value((:a, 1))
 1
 ```
 """
-@inline function value((a_key, a_value))
+function value((a_key, a_value))
     a_value
 end
-@inline function value(pair::Pair)
+function value(pair::Pair)
     pair.second
 end
 export value
