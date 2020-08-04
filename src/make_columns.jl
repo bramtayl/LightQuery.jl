@@ -1,7 +1,7 @@
 struct Rows{Row,Dimensions,Columns,Names} <: AbstractArray{Row,Dimensions}
     columns::Columns
     names::Names
-    @propagate_inbounds function Rows{Row,Dimension,Columns,Names}(
+    @inline function Rows{Row,Dimension,Columns,Names}(
         columns,
         the_names,
     ) where {Row,Dimension,Columns,Names}
@@ -264,10 +264,10 @@ end
     ))
 end
 
-function push_widen(rows::Rows, row)
+@noinline function push_widen(rows::Rows, row)
     widen_named(SizeUnknown(), rows, named_tuple(row))
 end
-function setindex_widen_up_to(rows::Rows, row, an_index)
+@noinline function setindex_widen_up_to(rows::Rows, row, an_index)
     widen_named(HasLength(), rows, named_tuple(row), an_index)
 end
 
