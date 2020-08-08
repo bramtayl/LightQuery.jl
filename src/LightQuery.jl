@@ -1,7 +1,5 @@
 module LightQuery
 
-# TODO: remove take
-
 import Base:
     axes,
     collect_similar,
@@ -29,14 +27,13 @@ import Base:
     @propagate_inbounds,
     propertynames,
     push!,
+    push_widen,
     setindex!,
+    setindex_widen_up_to,
     size,
     show,
     similar,
     view
-@static if VERSION >= v"1.1"
-    import Base: push_widen, setindex_widen_up_to
-end
 using Base:
     _collect,
     @default_eltype,

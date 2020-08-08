@@ -23,7 +23,7 @@ julia> using Base.Iterators: flatten
 
 julia> using Tables: columntable
 
-julia> using TimeZones: Class, Local, TimeZone, VariableTimeZone, ZonedDateTime
+julia> using TimeZones: Class, Local, TimeZone, ZonedDateTime
 
 julia> using Unitful: °, °F, ft, hr, inch, mbar, mi, minute
 
@@ -92,13 +92,13 @@ julia> airport = transform(airport,
 (name = "Lansdowne Airport", airport_code = "04G", time_zone = "America/New_York", altitude = 1044 ft, latitude = 41.1304722°, longitude = -80.6195833°)
 ```
 
-Next, we will write a function for getting a true timezone. This will be useful because the departure and arrival times are in various timezones. Use [`@if_known`](@ref) to handle `missing` data. Note the data contains some `LEGACY` timezones. Note that the type annotation is optional: `TimeZone` is unstable without it.
+Next, we will write a function for getting a true timezone. This will be useful because the departure and arrival times are in various timezones. Use [`@if_known`](@ref) to handle `missing` data. Note the data contains some `LEGACY` timezones.
 
 ```jldoctest flights
 julia> get_time_zone(time_zone) = TimeZone(
             (@if_known time_zone),
             Class(:STANDARD) | Class(:LEGACY)
-        )::VariableTimeZone;
+        );
 
 julia> get_time_zone(airport.time_zone)
 America/New_York (UTC-5/UTC-4)
