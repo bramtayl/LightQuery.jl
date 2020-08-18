@@ -5,6 +5,8 @@ For this section, I will use [data from the Global Historical Climatology Networ
 ```jldoctest reshaping
 julia> using LightQuery
 
+julia> import Compat: Iterators
+
 julia> using Base.Iterators: flatten
 
 julia> using Dates: Date

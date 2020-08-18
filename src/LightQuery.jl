@@ -50,6 +50,7 @@ using Base:
 import Base.Iterators: flatten, take
 using Base.Iterators: Filter
 using Base.Meta: quot
+import Compat: Iterators
 using IterTools: @ifsomething
 import MacroTools
 using MacroTools: @capture

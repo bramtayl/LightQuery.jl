@@ -11,7 +11,7 @@ julia> using Test: @inferred
 
 
 julia> @inferred collect(Enumerate(Iterators.filter(iseven, [4, 3, 2, 1])))
-2-element Vector{Tuple{Int64,Int64}}:
+2-element Array{Tuple{Int64,Int64},1}:
  (1, 4)
  (3, 2)
 ```
@@ -86,7 +86,7 @@ julia> using Test: @inferred
 
 
 julia> collect(@inferred order([-2, 1], abs))
-2-element Vector{Int64}:
+2-element Array{Int64,1}:
   1
  -2
 ```
@@ -111,7 +111,7 @@ julia> using Test: @inferred
 
 
 julia> collect(@inferred order([1, -2], Backwards))
-2-element Vector{Int64}:
+2-element Array{Int64,1}:
   1
  -2
 ```
@@ -194,7 +194,7 @@ julia> using Test: @inferred
 
 
 julia> result = @inferred index([-2, 1], abs)
-LightQuery.Indexed{Int64,Int64,Vector{Int64},Dict{Int64,Int64}} with 2 entries:
+LightQuery.Indexed{Int64,Int64,Array{Int64,1},Dict{Int64,Int64}} with 2 entries:
   2 => -2
   1 => 1
 
@@ -229,7 +229,7 @@ julia> using Test: @inferred
 
 
 julia> @inferred By([1, -2], abs)
-By{Vector{Int64},typeof(abs)}([1, -2], abs)
+By{Array{Int64,1},typeof(abs)}([1, -2], abs)
 ```
 """
 struct By{Iterator,Key}
@@ -256,7 +256,7 @@ julia> using Test: @inferred
 
 
 julia> @inferred collect(Group(By([1, -1, -2, 2, 3, -3], abs)))
-3-element Vector{Tuple{Int64,SubArray{Int64,1,Vector{Int64},Tuple{UnitRange{Int64}},true}}}:
+3-element Array{Tuple{Int64,SubArray{Int64,1,Array{Int64,1},Tuple{UnitRange{Int64}},true}},1}:
  (1, [1, -1])
  (2, [-2, 2])
  (3, [3, -3])
@@ -281,7 +281,7 @@ julia> key(first_group)
 1
 
 julia> collect(value(first_group))
-2-element Vector{Int64}:
+2-element Array{Int64,1}:
  1
  1
 ```
@@ -384,7 +384,7 @@ julia> using Test: @inferred
 
 
 julia> @inferred collect(InnerJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
-2-element Vector{Tuple{Int64,Int64}}:
+2-element Array{Tuple{Int64,Int64},1}:
  (1, -1)
  (-6, 6)
 
@@ -433,7 +433,7 @@ julia> using LightQuery
 
 
 julia> collect(LeftJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
-4-element Vector{Tuple{Int64,Union{Missing, Int64}}}:
+4-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, -1)
  (-2, missing)
  (5, missing)
@@ -443,7 +443,7 @@ julia> collect(LeftJoin(By(Int[], abs), By(Int[], abs))) == []
 true
 
 julia> collect(LeftJoin(By([1], abs), By(Int[], abs)))
-1-element Vector{Tuple{Int64,Union{Missing, Int64}}}:
+1-element Array{Tuple{Int64,Union{Missing, Int64}},1}:
  (1, missing)
 
 julia> collect(LeftJoin(By(Int[], abs), By([1], abs))) == []
@@ -499,7 +499,7 @@ julia> using LightQuery
 
 
 julia> collect(RightJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
-4-element Vector{Tuple{Union{Missing, Int64},Int64}}:
+4-element Array{Tuple{Union{Missing, Int64},Int64},1}:
  (1, -1)
  (missing, 3)
  (missing, -4)
@@ -512,7 +512,7 @@ julia> collect(RightJoin(By([1], abs), By(Int[], abs))) == []
 true
 
 julia> collect(RightJoin(By(Int[], abs), By([1], abs)))
-1-element Vector{Tuple{Union{Missing, Int64},Int64}}:
+1-element Array{Tuple{Union{Missing, Int64},Int64},1}:
  (missing, 1)
 ```
 """
@@ -565,7 +565,7 @@ julia> using LightQuery
 
 
 julia> collect(OuterJoin(By([1, -2, 5, -6], abs), By([-1, 3, -4, 6], abs)))
-6-element Vector{Tuple{Union{Missing, Int64},Union{Missing, Int64}}}:
+6-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (1, -1)
  (-2, missing)
  (missing, 3)
@@ -577,11 +577,11 @@ julia> collect(OuterJoin(By(Int[], abs), By(Int[], abs))) == []
 true
 
 julia> collect(OuterJoin(By([1], abs), By(Int[], abs)))
-1-element Vector{Tuple{Union{Missing, Int64},Union{Missing, Int64}}}:
+1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (1, missing)
 
 julia> collect(OuterJoin(By(Int[], abs), By([1], abs)))
-1-element Vector{Tuple{Union{Missing, Int64},Union{Missing, Int64}}}:
+1-element Array{Tuple{Union{Missing, Int64},Union{Missing, Int64}},1}:
  (missing, 1)
 ```
 """
@@ -716,7 +716,7 @@ julia> using LightQuery
 
 
 julia> collect(Length(Iterators.filter(iseven, 1:4), 2))
-2-element Vector{Int64}:
+2-element Array{Int64,1}:
  2
  4
 ```

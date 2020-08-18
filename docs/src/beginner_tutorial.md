@@ -17,6 +17,8 @@ First, import some tools we will need and change the working directory.
 ```jldoctest flights
 julia> using LightQuery
 
+julia> import Compat: Iterators
+
 julia> using Dates: Date, DateTime, Hour
 
 julia> using Base.Iterators: flatten
