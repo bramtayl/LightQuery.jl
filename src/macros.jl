@@ -100,7 +100,14 @@ function link(location, object, call::Expr)
     underscores_to_gensyms = Dict{Symbol,Symbol}()
     meta_level = 0
     body = substitute_underscores!(underscores_to_gensyms, meta_level, call)
-    Expr(:let, Expr(:(=), underscores_to_gensyms[:_], object), Expr(:block, location, body))
+    if length(underscores_to_gensyms) == 0
+        Expr(:block, location, Expr(:call, call, object))
+    elseif length(underscores_to_gensyms) == 1 && haskey(underscores_to_gensyms, :_)
+        Expr(:let, Expr(:(=), underscores_to_gensyms[:_], object), Expr(:block, location, body))
+    else
+        throw(ArgumentError("Chain segments must contain single underscores only"))
+    end
+    
 end
 function link(location, object, call)
     Expr(:call, call, object)
@@ -123,8 +130,16 @@ If body is in the form `object_ |> call_`, call [`@_`](@ref) on `call`, and recu
 julia> using LightQuery
 
 
-julia> @> 0 |> _ - 1 |> abs
+julia> @> 0 |> _ - 1 |> abs |> Base.abs
 1
+```
+
+You can't include multiple arguments.
+
+```jldoctest chain
+julia> @> _ |> _ + __
+ERROR: LoadError: ArgumentError: Chain segments must contain single underscores only
+[...]
 ```
 
 You can nest chains:
